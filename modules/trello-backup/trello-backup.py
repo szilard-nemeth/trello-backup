@@ -16,6 +16,13 @@ class QueryUtils:
         "Accept": "application/json"
     }
 
+@dataclass
+class TrelloComment:
+    id: str
+    author: str
+    date: str
+    contents: str
+
 
 @dataclass
 class TrelloChecklistItem:
@@ -51,6 +58,7 @@ class TrelloCard:
     checklists: List[TrelloChecklist]
     labels: List[str]
     closed: bool
+    comments: List[TrelloComment]
 
 
 def get_board_details(board_id):
@@ -180,15 +188,52 @@ def parse_trello_cards(board_details_json,
                        trello_checklists_by_id: Dict[str, TrelloChecklist]):
     cards_json = board_details_json["cards"]
     cards = []
-    for card in cards_json:
+    for idx, card in enumerate(cards_json):
+        print("Processing card: {} / {}".format(idx + 1, len(cards_json)))
         trello_list = trello_lists_by_id[card["idList"]]
         label_names = [l["name"] for l in card["labels"]]
         checklist_ids = card["idChecklists"]
         checklists = [trello_checklists_by_id[cid] for cid in checklist_ids]
-        trello_card = TrelloCard(card["id"], card["name"], trello_list, card["desc"], checklists, label_names, card["closed"])
+        comments: List[TrelloComment] = query_comments_for_card(card)
+        trello_card = TrelloCard(card["id"], card["name"], trello_list, card["desc"], checklists, label_names, card["closed"], comments)
         cards.append(trello_card)
         trello_list.cards.append(trello_card)
     return cards
+
+
+def query_comments_for_card(card) -> List[TrelloComment]:
+    actions = get_actions_for_card(card["id"])
+    comment_actions_json = list(filter(lambda a: a['type'] == "commentCard", actions))
+    comments = []
+    for action in comment_actions_json:
+        member_creator = action['memberCreator']
+        author = member_creator["username"]
+
+        if 'data' not in action:
+            # TODO warning log
+            continue
+        data = action['data']
+        if 'text' not in data:
+            # TODO warning log
+            continue
+        trello_comment = TrelloComment(action["id"], author, action["date"], data['text'])
+        comments.append(trello_comment)
+    return comments
+
+
+def get_actions_for_card(card_id: str):
+    url = "https://api.trello.com/1/cards/{id}/actions".format(id=card_id)
+
+    response = requests.request(
+        "GET",
+        url,
+        headers=QueryUtils.headers,
+        params=QueryUtils.common_query
+    )
+
+    #print(json.dumps(json.loads(response.text), sort_keys=True, indent=4, separators=(",", ": ")))
+    parsed_json = json.loads(response.text)
+    return parsed_json
 
 
 def parse_trello_checklists(board_details_json):
@@ -231,7 +276,9 @@ if __name__ == '__main__':
     boards = list_boards()
     print(boards)
 
-    board_id = boards['PERSONAL: Weekly Plan']
+    #board_id = boards['PERSONAL: Weekly Plan']
+    board_id = boards['LEARN / RESEARCH']
+
     board_details_json = get_board_details(board_id)
 
     # 1. parse lists
@@ -249,4 +296,6 @@ if __name__ == '__main__':
     trello_lists_open = list(filter(lambda tl: not tl.closed, trello_lists_all))
     print(trello_lists_open)
 
+    # TODO add file cache that stores in the following hierarchy:
+    #  <maindir>/boards/<board>/cards/<card>/actions/<action_id>.json
 
