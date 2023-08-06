@@ -59,6 +59,7 @@ class TrelloCard:
     labels: List[str]
     closed: bool
     comments: List[TrelloComment]
+    due_date: str
 
 
 def get_board_details(board_id):
@@ -195,7 +196,7 @@ def parse_trello_cards(board_details_json,
         checklist_ids = card["idChecklists"]
         checklists = [trello_checklists_by_id[cid] for cid in checklist_ids]
         comments: List[TrelloComment] = query_comments_for_card(card)
-        trello_card = TrelloCard(card["id"], card["name"], trello_list, card["desc"], checklists, label_names, card["closed"], comments)
+        trello_card = TrelloCard(card["id"], card["name"], trello_list, card["desc"], checklists, label_names, card["closed"], comments, card["due"])
         cards.append(trello_card)
         trello_list.cards.append(trello_card)
     return cards
