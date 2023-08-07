@@ -114,23 +114,32 @@ class TrelloChecklist:
     items: List[TrelloChecklistItem]
 
     def get_url_titles(self):
+        import re
         for item in self.items:
             try:
                 url = UrlUtils.extract_from_str(item.name)
             except:
                 url = None
             if url:
+                url_title = None
                 if url not in webpage_title_cache:
-                    url_title = None
+                    # Fetch title of URL
                     try:
                         url_title = HtmlParser.get_title_from_url(url)
+                        url_title = re.sub(r'[\n\t\r]+', ' ', url_title)
                     except Exception:
                         traceback.print_exc()
                         print("Failed to get title for URL: {}".format(url))
                     if url_title:
                         webpage_title_cache[url] = url_title
                 else:
-                    url_title = webpage_title_cache[url]
+                    # Read from cache
+                    old_url_title = webpage_title_cache[url]
+                    new_url_title = re.sub(r'[\n\t\r]+', ' ', old_url_title)
+                    if old_url_title != new_url_title:
+                        webpage_title_cache[url] = new_url_title
+                    url_title = new_url_title
+
                 if not url_title:
                     url_title = url
                 item.url_title = url_title
