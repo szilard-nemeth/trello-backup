@@ -192,6 +192,10 @@ class TrelloBoard:
     name: str
     lists: List[TrelloList]
 
+    def __post_init__(self):
+        import re
+        self.simple_name = re.sub("[ /\ ]+", "-", self.name).lower()
+
     def get_checklist_url_titles(self):
         for list in self.lists:
             for card in list.cards:
