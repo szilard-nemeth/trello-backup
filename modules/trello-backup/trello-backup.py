@@ -8,7 +8,7 @@ from typing import List, Dict, Tuple
 
 import requests
 from bs4 import BeautifulSoup
-from pythoncommons.file_utils import FileUtils, FindResultType
+from pythoncommons.file_utils import FileUtils, FindResultType, CsvFileUtils
 from pythoncommons.project_utils import SimpleProjectUtils
 from pythoncommons.result_printer import TableRenderingConfig, ResultPrinter, TabulateTableFormat
 from pythoncommons.url_utils import UrlUtils
@@ -456,11 +456,7 @@ class TrelloBoardHtmlTableGenerator:
         self.board = board
         self.tables = {}
 
-    def render(self):
-        rows = DataConverter.convert_to_table_rows(self.board)
-        h = TrelloBoardHtmlTableHeader
-        header = [h.BOARD.value, h.LIST.value, h.CARD.value, h.LABELS.value, h.DUE_DATE.value, h.CHECKLIST_ITEM_NAME.value, h.URL_TITLE.value, h.URL.value]
-
+    def render(self, rows, header):
         render_conf = TableRenderingConfig(
             row_callback=lambda row: row,
             print_result=False,
@@ -475,17 +471,14 @@ class TrelloBoardHtmlTableGenerator:
         )
 
         self.tables: Dict[TabulateTableFormat, str] = gen_tables
-        self.print_and_save_summary()
 
-    def print_and_save_summary(self):
+    def write_file(self, file):
         for fmt, table in self.tables.items():
-            # filename = FileUtils.join_path(self.config.session_dir, SummaryFile.HTML.value)
-            filename = "/tmp/custom_table.html"
-            print(f"Saving summary to html file: {filename}")
-            FileUtils.save_to_file(filename, table)
+            FileUtils.save_to_file(file, table)
+            print(f"Generated HTML table to file: {file}")
 
 
-class TrelloBoardOutputGenerator:
+class TrelloBoardHtmlFileGenerator:
     def __init__(self, board, config):
         self.board = board
         self.config: TrelloCardHtmlGeneratorConfig = config
@@ -522,7 +515,7 @@ class TrelloBoardOutputGenerator:
     def format_comments(card):
         comments_str = ""
         for comment in card.comments:
-            comments_str += f"{TrelloBoardOutputGenerator.format_comment(comment)}<br>"
+            comments_str += f"{TrelloBoardHtmlFileGenerator.format_comment(comment)}<br>"
         return comments_str
 
     @staticmethod
@@ -533,7 +526,7 @@ class TrelloBoardOutputGenerator:
     def format_activities(card):
         act_str = ""
         for activity in card.activities:
-            act_str += f"{TrelloBoardOutputGenerator.format_activity(activity)}<br>"
+            act_str += f"{TrelloBoardHtmlFileGenerator.format_activity(activity)}<br>"
         return act_str
 
     def format_checklist(self, checklist: TrelloChecklist):
@@ -578,10 +571,18 @@ class TrelloBoardOutputGenerator:
             html += f"<h1>LIST: {trello_list.name} ({len(trello_list.cards)} cards)</h1><br><br>"
             for card in trello_list.cards:
                 html += self._render_card(trello_list, card)
-        return html
+        self.html = html
 
-    def render_rich_table(self):
-        rows = DataConverter.convert_to_table_rows(self.board)
+    def write_to_file(self, file):
+        FileUtils.write_to_file(file, self.html)
+        print("Generated HTML file output to: " + file)
+
+
+class TrelloBoardRichTableGenerator:
+    def __init__(self, board):
+        self.board = board
+
+    def render(self, rows, print_console=True):
         # TODO implement console mode --> Just print this and do not log anything to console other than the table
         # TODO add progressbar while loading emails
         from rich.console import Console
@@ -599,17 +600,14 @@ class TrelloBoardOutputGenerator:
 
         for row in rows:
             table.add_row(*row)
-        # table.add_row("boardname", "list.name", "card.name", "card.get_labels_as_str()", "due_date", "cl_item_name", "url_title", "url")
 
+        self.console = Console(record=True)
+        if print_console:
+            self.console.print(table)
 
-
-        console = Console(record=True)
-        console.print(table)
-
-        out_file = "/tmp/rich_table_output.html"
-        console.save_html(out_file)
-        print("Execute: ")
-        print("open " + out_file)
+    def write_file(self, file):
+        self.console.save_html(file)
+        print("Generated rich table to: " + file)
 
 
 class DataConverter:
@@ -631,6 +629,13 @@ class DataConverter:
                     rows.append(row)
         return rows
 
+    @staticmethod
+    def get_header():
+        h = TrelloBoardHtmlTableHeader
+        header = [h.BOARD.value, h.LIST.value, h.CARD.value, h.LABELS.value, h.DUE_DATE.value,
+                  h.CHECKLIST_ITEM_NAME.value, h.URL_TITLE.value, h.URL.value]
+        return header
+
 def load_webpage_title_cache() -> Dict[str, str]:
     with open(LocalDirsFiles.WEBPAGE_TITLE_CACHE_FILE, 'rb') as handle:
         try:
@@ -642,6 +647,47 @@ def load_webpage_title_cache() -> Dict[str, str]:
 def save_webpage_title_cache(data):
     with open(LocalDirsFiles.WEBPAGE_TITLE_CACHE_FILE, 'wb') as handle:
         pickle.dump(data, handle, protocol=pickle.HIGHEST_PROTOCOL)
+
+
+class OutputHandler:
+    def __init__(self, board: TrelloBoard, html_gen_config):
+        self.board = board
+        self.html_file_gen = TrelloBoardHtmlFileGenerator(board, html_gen_config)
+        self.html_table_gen = TrelloBoardHtmlTableGenerator(board)
+        self.rich_table_gen = TrelloBoardRichTableGenerator(board)
+
+        fname_prefix = f"trelloboard-{self.board.simple_name}"
+        result_dir = "/tmp/"
+        self.html_result_file_path = os.path.join(result_dir, f"{fname_prefix}-htmlexport.html")
+        self.rich_table_file_path = os.path.join(result_dir, f"{fname_prefix}-rich-table.html")
+        self.html_table_file_path = os.path.join(result_dir, f"{fname_prefix}-custom-table.html")
+        self.csv_file_path = os.path.join(result_dir, f"{fname_prefix}.csv")
+        self.csv_file_copy_to_file = f"~/Downloads/{fname_prefix}.csv"
+
+    def write_outputs(self):
+        rows = DataConverter.convert_to_table_rows(self.board)
+        header = DataConverter.get_header()
+
+        # Output 1: HTML file
+        self.html_file_gen.render()
+        self.html_file_gen.write_to_file(self.html_result_file_path)
+
+        # TODO move this elsewhere?
+        save_webpage_title_cache(webpage_title_cache)
+
+        # Output 2: Rich table
+        self.rich_table_gen.render(rows, print_console=False)
+        self.rich_table_gen.write_file(self.rich_table_file_path)
+
+        # Output 3: HTML table
+        self.html_table_gen.render(rows, header)
+        self.html_table_gen.write_file(self.html_table_file_path)
+
+        # Output 4: CSV file
+        CsvFileUtils.append_rows_to_csv_file(self.csv_file_path, rows, header=header)
+        print("Generated CSV file: " + self.csv_file_path)
+        print(f"cp {self.csv_file_path} {self.csv_file_copy_to_file} && subl {self.csv_file_copy_to_file}")
+
 
 
 if __name__ == '__main__':
@@ -678,14 +724,8 @@ if __name__ == '__main__':
     board = TrelloBoard(board_id, board_name, trello_lists_open)
     board.get_checklist_url_titles()
 
-    html_gen = TrelloBoardOutputGenerator(board, html_gen_config)
-    html = html_gen.render()
-    save_webpage_title_cache(webpage_title_cache)
-    FileUtils.write_to_file("/tmp/board-learn-research.html", html)
-
-    # html_gen.render_rich_table()
-    html_table_gen = TrelloBoardHtmlTableGenerator(board)
-    html_table_gen.render()
+    out = OutputHandler(board, html_gen_config)
+    out.write_outputs()
 
     # TODO add file cache that stores in the following hierarchy:
     #  <maindir>/boards/<board>/cards/<card>/actions/<action_id>.json
