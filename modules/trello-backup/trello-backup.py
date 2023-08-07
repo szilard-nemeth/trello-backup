@@ -1,11 +1,16 @@
 import json
+import os
 import pickle
+import traceback
 from dataclasses import dataclass, field
-from typing import List, Dict
+from enum import Enum
+from typing import List, Dict, Tuple
 
 import requests
 from bs4 import BeautifulSoup
-from pythoncommons.file_utils import FileUtils
+from pythoncommons.file_utils import FileUtils, FindResultType
+from pythoncommons.project_utils import SimpleProjectUtils
+from pythoncommons.result_printer import TableRenderingConfig, ResultPrinter, TabulateTableFormat
 from pythoncommons.url_utils import UrlUtils
 
 import config
@@ -46,6 +51,20 @@ TRELLO_CARD_GENERATOR_BASIC_CONFIG = TrelloCardHtmlGeneratorConfig(include_label
                                                                      include_checklists=True,
                                                                      include_activity=False,
                                                                      include_comments=False)
+REPO_ROOT_DIRNAME = "backup-manager"
+TRELLO_BACKUP_DIR_NAME = "trello-backup"
+
+
+class LocalDirsFiles:
+    REPO_ROOT_DIR = FileUtils.find_repo_root_dir(__file__, REPO_ROOT_DIRNAME)
+    TRELLO_BACKUP_DIR = SimpleProjectUtils.get_project_dir(
+        basedir=REPO_ROOT_DIR,
+        parent_dir="modules",
+        dir_to_find=TRELLO_BACKUP_DIR_NAME,
+        find_result_type=FindResultType.DIRS,
+        exclude_dirs=[],
+    )
+    WEBPAGE_TITLE_CACHE_FILE = FileUtils.join_path(TRELLO_BACKUP_DIR, 'webpage_title_cache.pickle')
 
 
 
@@ -77,6 +96,13 @@ class TrelloChecklistItem:
     id: str
     name: str
     checked: bool
+    url: str = None
+    url_title: str = None
+
+    def get_html(self):
+        if self.url:
+            return f"<a href={self.url}>{self.url_title}</a>"
+        return self.name
 
 
 @dataclass
@@ -86,6 +112,30 @@ class TrelloChecklist:
     board_id: str
     card_id: str
     items: List[TrelloChecklistItem]
+
+    def get_url_titles(self):
+        for item in self.items:
+            try:
+                url = UrlUtils.extract_from_str(item.name)
+            except:
+                url = None
+            if url:
+                if url not in webpage_title_cache:
+                    url_title = None
+                    try:
+                        url_title = HtmlParser.get_title_from_url(url)
+                    except Exception:
+                        traceback.print_exc()
+                        print("Failed to get title for URL: {}".format(url))
+                    if url_title:
+                        webpage_title_cache[url] = url_title
+                else:
+                    url_title = webpage_title_cache[url]
+                if not url_title:
+                    url_title = url
+                item.url_title = url_title
+                item.url = url
+
 
 
 @dataclass
@@ -110,12 +160,33 @@ class TrelloCard:
     due_date: str
     activities: List[TrelloActivity]
 
+    def get_checklist_url_titles(self):
+        for cl in self.checklists:
+            cl.get_url_titles()
+
+    def get_unified_items(self):
+        all_items = []
+        for cl in self.checklists:
+            for item in cl.items:
+                if item.url:
+                    all_items.append(("", item.url_title, item.url))
+                else:
+                    all_items.append((item.name, "", ""))
+        return all_items
+
+    def get_labels_as_str(self):
+        return ",".join(self.labels)
 
 @dataclass
 class TrelloBoard:
     id: str
     name: str
     lists: List[TrelloList]
+
+    def get_checklist_url_titles(self):
+        for list in self.lists:
+            for card in list.cards:
+                card.get_checklist_url_titles()
 
 
 class HtmlParser:
@@ -354,9 +425,55 @@ def validate_config():
     }
 
 
-class TrelloBoardHtmlGenerator:
-    def __init__(self, board, config, webpage_title_cache):
-        self._webpage_title_cache = webpage_title_cache
+class TrelloBoardHtmlTableHeader(Enum):
+    BOARD = "Board"
+    LIST = "List"
+    CARD = "Card"
+    LABELS = "Labels"
+    DUE_DATE = "Due date"
+    CHECKLIST_ITEM_NAME = "Checklist item name"
+    URL_TITLE = "URL Title"
+    URL = "URL"
+
+
+class TrelloBoardHtmlTableGenerator:
+    DEFAULT_TABLE_FORMATS = [TabulateTableFormat.HTML]
+
+    def __init__(self, board):
+        self.board = board
+        self.tables = {}
+
+    def render(self):
+        rows = DataConverter.convert_to_table_rows(self.board)
+        h = TrelloBoardHtmlTableHeader
+        header = [h.BOARD.value, h.LIST.value, h.CARD.value, h.LABELS.value, h.DUE_DATE.value, h.CHECKLIST_ITEM_NAME.value, h.URL_TITLE.value, h.URL.value]
+
+        render_conf = TableRenderingConfig(
+            row_callback=lambda row: row,
+            print_result=False,
+            max_width=200,
+            max_width_separator=os.sep,
+            tabulate_formats=TrelloBoardHtmlTableGenerator.DEFAULT_TABLE_FORMATS,
+        )
+        gen_tables = ResultPrinter.print_tables(
+            data=rows,
+            header=header,
+            render_conf=render_conf,
+        )
+
+        self.tables: Dict[TabulateTableFormat, str] = gen_tables
+        self.print_and_save_summary()
+
+    def print_and_save_summary(self):
+        for fmt, table in self.tables.items():
+            # filename = FileUtils.join_path(self.config.session_dir, SummaryFile.HTML.value)
+            filename = "/tmp/custom_table.html"
+            print(f"Saving summary to html file: {filename}")
+            FileUtils.save_to_file(filename, table)
+
+
+class TrelloBoardOutputGenerator:
+    def __init__(self, board, config):
         self.board = board
         self.config: TrelloCardHtmlGeneratorConfig = config
         self.default_style = """
@@ -392,7 +509,7 @@ class TrelloBoardHtmlGenerator:
     def format_comments(card):
         comments_str = ""
         for comment in card.comments:
-            comments_str += f"{TrelloBoardHtmlGenerator.format_comment(comment)}<br>"
+            comments_str += f"{TrelloBoardOutputGenerator.format_comment(comment)}<br>"
         return comments_str
 
     @staticmethod
@@ -403,29 +520,14 @@ class TrelloBoardHtmlGenerator:
     def format_activities(card):
         act_str = ""
         for activity in card.activities:
-            act_str += f"{TrelloBoardHtmlGenerator.format_activity(activity)}<br>"
+            act_str += f"{TrelloBoardOutputGenerator.format_activity(activity)}<br>"
         return act_str
 
     def format_checklist(self, checklist: TrelloChecklist):
         items_str = ""
         for item in checklist.items:
-            item_value = item.name
-            try:
-                url = UrlUtils.extract_from_str(item_value)
-                if url:
-                    if url not in self._webpage_title_cache:
-                        url_title = HtmlParser.get_title_from_url(url)
-                        if url_title:
-                            self._webpage_title_cache[url] = url_title
-                    else:
-                        url_title = self._webpage_title_cache[url]
-                    if not url_title:
-                        url_title = url
-                    item_value = f"<a href={url}>{url_title}</a>"
-            except:
-                pass
             item_str = "[x] " if item.checked else "[] "
-            item_str += item_value + "<br>"
+            item_str += item.get_html() + "<br>"
             items_str += f"{INDENT * 3}{item_str}"
         return f"<p class=\"checklist\">{items_str}</p>"
 
@@ -465,9 +567,59 @@ class TrelloBoardHtmlGenerator:
                 html += self._render_card(trello_list, card)
         return html
 
+    def render_rich_table(self):
+        rows = DataConverter.convert_to_table_rows(self.board)
+        # TODO implement console mode --> Just print this and do not log anything to console other than the table
+        # TODO add progressbar while loading emails
+        from rich.console import Console
+        from rich.table import Table
+        table = Table(title=f"TRELLO EXPORT OF BOARD: {self.board.name}", expand=True, min_width=800)
+
+        table.add_column("Board", justify="left", style="cyan", no_wrap=True)
+        table.add_column("List", justify="right", style="cyan", no_wrap=True)
+        table.add_column("Card", style="magenta", no_wrap=False)
+        table.add_column("Labels", style="magenta", no_wrap=True)
+        table.add_column("Due date", style="magenta", no_wrap=True)
+        table.add_column("Checklist item name", no_wrap=False)
+        table.add_column("URL Title", no_wrap=False)
+        table.add_column("URL", no_wrap=False, overflow="fold")
+
+        for row in rows:
+            table.add_row(*row)
+        # table.add_row("boardname", "list.name", "card.name", "card.get_labels_as_str()", "due_date", "cl_item_name", "url_title", "url")
+
+
+
+        console = Console(record=True)
+        console.print(table)
+
+        out_file = "/tmp/rich_table_output.html"
+        console.save_html(out_file)
+        print("Execute: ")
+        print("open " + out_file)
+
+
+class DataConverter:
+    @staticmethod
+    def convert_to_table_rows(board: TrelloBoard):
+        rows = []
+        for list in board.lists:
+            for card in list.cards:
+                items: List[Tuple[str, str, str]] = card.get_unified_items()
+
+                # Board name, List name, Card name, card labels, card due date, Checklist item name, URL Title, URL
+                for item in items:
+                    cl_item_name = item[0]
+                    url_title = item[1]
+                    url = item[2]
+                    due_date = card.due_date if card.due_date else ""
+                    row = [board.name, list.name, card.name, card.get_labels_as_str(), due_date, cl_item_name,
+                           url_title, url]
+                    rows.append(row)
+        return rows
 
 def load_webpage_title_cache() -> Dict[str, str]:
-    with open('webpage_title_cache.pickle', 'rb') as handle:
+    with open(LocalDirsFiles.WEBPAGE_TITLE_CACHE_FILE, 'rb') as handle:
         try:
             return pickle.load(handle)
         except:
@@ -475,7 +627,7 @@ def load_webpage_title_cache() -> Dict[str, str]:
 
 
 def save_webpage_title_cache(data):
-    with open('webpage_title_cache.pickle', 'wb') as handle:
+    with open(LocalDirsFiles.WEBPAGE_TITLE_CACHE_FILE, 'wb') as handle:
         pickle.dump(data, handle, protocol=pickle.HIGHEST_PROTOCOL)
 
 
@@ -509,13 +661,18 @@ if __name__ == '__main__':
     trello_lists_open = list(filter(lambda tl: not tl.closed, trello_lists_all))
     print(trello_lists_open)
 
-    board = TrelloBoard(board_id, board_name, trello_lists_open)
-
     webpage_title_cache = load_webpage_title_cache()
-    html_gen = TrelloBoardHtmlGenerator(board, html_gen_config, webpage_title_cache)
+    board = TrelloBoard(board_id, board_name, trello_lists_open)
+    board.get_checklist_url_titles()
+
+    html_gen = TrelloBoardOutputGenerator(board, html_gen_config)
     html = html_gen.render()
     save_webpage_title_cache(webpage_title_cache)
     FileUtils.write_to_file("/tmp/board-learn-research.html", html)
+
+    # html_gen.render_rich_table()
+    html_table_gen = TrelloBoardHtmlTableGenerator(board)
+    html_table_gen.render()
 
     # TODO add file cache that stores in the following hierarchy:
     #  <maindir>/boards/<board>/cards/<card>/actions/<action_id>.json
