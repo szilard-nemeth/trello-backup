@@ -12,7 +12,7 @@ from pythoncommons.file_utils import FileUtils, FindResultType, CsvFileUtils
 from pythoncommons.project_utils import SimpleProjectUtils
 from pythoncommons.result_printer import TableRenderingConfig, ResultPrinter, TabulateTableFormat
 from pythoncommons.url_utils import UrlUtils
-
+from output import MarkdownFormatter
 import config
 
 
@@ -20,6 +20,7 @@ import config
 ORGANIZATION_ID = "60b31169ff7e174519a40577"
 INDENT = "&nbsp;&nbsp;&nbsp;&nbsp;"
 BS4_HTML_PARSER = "html.parser"
+MD_FORMATTER = MarkdownFormatter()
 
 
 @dataclass
@@ -173,18 +174,33 @@ class TrelloCard:
         for cl in self.checklists:
             cl.get_url_titles()
 
-    def get_unified_items(self):
-        all_items = []
+    def get_extracted_data(self):
+        # TODO Extract attachments here (e.g. links in attachments)
+        has_checklists = len(self.checklists) > 0
+
+        plain_text_description = MD_FORMATTER.to_plain_text(self.description)
+        if not has_checklists:
+            card_data = ExtractedCardData(plain_text_description, "", "", "")
+            return [card_data]
+
+        items: List[ExtractedCardData] = []
         for cl in self.checklists:
             for item in cl.items:
+                cl_item_name = ""
+                cl_item_url_title = ""
+                cl_item_url = ""
                 if item.url:
-                    all_items.append(("", item.url_title, item.url))
+                    cl_item_url_title = item.url_title
+                    cl_item_url = item.url
                 else:
-                    all_items.append((item.name, "", ""))
-        return all_items
+                    cl_item_name = item.name
+                card_data = ExtractedCardData(plain_text_description, cl_item_name, cl_item_url_title, cl_item_url)
+                items.append(card_data)
+        return items
 
     def get_labels_as_str(self):
         return ",".join(self.labels)
+
 
 @dataclass
 class TrelloBoard:
@@ -200,6 +216,14 @@ class TrelloBoard:
         for list in self.lists:
             for card in list.cards:
                 card.get_checklist_url_titles()
+
+
+@dataclass
+class ExtractedCardData:
+    description: str
+    cl_item_name: str
+    url_title: str
+    url: str
 
 
 class HtmlParser:
@@ -444,6 +468,7 @@ class TrelloBoardHtmlTableHeader(Enum):
     CARD = "Card"
     LABELS = "Labels"
     DUE_DATE = "Due date"
+    DESCRIPTION = "Description"
     CHECKLIST_ITEM_NAME = "Checklist item name"
     URL_TITLE = "URL Title"
     URL = "URL"
@@ -616,16 +641,12 @@ class DataConverter:
         rows = []
         for list in board.lists:
             for card in list.cards:
-                items: List[Tuple[str, str, str]] = card.get_unified_items()
-
-                # Board name, List name, Card name, card labels, card due date, Checklist item name, URL Title, URL
+                items: List[ExtractedCardData] = card.get_extracted_data()
                 for item in items:
-                    cl_item_name = item[0]
-                    url_title = item[1]
-                    url = item[2]
                     due_date = card.due_date if card.due_date else ""
-                    row = [board.name, list.name, card.name, card.get_labels_as_str(), due_date, cl_item_name,
-                           url_title, url]
+                    # Board name, List name, Card name, card labels, card due date, Description, Checklist item name, URL Title, URL
+                    row = [board.name, list.name, card.name, card.get_labels_as_str(), due_date, item.description, item.cl_item_name,
+                           item.url_title, item.url]
                     rows.append(row)
         return rows
 
@@ -633,7 +654,7 @@ class DataConverter:
     def get_header():
         h = TrelloBoardHtmlTableHeader
         header = [h.BOARD.value, h.LIST.value, h.CARD.value, h.LABELS.value, h.DUE_DATE.value,
-                  h.CHECKLIST_ITEM_NAME.value, h.URL_TITLE.value, h.URL.value]
+                  h.DESCRIPTION.value, h.CHECKLIST_ITEM_NAME.value, h.URL_TITLE.value, h.URL.value]
         return header
 
 def load_webpage_title_cache() -> Dict[str, str]:
