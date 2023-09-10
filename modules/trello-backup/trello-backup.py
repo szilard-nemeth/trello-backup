@@ -81,7 +81,7 @@ CARD_FILTER_DESC_AND_ATTACHMENT = CardFilter.WITH_DESCRIPTION | CardFilter.WITH_
 CARD_FILTER_CHECKLIST_AND_ATTACHMENT = CardFilter.WITH_CHECKLIST | CardFilter.WITH_ATTACHMENT
 CARD_FILTER_ONLY_DESC = CardFilter.WITH_DESCRIPTION
 
-ACTIVE_CARD_FILTERS = CARD_FILTER_DESC_AND_ATTACHMENT
+ACTIVE_CARD_FILTERS = CARD_FILTER_ALL
 
 class LocalDirsFiles:
     REPO_ROOT_DIR = FileUtils.find_repo_root_dir(__file__, REPO_ROOT_DIRNAME)
@@ -964,7 +964,8 @@ def launch_http_server(dir):
 
 
 def stop_server():
-    HTTP_SERVER_INSTANCE.shutdown()
+    if config.serve_attachments:
+        HTTP_SERVER_INSTANCE.shutdown()
 
 
 if __name__ == '__main__':
@@ -1013,7 +1014,8 @@ if __name__ == '__main__':
     out.write_outputs()
 
     # Serve attachment files for CSV output
-    launch_http_server(dir=OUTPUT_DIR_ATTACHMENTS)
+    if config.serve_attachments:
+        launch_http_server(dir=OUTPUT_DIR_ATTACHMENTS)
 
 
     # TODO add file cache that stores in the following hierarchy:
