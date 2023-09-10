@@ -1,3 +1,4 @@
+import atexit
 import json
 import os
 import pickle
@@ -21,6 +22,10 @@ ORGANIZATION_ID = "60b31169ff7e174519a40577"
 INDENT = "&nbsp;&nbsp;&nbsp;&nbsp;"
 BS4_HTML_PARSER = "html.parser"
 MD_FORMATTER = MarkdownFormatter()
+OUTPUT_DIR = "/Users/snemeth/trello-backup-output"  # TODO Should use pythoncommons to determine output dir as yarndevtools does
+OUTPUT_DIR_ATTACHMENTS = os.path.join(OUTPUT_DIR, "attachments")
+HTTP_SERVER_PORT = 8000
+HTTP_SERVER_INSTANCE = None
 
 
 @dataclass
@@ -90,12 +95,13 @@ class LocalDirsFiles:
     WEBPAGE_TITLE_CACHE_FILE = FileUtils.join_path(TRELLO_BACKUP_DIR, 'webpage_title_cache.pickle')
 
 
-
-class QueryUtils:
-    common_query = None
-    headers = {
+class TrelloUtils:
+    auth_query_params = None
+    authorization_headers = None
+    headers_accept_json = {
         "Accept": "application/json"
     }
+
 
 @dataclass
 class TrelloComment:
@@ -184,6 +190,10 @@ class TrelloAttachment:
     date: str
     name: str
     url: str
+    api_url: str
+    is_upload: bool
+    file_name: str
+    downloaded_file_path: str
 
 
 @dataclass
@@ -232,13 +242,18 @@ class TrelloCard:
         plain_text_description = MD_FORMATTER.to_plain_text(self.description)
         result = []
         if len(card_filter_flags) == 1 and CardFilter.WITH_DESCRIPTION in card_filter_flags:
-            result.append(ExtractedCardData(plain_text_description, "", "", "", "", ""))
+            result.append(ExtractedCardData(plain_text_description, "", "", "", "", "", ""))
             return result
 
         # 2. Add attachments to separate row from checklist items
         if CardFilter.WITH_ATTACHMENT in card_filter_flags:
             for attachment in self.attachments:
-                result.append(ExtractedCardData(plain_text_description, attachment.name, attachment.url, "", "", ""))
+                attachment_file_path = "" if not attachment.downloaded_file_path else attachment.downloaded_file_path
+
+                local_server_path = ""
+                if attachment.downloaded_file_path:
+                    local_server_path = "http://localhost:{}/{}".format(HTTP_SERVER_PORT, attachment.downloaded_file_path.split("/")[-1])
+                result.append(ExtractedCardData(plain_text_description, attachment.name, attachment.url, attachment_file_path, local_server_path, "", "", ""))
 
         # 3. Add checklist items to separate row from attachments
         if CardFilter.WITH_CHECKLIST in card_filter_flags:
@@ -252,11 +267,11 @@ class TrelloCard:
                         cl_item_url = item.url
                     else:
                         cl_item_name = item.name
-                    result.append(ExtractedCardData(plain_text_description, "", "", cl_item_name, cl_item_url_title, cl_item_url))
+                    result.append(ExtractedCardData(plain_text_description, "", "", "", "", cl_item_name, cl_item_url_title, cl_item_url))
 
         # If no append happened, append default ExtractedCardData
         if not result and CardFilter.WITH_DESCRIPTION in card_filter_flags:
-            result.append(ExtractedCardData(plain_text_description, "", "", "", "", ""))
+            result.append(ExtractedCardData(plain_text_description, "", "", "", "", "", "", ""))
         return result
 
     def get_labels_as_str(self):
@@ -284,6 +299,8 @@ class ExtractedCardData:
     description: str
     attachment_name: str
     attachment_url: str
+    attachment_file_path: str
+    local_server_path: str
     cl_item_name: str
     cl_item_url_title: str
     cl_item_url: str
@@ -338,12 +355,12 @@ def get_board_details(board_id):
     }
 
     url = "https://api.trello.com/1/boards/{board_id}/".format(board_id=board_id)
-    query = QueryUtils.common_query
+    query = dict(TrelloUtils.auth_query_params)
     query.update(params)
     response = requests.request(
         "GET",
         url,
-        headers=QueryUtils.headers,
+        headers=TrelloUtils.headers_accept_json,
         params=query
     )
     response.raise_for_status()
@@ -360,8 +377,8 @@ def get_board_json():
     response = requests.request(
         "GET",
         url,
-        headers=QueryUtils.headers,
-        params=QueryUtils.common_query
+        headers=TrelloUtils.headers_accept_json,
+        params=TrelloUtils.auth_query_params
     )
     #code = response.status_code
     response.raise_for_status()
@@ -421,7 +438,7 @@ def create_card():
         "Accept": "application/json"
     }
 
-    query = QueryUtils.common_query.update({'idList': '5abbe4b7ddc1b351ef961414'})
+    query = TrelloUtils.auth_query_params.update({'idList': '5abbe4b7ddc1b351ef961414'})
     response = requests.request(
         "POST",
         url,
@@ -437,8 +454,8 @@ def list_boards():
     response = requests.request(
         "GET",
         url,
-        headers=QueryUtils.headers,
-        params=QueryUtils.common_query
+        headers=TrelloUtils.headers_accept_json,
+        params=TrelloUtils.auth_query_params
     )
 
     parsed_json = json.loads(response.text)
@@ -485,13 +502,34 @@ def parse_trello_cards(board_details_json,
         if "attachments" in card and len(card["attachments"]) > 0:
             for attachment_json in card["attachments"]:
                 #attachment_json = get_attachment_of_card(card["id"])
-                trello_attachment = TrelloAttachment(attachment_json["id"], attachment_json["date"], attachment_json["name"], attachment_json["url"])
+                is_upload = attachment_json["isUpload"]
+                attachment_api_url = None
+                if is_upload:
+                    attachment_api_url = reformat_attachment_url(card["id"], attachment_json["id"], attachment_json["fileName"])
+
+                trello_attachment = TrelloAttachment(attachment_json["id"],
+                                                     attachment_json["date"],
+                                                     attachment_json["name"],
+                                                     attachment_json["url"],
+                                                     attachment_api_url,
+                                                     is_upload,
+                                                     attachment_json["fileName"],
+                                                     None)
                 attachments.append(trello_attachment)
 
         trello_card = TrelloCard(card["id"], card["name"], trello_list, card["desc"], attachments, checklists, label_names, card["closed"], comments, card["due"], [])
         cards.append(trello_card)
         trello_list.cards.append(trello_card)
     return cards
+
+
+def reformat_attachment_url(card_id, attachment_id, attachment_filename):
+    # Convert URLs as Trello attachments cannot be downloaded from trello.com URL anymore..
+    # See details here: https://community.developer.atlassian.com/t/update-authenticated-access-to-s3/43681
+    # Example URL: https://api.trello.com/1/cards/{idCard}/attachments/{idAttachment}/download/{attachmentFileName}
+    # Source: https://trello.com/1/cards/60d8951d65e3c9345794d20a/attachments/631332fc6b78cf0135be0a37/download/image.png
+    # Target: https://api.trello.com/1/cards/60d8951d65e3c9345794d20a/attachments/631332fc6b78cf0135be0a37/download/image.png
+    return "https://api.trello.com/1/cards/{c_id}/attachments/{a_id}/download/{a_fname}".format(c_id=card_id, a_id=attachment_id, a_fname=attachment_filename)
 
 
 def query_comments_for_card(card) -> List[TrelloComment]:
@@ -520,8 +558,8 @@ def get_actions_for_card(card_id: str):
     response = requests.request(
         "GET",
         url,
-        headers=QueryUtils.headers,
-        params=QueryUtils.common_query
+        headers=TrelloUtils.headers_accept_json,
+        params=TrelloUtils.auth_query_params
     )
 
     #print(json.dumps(json.loads(response.text), sort_keys=True, indent=4, separators=(",", ": ")))
@@ -551,9 +589,12 @@ def validate_config():
     if not config.api_key:
         raise ValueError("api key not found!")
 
-    QueryUtils.common_query = {
+    TrelloUtils.auth_query_params = {
         'key': config.api_key,
         'token': config.token
+    }
+    TrelloUtils.authorization_headers = {
+        "Authorization": "OAuth oauth_consumer_key=\"{}\", oauth_token=\"{}\"".format(config.api_key, config.token)
     }
 
 
@@ -566,6 +607,8 @@ class TrelloBoardHtmlTableHeader(Enum):
     DESCRIPTION = "Description"
     ATTACHMENT_NAME = "Attachment name"
     ATTACHMENT_URL = "Attachment URL"
+    ATTACHMENT_LOCAL_URL = "Attachment Local URL"
+    ATTACHMENT_FILE__PATH = "Attachment File path"
     CHECKLIST_ITEM_NAME = "Checklist item Name"
     CHECKLIST_ITEM_URL_TITLE = "Checklist item URL Title"
     CHECKLIST_ITEM_URL = "Checklist item URL"
@@ -742,7 +785,7 @@ class DataConverter:
                 items: List[ExtractedCardData] = card.get_extracted_data(card_filter_flags)
                 for item in items:
                     due_date = card.due_date if card.due_date else ""
-                    # Board name, List name, Card name, card labels, card due date, Description, Attachment name, Attachment URL, Checklist item name, URL Title, URL
+                    # Board name, List name, Card name, card labels, card due date, Description, Attachment name, Attachment URL, Attachment Local URL, Attachment file path, Checklist item name, URL Title, URL
                     row = [board.name,
                            list.name,
                            card.name,
@@ -751,6 +794,8 @@ class DataConverter:
                            item.description,
                            item.attachment_name,
                            item.attachment_url,
+                           item.local_server_path,
+                           item.attachment_file_path,
                            item.cl_item_name,
                            item.cl_item_url_title,
                            item.cl_item_url]
@@ -797,6 +842,8 @@ class DataConverter:
                   h.DESCRIPTION.value,
                   h.ATTACHMENT_NAME.value,
                   h.ATTACHMENT_URL.value,
+                  h.ATTACHMENT_LOCAL_URL.value,
+                  h.ATTACHMENT_FILE__PATH.value,
                   h.CHECKLIST_ITEM_NAME.value,
                   h.CHECKLIST_ITEM_URL_TITLE.value,
                   h.CHECKLIST_ITEM_URL.value]
@@ -823,11 +870,10 @@ class OutputHandler:
         self.rich_table_gen = TrelloBoardRichTableGenerator(board)
 
         fname_prefix = f"trelloboard-{self.board.simple_name}"
-        result_dir = "/tmp/"
-        self.html_result_file_path = os.path.join(result_dir, f"{fname_prefix}-htmlexport.html")
-        self.rich_table_file_path = os.path.join(result_dir, f"{fname_prefix}-rich-table.html")
-        self.html_table_file_path = os.path.join(result_dir, f"{fname_prefix}-custom-table.html")
-        self.csv_file_path = os.path.join(result_dir, f"{fname_prefix}.csv")
+        self.html_result_file_path = os.path.join(OUTPUT_DIR, f"{fname_prefix}-htmlexport.html")
+        self.rich_table_file_path = os.path.join(OUTPUT_DIR, f"{fname_prefix}-rich-table.html")
+        self.html_table_file_path = os.path.join(OUTPUT_DIR, f"{fname_prefix}-custom-table.html")
+        self.csv_file_path = os.path.join(OUTPUT_DIR, f"{fname_prefix}.csv")
         self.csv_file_copy_to_file = f"~/Downloads/{fname_prefix}.csv"
         self.card_filter_flags = ACTIVE_CARD_FILTERS
 
@@ -851,16 +897,84 @@ class OutputHandler:
         self.html_table_gen.write_file(self.html_table_file_path)
 
         # Output 4: CSV file
-        os.remove(self.csv_file_path)
+        if os.path.exists(self.csv_file_path):
+            FileUtils.remove_file(self.csv_file_path)
         CsvFileUtils.append_rows_to_csv_file(self.csv_file_path, rows, header=header)
         print("Generated CSV file: " + self.csv_file_path)
         print(f"cp {self.csv_file_path} {self.csv_file_copy_to_file} && subl {self.csv_file_copy_to_file}")
 
+def download_attachments(board):
+    for list in board.lists:
+        for card in list.cards:
+            for attachment in card.attachments:
+                if attachment.is_upload:
+                    attachment.downloaded_file_path = "file://" + download_attachment(attachment)
+
+
+def download_attachment(attachment):
+    import shutil
+
+    # https://community.developer.atlassian.com/t/update-authenticated-access-to-s3/43681
+    response = requests.request(
+        "GET",
+        attachment.api_url,
+        headers=TrelloUtils.authorization_headers
+    )
+    response.raise_for_status()
+    file_path = os.path.join(OUTPUT_DIR_ATTACHMENTS, "{}-{}".format(attachment.id, attachment.file_name))
+
+    # TODO Figure out why other 2 Methods resulted in 0-byte files?
+    # Source: https://stackoverflow.com/a/13137873/1106893
+    # Method 1
+    # with open(file_path, 'wb') as out_file:
+    #     shutil.copyfileobj(response.raw, out_file)
+
+    # Method 2
+    # if response.status_code == 200:
+    #     with open(file_path, 'wb') as f:
+    #         response.raw.decode_content = True
+    #         shutil.copyfileobj(response.raw, f)
+
+    # Method 3
+    r = response
+    path = file_path
+    if r.status_code == 200:
+        with open(path, 'wb') as f:
+            for chunk in r.iter_content(1024):
+                f.write(chunk)
+
+    del response
+    return file_path
+
+def launch_http_server(dir):
+    import http.server
+    import socketserver
+
+    class Handler(http.server.SimpleHTTPRequestHandler):
+        def __init__(self, *args, **kwargs):
+            super().__init__(*args, directory=dir, **kwargs)
+
+    #Handler = http.server.SimpleHTTPRequestHandler
+
+    with socketserver.TCPServer(("", HTTP_SERVER_PORT), Handler) as httpd:
+        HTTP_SERVER_INSTANCE = httpd
+        print("serving at port", HTTP_SERVER_PORT)
+        httpd.serve_forever()
+        httpd.shutdown()
+
+
+def stop_server():
+    HTTP_SERVER_INSTANCE.shutdown()
 
 
 if __name__ == '__main__':
+    atexit.register(stop_server)
+
     validate_config()
     html_gen_config = TRELLO_CARD_GENERATOR_BASIC_CONFIG
+
+    FileUtils.ensure_dir_created(OUTPUT_DIR)
+    FileUtils.ensure_dir_created(OUTPUT_DIR_ATTACHMENTS)
 
     # board_resp = get_board()
     # print(json.dumps(json.loads(board_resp.text), sort_keys=True, indent=4, separators=(",", ": ")))
@@ -892,8 +1006,15 @@ if __name__ == '__main__':
     board = TrelloBoard(board_id, board_name, trello_lists_open)
     board.get_checklist_url_titles()
 
+    # Download attachments
+    download_attachments(board)
+
     out = OutputHandler(board, html_gen_config)
     out.write_outputs()
+
+    # Serve attachment files for CSV output
+    launch_http_server(dir=OUTPUT_DIR_ATTACHMENTS)
+
 
     # TODO add file cache that stores in the following hierarchy:
     #  <maindir>/boards/<board>/cards/<card>/actions/<action_id>.json
