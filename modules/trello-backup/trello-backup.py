@@ -3,7 +3,7 @@ import os
 import pickle
 import traceback
 from dataclasses import dataclass, field
-from enum import Enum
+from enum import Enum, Flag, auto
 from typing import List, Dict, Tuple
 
 import requests
@@ -36,6 +36,22 @@ class TrelloCardHtmlGeneratorConfig:
         return self.include_comments and self.include_activity
 
 
+class CardFilter(Flag):
+    NONE = 0
+    OPEN = auto()  # TODO Apply this card filter
+    WITH_CHECKLIST = auto()
+    WITH_DESCRIPTION = auto()
+    WITH_ATTACHMENT = auto()
+
+    @classmethod
+    def ALL(cls):
+        retval = cls.NONE
+        for member in cls.__members__.values():
+            retval |= member
+        return retval
+
+
+
 TRELLO_CARD_GENERATOR_MINIMAL_CONFIG = TrelloCardHtmlGeneratorConfig(include_labels=False,
                                                                      include_due_date=False,
                                                                      include_checklists=True,
@@ -54,7 +70,13 @@ TRELLO_CARD_GENERATOR_BASIC_CONFIG = TrelloCardHtmlGeneratorConfig(include_label
                                                                      include_comments=False)
 REPO_ROOT_DIRNAME = "backup-manager"
 TRELLO_BACKUP_DIR_NAME = "trello-backup"
+CARD_FILTER_ALL = CardFilter.ALL()
+CARD_FILTER_DESC_AND_CHECKLIST = CardFilter.WITH_DESCRIPTION | CardFilter.WITH_CHECKLIST
+CARD_FILTER_DESC_AND_ATTACHMENT = CardFilter.WITH_DESCRIPTION | CardFilter.WITH_ATTACHMENT
+CARD_FILTER_CHECKLIST_AND_ATTACHMENT = CardFilter.WITH_CHECKLIST | CardFilter.WITH_ATTACHMENT
+CARD_FILTER_ONLY_DESC = CardFilter.WITH_DESCRIPTION
 
+ACTIVE_CARD_FILTERS = CARD_FILTER_DESC_AND_ATTACHMENT
 
 class LocalDirsFiles:
     REPO_ROOT_DIR = FileUtils.find_repo_root_dir(__file__, REPO_ROOT_DIRNAME)
@@ -66,7 +88,6 @@ class LocalDirsFiles:
         exclude_dirs=[],
     )
     WEBPAGE_TITLE_CACHE_FILE = FileUtils.join_path(TRELLO_BACKUP_DIR, 'webpage_title_cache.pickle')
-
 
 
 
@@ -158,11 +179,20 @@ class TrelloList:
 
 
 @dataclass
+class TrelloAttachment:
+    id: str
+    date: str
+    name: str
+    url: str
+
+
+@dataclass
 class TrelloCard:
     id: str
     name: str
     list: TrelloList
     description: str
+    attachments: List[TrelloAttachment]
     checklists: List[TrelloChecklist]
     labels: List[str]
     closed: bool
@@ -170,33 +200,64 @@ class TrelloCard:
     due_date: str
     activities: List[TrelloActivity]
 
+    @property
+    def has_description(self):
+        return len(self.description) > 0
+
+    @property
+    def has_checklist(self):
+        return len(self.checklists) > 0
+
+    @property
+    def has_attachments(self):
+        return len(self.attachments) > 0
+
     def get_checklist_url_titles(self):
         for cl in self.checklists:
             cl.get_url_titles()
 
-    def get_extracted_data(self):
-        # TODO Extract attachments here (e.g. links in attachments)
-        has_checklists = len(self.checklists) > 0
+    def get_extracted_data(self, card_filter_flags: CardFilter):
+        # Sanity check
+        # has_checklists = self.has_checklist
+        # has_attachments = self.has_attachments
+        # has_description = self.has_description
+        # if has_checklists and CardFilter.WITH_CHECKLIST not in card_filter_flags:
+        #     raise ValueError("Card has checklists but card filters are not enabling checklists! Current filter: {}".format(card_filter_flags))
+        # if has_description and CardFilter.WITH_DESCRIPTION not in card_filter_flags:
+        #     raise ValueError("Card has description but card filters are not enabling description! Current filter: {}".format(card_filter_flags))
+        # if has_attachments and CardFilter.WITH_ATTACHMENT not in card_filter_flags:
+        #     raise ValueError("Card has attachments but card filters are not enabling attachments! Current filter: {}".format(card_filter_flags))
 
+        # 1. Always add description to each row
         plain_text_description = MD_FORMATTER.to_plain_text(self.description)
-        if not has_checklists:
-            card_data = ExtractedCardData(plain_text_description, "", "", "")
-            return [card_data]
+        result = []
+        if len(card_filter_flags) == 1 and CardFilter.WITH_DESCRIPTION in card_filter_flags:
+            result.append(ExtractedCardData(plain_text_description, "", "", "", "", ""))
+            return result
 
-        items: List[ExtractedCardData] = []
-        for cl in self.checklists:
-            for item in cl.items:
-                cl_item_name = ""
-                cl_item_url_title = ""
-                cl_item_url = ""
-                if item.url:
-                    cl_item_url_title = item.url_title
-                    cl_item_url = item.url
-                else:
-                    cl_item_name = item.name
-                card_data = ExtractedCardData(plain_text_description, cl_item_name, cl_item_url_title, cl_item_url)
-                items.append(card_data)
-        return items
+        # 2. Add attachments to separate row from checklist items
+        if CardFilter.WITH_ATTACHMENT in card_filter_flags:
+            for attachment in self.attachments:
+                result.append(ExtractedCardData(plain_text_description, attachment.name, attachment.url, "", "", ""))
+
+        # 3. Add checklist items to separate row from attachments
+        if CardFilter.WITH_CHECKLIST in card_filter_flags:
+            for cl in self.checklists:
+                for item in cl.items:
+                    cl_item_name = ""
+                    cl_item_url_title = ""
+                    cl_item_url = ""
+                    if item.url:
+                        cl_item_url_title = item.url_title
+                        cl_item_url = item.url
+                    else:
+                        cl_item_name = item.name
+                    result.append(ExtractedCardData(plain_text_description, "", "", cl_item_name, cl_item_url_title, cl_item_url))
+
+        # If no append happened, append default ExtractedCardData
+        if not result and CardFilter.WITH_DESCRIPTION in card_filter_flags:
+            result.append(ExtractedCardData(plain_text_description, "", "", "", "", ""))
+        return result
 
     def get_labels_as_str(self):
         return ",".join(self.labels)
@@ -221,9 +282,11 @@ class TrelloBoard:
 @dataclass
 class ExtractedCardData:
     description: str
+    attachment_name: str
+    attachment_url: str
     cl_item_name: str
-    url_title: str
-    url: str
+    cl_item_url_title: str
+    cl_item_url: str
 
 
 class HtmlParser:
@@ -313,8 +376,8 @@ def get_lists_of_board():
     }
 
     query = {
-        'key': 'APIKey',
-        'token': 'APIToken'
+        'key': config.api_key,
+        'token': config.token,
     }
 
     response = requests.request(
@@ -325,6 +388,30 @@ def get_lists_of_board():
     )
 
     print(json.dumps(json.loads(response.text), sort_keys=True, indent=4, separators=(",", ": ")))
+
+
+def get_attachment_of_card(card_id: str):
+    url = "https://api.trello.com/1/cards/{id}/actions".format(id=card_id)
+
+    headers = {
+        "Accept": "application/json"
+    }
+
+    query = {
+        'key': config.api_key,
+        'token': config.token,
+    }
+
+    response = requests.request(
+        "GET",
+        url,
+        headers=headers,
+        params=query
+    )
+
+    # print(json.dumps(json.loads(response.text), sort_keys=True, indent=4, separators=(",", ": ")))
+    parsed_json = json.loads(response.text)
+    return parsed_json
 
 
 def create_card():
@@ -393,7 +480,15 @@ def parse_trello_cards(board_details_json,
         comments = []
         if html_gen_config.download_comments:
             comments: List[TrelloComment] = query_comments_for_card(card)
-        trello_card = TrelloCard(card["id"], card["name"], trello_list, card["desc"], checklists, label_names, card["closed"], comments, card["due"], [])
+
+        attachments = []
+        if "attachments" in card and len(card["attachments"]) > 0:
+            for attachment_json in card["attachments"]:
+                #attachment_json = get_attachment_of_card(card["id"])
+                trello_attachment = TrelloAttachment(attachment_json["id"], attachment_json["date"], attachment_json["name"], attachment_json["url"])
+                attachments.append(trello_attachment)
+
+        trello_card = TrelloCard(card["id"], card["name"], trello_list, card["desc"], attachments, checklists, label_names, card["closed"], comments, card["due"], [])
         cards.append(trello_card)
         trello_list.cards.append(trello_card)
     return cards
@@ -469,9 +564,11 @@ class TrelloBoardHtmlTableHeader(Enum):
     LABELS = "Labels"
     DUE_DATE = "Due date"
     DESCRIPTION = "Description"
-    CHECKLIST_ITEM_NAME = "Checklist item name"
-    URL_TITLE = "URL Title"
-    URL = "URL"
+    ATTACHMENT_NAME = "Attachment name"
+    ATTACHMENT_URL = "Attachment URL"
+    CHECKLIST_ITEM_NAME = "Checklist item Name"
+    CHECKLIST_ITEM_URL_TITLE = "Checklist item URL Title"
+    CHECKLIST_ITEM_URL = "Checklist item URL"
 
 
 class TrelloBoardHtmlTableGenerator:
@@ -637,24 +734,72 @@ class TrelloBoardRichTableGenerator:
 
 class DataConverter:
     @staticmethod
-    def convert_to_table_rows(board: TrelloBoard):
+    def convert_to_table_rows(board: TrelloBoard, card_filter_flags: CardFilter, header_len):
         rows = []
         for list in board.lists:
-            for card in list.cards:
-                items: List[ExtractedCardData] = card.get_extracted_data()
+            cards = DataConverter.filter_cards(list, card_filter_flags)
+            for card in cards:
+                items: List[ExtractedCardData] = card.get_extracted_data(card_filter_flags)
                 for item in items:
                     due_date = card.due_date if card.due_date else ""
-                    # Board name, List name, Card name, card labels, card due date, Description, Checklist item name, URL Title, URL
-                    row = [board.name, list.name, card.name, card.get_labels_as_str(), due_date, item.description, item.cl_item_name,
-                           item.url_title, item.url]
+                    # Board name, List name, Card name, card labels, card due date, Description, Attachment name, Attachment URL, Checklist item name, URL Title, URL
+                    row = [board.name,
+                           list.name,
+                           card.name,
+                           card.get_labels_as_str(),
+                           due_date,
+                           item.description,
+                           item.attachment_name,
+                           item.attachment_url,
+                           item.cl_item_name,
+                           item.cl_item_url_title,
+                           item.cl_item_url]
+                    if header_len != len(row):
+                        raise ValueError("Mismatch in number of columns in row({}) vs. number of header columns ({})".format(len(row), header_len))
                     rows.append(row)
         return rows
 
     @staticmethod
+    def filter_cards(list, card_filter_flags: CardFilter):
+        if CardFilter.ALL() == card_filter_flags:
+            return list.cards
+
+        with_attachment = CardFilter.WITH_ATTACHMENT in card_filter_flags
+        with_description = CardFilter.WITH_DESCRIPTION in card_filter_flags
+        with_checklist = CardFilter.WITH_CHECKLIST in card_filter_flags
+
+        filtered_cards = []
+        for card in list.cards:
+            keep = False
+            if with_attachment and card.has_attachments:
+                keep = True
+            if with_description and card.has_description:
+                keep = True
+            if with_checklist and card.has_checklist:
+                keep = True
+
+            if keep:
+                filtered_cards.append(card)
+            else:
+                print("Not keeping card: {}, filters: {}".format(card, card_filter_flags))
+
+        return filtered_cards
+
+    @staticmethod
     def get_header():
         h = TrelloBoardHtmlTableHeader
-        header = [h.BOARD.value, h.LIST.value, h.CARD.value, h.LABELS.value, h.DUE_DATE.value,
-                  h.DESCRIPTION.value, h.CHECKLIST_ITEM_NAME.value, h.URL_TITLE.value, h.URL.value]
+        # Board name, List name, Card name, card labels, card due date, Description, Attachment name, Attachment URL, Checklist item name, Checklist item URL Title, Checklist item URL
+        header = [h.BOARD.value,
+                  h.LIST.value,
+                  h.CARD.value,
+                  h.LABELS.value,
+                  h.DUE_DATE.value,
+                  h.DESCRIPTION.value,
+                  h.ATTACHMENT_NAME.value,
+                  h.ATTACHMENT_URL.value,
+                  h.CHECKLIST_ITEM_NAME.value,
+                  h.CHECKLIST_ITEM_URL_TITLE.value,
+                  h.CHECKLIST_ITEM_URL.value]
         return header
 
 def load_webpage_title_cache() -> Dict[str, str]:
@@ -684,10 +829,11 @@ class OutputHandler:
         self.html_table_file_path = os.path.join(result_dir, f"{fname_prefix}-custom-table.html")
         self.csv_file_path = os.path.join(result_dir, f"{fname_prefix}.csv")
         self.csv_file_copy_to_file = f"~/Downloads/{fname_prefix}.csv"
+        self.card_filter_flags = ACTIVE_CARD_FILTERS
 
     def write_outputs(self):
-        rows = DataConverter.convert_to_table_rows(self.board)
         header = DataConverter.get_header()
+        rows = DataConverter.convert_to_table_rows(self.board, self.card_filter_flags, len(header))
 
         # Output 1: HTML file
         self.html_file_gen.render()
@@ -705,6 +851,7 @@ class OutputHandler:
         self.html_table_gen.write_file(self.html_table_file_path)
 
         # Output 4: CSV file
+        os.remove(self.csv_file_path)
         CsvFileUtils.append_rows_to_csv_file(self.csv_file_path, rows, header=header)
         print("Generated CSV file: " + self.csv_file_path)
         print(f"cp {self.csv_file_path} {self.csv_file_copy_to_file} && subl {self.csv_file_copy_to_file}")
