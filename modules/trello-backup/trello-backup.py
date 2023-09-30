@@ -983,7 +983,8 @@ if __name__ == '__main__':
     print(boards)
 
     #board_id = boards['PERSONAL: Weekly Plan']
-    board_name = 'LEARN / RESEARCH'
+    # board_name = 'LEARN / RESEARCH'
+    board_name = 'CLOUDERA: Planning'
     board_id = boards[board_name]
 
     board_details_json = get_board_details(board_id)
@@ -1017,6 +1018,10 @@ if __name__ == '__main__':
     if config.serve_attachments:
         launch_http_server(dir=OUTPUT_DIR_ATTACHMENTS)
 
+
+    # TODO IDEA: HTML output file per list,
+    #  only include: card name (bold), description (plain text), Checklists with check items
+    #  Add WARNING text if has attachment OR add attachment links
 
     # TODO add file cache that stores in the following hierarchy:
     #  <maindir>/boards/<board>/cards/<card>/actions/<action_id>.json
