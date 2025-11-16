@@ -968,6 +968,19 @@ def stop_server():
         HTTP_SERVER_INSTANCE.shutdown()
 
 
+def get_board_id(board_name):
+    # board_resp = get_board()
+    # print(json.dumps(json.loads(board_resp.text), sort_keys=True, indent=4, separators=(",", ": ")))
+    boards = list_boards()
+    available_board_names = list(boards.keys())
+    print(f"Available boards: {available_board_names}")
+    if board_name not in boards:
+        raise KeyError(f"Cannot find board with name: {board_name}")
+
+    board_id = boards[board_name]
+    return board_id
+
+
 if __name__ == '__main__':
     atexit.register(stop_server)
 
@@ -977,15 +990,8 @@ if __name__ == '__main__':
     FileUtils.ensure_dir_created(OUTPUT_DIR)
     FileUtils.ensure_dir_created(OUTPUT_DIR_ATTACHMENTS)
 
-    # board_resp = get_board()
-    # print(json.dumps(json.loads(board_resp.text), sort_keys=True, indent=4, separators=(",", ": ")))
-    boards = list_boards()
-    print(boards)
-
-    #board_id = boards['PERSONAL: Weekly Plan']
-    # board_name = 'LEARN / RESEARCH'
     board_name = 'CLOUDERA: Planning'
-    board_id = boards[board_name]
+    board_id = get_board_id(board_name)
 
     board_details_json = get_board_details(board_id)
 
