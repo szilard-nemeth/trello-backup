@@ -1,1 +1,0 @@
-/Users/snemeth/development/my-repos/project-data/input-data/backup-manager/trello-backup/config.py
