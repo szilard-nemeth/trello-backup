@@ -73,8 +73,8 @@ TRELLO_CARD_GENERATOR_BASIC_CONFIG = TrelloCardHtmlGeneratorConfig(include_label
                                                                      include_checklists=True,
                                                                      include_activity=False,
                                                                      include_comments=False)
-REPO_ROOT_DIRNAME = "backup-manager"
-TRELLO_BACKUP_DIR_NAME = "trello-backup"
+REPO_ROOT_DIRNAME = "trello-backup"
+TRELLO_BACKUP_MODULE_NAME = "trello_backup"
 CARD_FILTER_ALL = CardFilter.ALL()
 CARD_FILTER_DESC_AND_CHECKLIST = CardFilter.WITH_DESCRIPTION | CardFilter.WITH_CHECKLIST
 CARD_FILTER_DESC_AND_ATTACHMENT = CardFilter.WITH_DESCRIPTION | CardFilter.WITH_ATTACHMENT
@@ -87,8 +87,8 @@ class LocalDirsFiles:
     REPO_ROOT_DIR = FileUtils.find_repo_root_dir(__file__, REPO_ROOT_DIRNAME)
     TRELLO_BACKUP_DIR = SimpleProjectUtils.get_project_dir(
         basedir=REPO_ROOT_DIR,
-        parent_dir="modules",
-        dir_to_find=TRELLO_BACKUP_DIR_NAME,
+        parent_dir="trello-backup",
+        dir_to_find=TRELLO_BACKUP_MODULE_NAME,
         find_result_type=FindResultType.DIRS,
         exclude_dirs=[],
     )
