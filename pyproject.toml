@@ -16,15 +16,15 @@ exclude = '''
 '''
 
 [tool.poetry]
-name = "backup-manager"
+name = "trello-backup"
 version = "2.0.2"
 description = ""
 authors = ["Szilard Nemeth <szilard.nemeth88@gmail.com>"]
-keywords = ["backup manager"]
+keywords = ["trello backup"]
 readme = "README.md"
-homepage = "https://github.com/szilard-nemeth/backup-manager"
-repository = "https://github.com/szilard-nemeth/backup-manager"
-packages = [{include = "modules"}]
+homepage = "https://github.com/szilard-nemeth/trello-backup"
+repository = "https://github.com/szilard-nemeth/trello-backup"
+packages = [{include = "trello-backup"}]
 include = [
 "LICENSE"
 ]
@@ -32,10 +32,10 @@ include = [
 
 [tool.poetry.dependencies]
 python = "^3.11.0"
-python-common-lib = "1.0.8"
-google-api-wrapper2 = "1.0.6"
+python-common-lib = "1.0.19"
+google-api-wrapper2 = "1.0.20"
 requests = "*"
-rich = "13.4.1"
+rich = "^13.7.0"
 markdown = "3.4.4"
 
 
