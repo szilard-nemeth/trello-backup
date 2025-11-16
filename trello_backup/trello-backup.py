@@ -152,12 +152,8 @@ class TrelloChecklist:
                 url_title = None
                 if url not in webpage_title_cache:
                     # Fetch title of URL
-                    try:
-                        url_title = HtmlParser.get_title_from_url(url)
-                        url_title = re.sub(r'[\n\t\r]+', ' ', url_title)
-                    except Exception:
-                        traceback.print_exc()
-                        print("Failed to get title for URL: {}".format(url))
+                    url_title = HtmlParser.get_title_from_url(url)
+                    url_title = re.sub(r'[\n\t\r]+', ' ', url_title)
                     if url_title:
                         webpage_title_cache[url] = url_title
                 else:
@@ -321,8 +317,19 @@ class HtmlParser:
 
     @classmethod
     def get_title_from_url(cls, url):
+        """
+        If page title can't be parsed, fall back to original URL.
+        :param url:
+        :return:
+        """
         print("Getting webpage title for URL: {}".format(url))
-        soup = HtmlParser.create_bs_from_url(url)
+        try:
+            soup = HtmlParser.create_bs_from_url(url)
+        except requests.exceptions.ConnectionError as e:
+            print("Failed to get page title from URL: " + url)
+            return url
+        if soup.title is None:
+            return url
         title = soup.title.string
         print("Found webpage title: {}".format(title))
         return str(title)
@@ -990,7 +997,7 @@ if __name__ == '__main__':
     FileUtils.ensure_dir_created(OUTPUT_DIR)
     FileUtils.ensure_dir_created(OUTPUT_DIR_ATTACHMENTS)
 
-    board_name = 'CLOUDERA: Planning'
+    board_name = 'Cloudera'
     board_id = get_board_id(board_name)
 
     board_details_json = get_board_details(board_id)
