@@ -1,32 +1,34 @@
-import atexit
 import json
+import logging
 import os
 import pickle
-import traceback
 from dataclasses import dataclass, field
 from enum import Enum, Flag, auto
-from typing import List, Dict, Tuple
+from typing import List, Dict
 
 import requests
 from bs4 import BeautifulSoup
-from pythoncommons.file_utils import FileUtils, FindResultType, CsvFileUtils
-from pythoncommons.project_utils import SimpleProjectUtils
+from pythoncommons.file_utils import FileUtils, CsvFileUtils
 from pythoncommons.result_printer import TableRenderingConfig, ResultPrinter, TabulateTableFormat
 from pythoncommons.url_utils import UrlUtils
-from output import MarkdownFormatter
-import config
 
+from trello_backup.config_parser.config import TrelloCfg
+from trello_backup.display.output import MarkdownFormatter
+from trello_backup.display.console import CliLogger
+from trello_backup.constants import FilePath
 
 
 ORGANIZATION_ID = "60b31169ff7e174519a40577"
 INDENT = "&nbsp;&nbsp;&nbsp;&nbsp;"
 BS4_HTML_PARSER = "html.parser"
 MD_FORMATTER = MarkdownFormatter()
-OUTPUT_DIR = "/Users/snemeth/trello-backup-output"  # TODO Should use pythoncommons to determine output dir as yarndevtools does
-OUTPUT_DIR_ATTACHMENTS = os.path.join(OUTPUT_DIR, "attachments")
+OUTPUT_DIR_ATTACHMENTS = os.path.join(FilePath.TRELLO_OUTPUT_DIR, "attachments")
 HTTP_SERVER_PORT = 8000
 HTTP_SERVER_INSTANCE = None
 
+
+LOG = logging.getLogger(__name__)
+CLI_LOG = CliLogger(LOG)
 
 @dataclass
 class TrelloCardHtmlGeneratorConfig:
@@ -73,8 +75,7 @@ TRELLO_CARD_GENERATOR_BASIC_CONFIG = TrelloCardHtmlGeneratorConfig(include_label
                                                                      include_checklists=True,
                                                                      include_activity=False,
                                                                      include_comments=False)
-REPO_ROOT_DIRNAME = "trello-backup"
-TRELLO_BACKUP_MODULE_NAME = "trello_backup"
+
 CARD_FILTER_ALL = CardFilter.ALL()
 CARD_FILTER_DESC_AND_CHECKLIST = CardFilter.WITH_DESCRIPTION | CardFilter.WITH_CHECKLIST
 CARD_FILTER_DESC_AND_ATTACHMENT = CardFilter.WITH_DESCRIPTION | CardFilter.WITH_ATTACHMENT
@@ -83,16 +84,6 @@ CARD_FILTER_ONLY_DESC = CardFilter.WITH_DESCRIPTION
 
 ACTIVE_CARD_FILTERS = CARD_FILTER_ALL
 
-class LocalDirsFiles:
-    REPO_ROOT_DIR = FileUtils.find_repo_root_dir(__file__, REPO_ROOT_DIRNAME)
-    TRELLO_BACKUP_DIR = SimpleProjectUtils.get_project_dir(
-        basedir=REPO_ROOT_DIR,
-        parent_dir="trello-backup",
-        dir_to_find=TRELLO_BACKUP_MODULE_NAME,
-        find_result_type=FindResultType.DIRS,
-        exclude_dirs=[],
-    )
-    WEBPAGE_TITLE_CACHE_FILE = FileUtils.join_path(TRELLO_BACKUP_DIR, 'webpage_title_cache.pickle')
 
 
 class TrelloUtils:
@@ -143,6 +134,8 @@ class TrelloChecklist:
 
     def get_url_titles(self):
         import re
+        # TODO remove
+        from trello_backup.cmd_handler import webpage_title_cache
         for item in self.items:
             try:
                 url = UrlUtils.extract_from_str(item.name)
@@ -393,6 +386,8 @@ def get_board_json():
 
 
 def get_lists_of_board():
+    # TODO remove
+    from trello_backup.cmd_handler import config
     url = "https://api.trello.com/1/boards/{id}/lists"
 
     headers = {
@@ -415,6 +410,8 @@ def get_lists_of_board():
 
 
 def get_attachment_of_card(card_id: str):
+    # TODO remove
+    from trello_backup.cmd_handler import config
     url = "https://api.trello.com/1/cards/{id}/actions".format(id=card_id)
 
     headers = {
@@ -445,6 +442,7 @@ def create_card():
         "Accept": "application/json"
     }
 
+    # TODO hardcoded list id
     query = TrelloUtils.auth_query_params.update({'idList': '5abbe4b7ddc1b351ef961414'})
     response = requests.request(
         "POST",
@@ -591,17 +589,17 @@ def parse_trello_checklists(board_details_json):
 
 
 def validate_config():
-    if not config.token:
-        raise ValueError("token not found!")
-    if not config.api_key:
-        raise ValueError("api key not found!")
+    # TODO remove
+    from trello_backup.cmd_handler import config
+    token = config.get_secret(TrelloCfg.TRELLO_TOKEN)
+    api_key = config.get_secret(TrelloCfg.TRELLO_API_KEY)
 
     TrelloUtils.auth_query_params = {
-        'key': config.api_key,
-        'token': config.token
+        'key': api_key,
+        'token': token
     }
     TrelloUtils.authorization_headers = {
-        "Authorization": "OAuth oauth_consumer_key=\"{}\", oauth_token=\"{}\"".format(config.api_key, config.token)
+        "Authorization": "OAuth oauth_consumer_key=\"{}\", oauth_token=\"{}\"".format(api_key, token)
     }
 
 
@@ -857,15 +855,15 @@ class DataConverter:
         return header
 
 def load_webpage_title_cache() -> Dict[str, str]:
-    with open(LocalDirsFiles.WEBPAGE_TITLE_CACHE_FILE, 'rb') as handle:
-        try:
+    try:
+        with open(FilePath.WEBPAGE_TITLE_CACHE_FILE, 'rb') as handle:
             return pickle.load(handle)
-        except:
-            return {}
+    except:
+        return {}
 
 
 def save_webpage_title_cache(data):
-    with open(LocalDirsFiles.WEBPAGE_TITLE_CACHE_FILE, 'wb') as handle:
+    with open(FilePath.WEBPAGE_TITLE_CACHE_FILE, 'wb') as handle:
         pickle.dump(data, handle, protocol=pickle.HIGHEST_PROTOCOL)
 
 
@@ -877,10 +875,10 @@ class OutputHandler:
         self.rich_table_gen = TrelloBoardRichTableGenerator(board)
 
         fname_prefix = f"trelloboard-{self.board.simple_name}"
-        self.html_result_file_path = os.path.join(OUTPUT_DIR, f"{fname_prefix}-htmlexport.html")
-        self.rich_table_file_path = os.path.join(OUTPUT_DIR, f"{fname_prefix}-rich-table.html")
-        self.html_table_file_path = os.path.join(OUTPUT_DIR, f"{fname_prefix}-custom-table.html")
-        self.csv_file_path = os.path.join(OUTPUT_DIR, f"{fname_prefix}.csv")
+        self.html_result_file_path = os.path.join(FilePath.TRELLO_OUTPUT_DIR, f"{fname_prefix}-htmlexport.html")
+        self.rich_table_file_path = os.path.join(FilePath.TRELLO_OUTPUT_DIR, f"{fname_prefix}-rich-table.html")
+        self.html_table_file_path = os.path.join(FilePath.TRELLO_OUTPUT_DIR, f"{fname_prefix}-custom-table.html")
+        self.csv_file_path = os.path.join(FilePath.TRELLO_OUTPUT_DIR, f"{fname_prefix}.csv")
         self.csv_file_copy_to_file = f"~/Downloads/{fname_prefix}.csv"
         self.card_filter_flags = ACTIVE_CARD_FILTERS
 
@@ -893,6 +891,8 @@ class OutputHandler:
         self.html_file_gen.write_to_file(self.html_result_file_path)
 
         # TODO move this elsewhere?
+        # TODO remove
+        from trello_backup.cmd_handler import webpage_title_cache
         save_webpage_title_cache(webpage_title_cache)
 
         # Output 2: Rich table
@@ -919,8 +919,6 @@ def download_attachments(board):
 
 
 def download_attachment(attachment):
-    import shutil
-
     # https://community.developer.atlassian.com/t/update-authenticated-access-to-s3/43681
     response = requests.request(
         "GET",
@@ -971,7 +969,9 @@ def launch_http_server(dir):
 
 
 def stop_server():
-    if config.serve_attachments:
+    # TODO remove
+    from trello_backup.cmd_handler import config
+    if config.get(TrelloCfg.SERVE_ATTACHMENTS):
         HTTP_SERVER_INSTANCE.shutdown()
 
 
@@ -989,53 +989,4 @@ def get_board_id(board_name):
 
 
 if __name__ == '__main__':
-    atexit.register(stop_server)
-
-    validate_config()
-    html_gen_config = TRELLO_CARD_GENERATOR_BASIC_CONFIG
-
-    FileUtils.ensure_dir_created(OUTPUT_DIR)
-    FileUtils.ensure_dir_created(OUTPUT_DIR_ATTACHMENTS)
-
-    board_name = 'Cloudera'
-    board_id = get_board_id(board_name)
-
-    board_details_json = get_board_details(board_id)
-
-    # 1. parse lists
-    trello_lists_all = parse_trello_lists(board_details_json)
-    trello_lists_by_id = {l.id: l for l in trello_lists_all}
-
-    # 2. Parse checklists
-    trello_checklists = parse_trello_checklists(board_details_json)
-    trello_checklists_by_id = {c.id: c for c in trello_checklists}
-
-    trello_cards_all = parse_trello_cards(board_details_json, trello_lists_by_id, trello_checklists_by_id, html_gen_config)
-    trello_cards_open = list(filter(lambda c: not c.closed, trello_cards_all))
-
-    # Filter open trello lists
-    trello_lists_open = list(filter(lambda tl: not tl.closed, trello_lists_all))
-    print(trello_lists_open)
-
-    webpage_title_cache = load_webpage_title_cache()
-    board = TrelloBoard(board_id, board_name, trello_lists_open)
-    board.get_checklist_url_titles()
-
-    # Download attachments
-    download_attachments(board)
-
-    out = OutputHandler(board, html_gen_config)
-    out.write_outputs()
-
-    # Serve attachment files for CSV output
-    if config.serve_attachments:
-        launch_http_server(dir=OUTPUT_DIR_ATTACHMENTS)
-
-
-    # TODO IDEA: HTML output file per list,
-    #  only include: card name (bold), description (plain text), Checklists with check items
-    #  Add WARNING text if has attachment OR add attachment links
-
-    # TODO add file cache that stores in the following hierarchy:
-    #  <maindir>/boards/<board>/cards/<card>/actions/<action_id>.json
-
+    raise NotImplementedError()

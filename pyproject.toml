@@ -37,6 +37,7 @@ google-api-wrapper2 = "1.0.20"
 requests = "*"
 rich = "^13.7.0"
 markdown = "3.4.4"
+click = "^8.3.1"
 
 
 [tool.poetry.group.dev.dependencies]
