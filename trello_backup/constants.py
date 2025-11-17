@@ -17,6 +17,7 @@ class FilePath:
     MODULE_ROOT_NAME = "trello_backup"
     REPO_ROOT_DIR = FileUtils.find_repo_root_dir(__file__, REPO_ROOT_DIRNAME)
     TRELLO_OUTPUT_DIR = os.path.join(os.path.expanduser("~"), "trello-backup-output")
+    OUTPUT_DIR_ATTACHMENTS = os.path.join(TRELLO_OUTPUT_DIR, "attachments")
     TRELLO_BACKUP_DIR = SimpleProjectUtils.get_project_dir(
         basedir=REPO_ROOT_DIR,
         parent_dir=REPO_ROOT_DIRNAME,

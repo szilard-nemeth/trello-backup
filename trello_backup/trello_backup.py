@@ -3,28 +3,22 @@ import logging
 import os
 import pickle
 from dataclasses import dataclass
-from enum import Enum, Flag, auto
+from enum import Enum
 from typing import List, Dict
 
 import requests
-from bs4 import BeautifulSoup
 from pythoncommons.file_utils import FileUtils, CsvFileUtils
 from pythoncommons.result_printer import TableRenderingConfig, ResultPrinter, TabulateTableFormat
 
 from trello_backup.config_parser.config import TrelloCfg
-from trello_backup.display.output import MarkdownFormatter
 from trello_backup.display.console import CliLogger
 from trello_backup.constants import FilePath
 from trello_backup.trello.model import TrelloComment, TrelloList, TrelloAttachment, TrelloChecklistItem, \
-    TrelloChecklist, TrelloCard, TrelloBoard
+    TrelloChecklist, TrelloCard, TrelloBoard, ExtractedCardData, CardFilter
 
 ORGANIZATION_ID = "60b31169ff7e174519a40577"
 INDENT = "&nbsp;&nbsp;&nbsp;&nbsp;"
-BS4_HTML_PARSER = "html.parser"
-MD_FORMATTER = MarkdownFormatter()
-OUTPUT_DIR_ATTACHMENTS = os.path.join(FilePath.TRELLO_OUTPUT_DIR, "attachments")
-HTTP_SERVER_PORT = 8000
-HTTP_SERVER_INSTANCE = None
+
 
 
 LOG = logging.getLogger(__name__)
@@ -41,22 +35,6 @@ class TrelloCardHtmlGeneratorConfig:
     @property
     def download_comments(self):
         return self.include_comments and self.include_activity
-
-
-class CardFilter(Flag):
-    NONE = 0
-    OPEN = auto()  # TODO Apply this card filter
-    WITH_CHECKLIST = auto()
-    WITH_DESCRIPTION = auto()
-    WITH_ATTACHMENT = auto()
-
-    @classmethod
-    def ALL(cls):
-        retval = cls.NONE
-        for member in cls.__members__.values():
-            retval |= member
-        return retval
-
 
 
 TRELLO_CARD_GENERATOR_MINIMAL_CONFIG = TrelloCardHtmlGeneratorConfig(include_labels=False,
@@ -94,55 +72,6 @@ class TrelloUtils:
     }
 
 
-@dataclass
-class ExtractedCardData:
-    description: str
-    attachment_name: str
-    attachment_url: str
-    attachment_file_path: str
-    local_server_path: str
-    cl_item_name: str
-    cl_item_url_title: str
-    cl_item_url: str
-
-
-class HtmlParser:
-    js_renderer = None
-
-    @staticmethod
-    def create_bs(html) -> BeautifulSoup:
-        return BeautifulSoup(html, features=BS4_HTML_PARSER)
-
-    @staticmethod
-    def create_bs_from_url(url, headers=None):
-        resp = requests.get(url, headers=headers)
-        soup = HtmlParser.create_bs(resp.text)
-        return soup
-
-    @classmethod
-    def get_title_from_url(cls, url):
-        """
-        If page title can't be parsed, fall back to original URL.
-        :param url:
-        :return:
-        """
-        print("Getting webpage title for URL: {}".format(url))
-        try:
-            soup = HtmlParser.create_bs_from_url(url)
-        except requests.exceptions.ConnectionError as e:
-            print("Failed to get page title from URL: " + url)
-            return url
-        if soup.title is None:
-            return url
-        title = soup.title.string
-        print("Found webpage title: {}".format(title))
-        return str(title)
-
-    @classmethod
-    def get_title_from_url_with_js(cls, url):
-        soup = HtmlParser.js_renderer.render_with_javascript(url, force_use_requests=True)
-        title = soup.title.string
-        return title
 
 
 
@@ -737,7 +666,7 @@ def download_attachment(attachment):
         headers=TrelloUtils.authorization_headers
     )
     response.raise_for_status()
-    file_path = os.path.join(OUTPUT_DIR_ATTACHMENTS, "{}-{}".format(attachment.id, attachment.file_name))
+    file_path = os.path.join(FilePath.OUTPUT_DIR_ATTACHMENTS, "{}-{}".format(attachment.id, attachment.file_name))
 
     # TODO Figure out why other 2 Methods resulted in 0-byte files?
     # Source: https://stackoverflow.com/a/13137873/1106893
@@ -761,29 +690,6 @@ def download_attachment(attachment):
 
     del response
     return file_path
-
-def launch_http_server(dir):
-    import http.server
-    import socketserver
-
-    class Handler(http.server.SimpleHTTPRequestHandler):
-        def __init__(self, *args, **kwargs):
-            super().__init__(*args, directory=dir, **kwargs)
-
-    #Handler = http.server.SimpleHTTPRequestHandler
-
-    with socketserver.TCPServer(("", HTTP_SERVER_PORT), Handler) as httpd:
-        HTTP_SERVER_INSTANCE = httpd
-        print("serving at port", HTTP_SERVER_PORT)
-        httpd.serve_forever()
-        httpd.shutdown()
-
-
-def stop_server():
-    # TODO remove
-    from trello_backup.cmd_handler import config
-    if config.get(TrelloCfg.SERVE_ATTACHMENTS):
-        HTTP_SERVER_INSTANCE.shutdown()
 
 
 def get_board_id(board_name):

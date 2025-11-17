@@ -1,6 +1,7 @@
 import atexit
 
 from trello_backup.cli.common import TrelloContext
+from trello_backup.http_server import HttpServer
 from trello_backup.trello_backup import *
 
 LOG = logging.getLogger(__name__)
@@ -18,13 +19,13 @@ class MainCommandHandler:
     def backup_board(self):
         global config
         config = self.ctx.config
-        atexit.register(stop_server)
+        atexit.register(HttpServer.stop_server)
 
         validate_config()
         html_gen_config = TRELLO_CARD_GENERATOR_BASIC_CONFIG
 
-        FileUtils.ensure_dir_created(OUTPUT_DIR)
-        FileUtils.ensure_dir_created(OUTPUT_DIR_ATTACHMENTS)
+        FileUtils.ensure_dir_created(FilePath.TRELLO_OUTPUT_DIR)
+        FileUtils.ensure_dir_created(FilePath.OUTPUT_DIR_ATTACHMENTS)
 
         board_name = 'Cloudera'
         board_id = get_board_id(board_name)
@@ -59,7 +60,7 @@ class MainCommandHandler:
 
         # Serve attachment files for CSV output
         if config.get(TrelloCfg.SERVE_ATTACHMENTS):
-            launch_http_server(dir=OUTPUT_DIR_ATTACHMENTS)
+            HttpServer.launch_http_server(dir=FilePath.OUTPUT_DIR_ATTACHMENTS)
 
 
         # TODO IDEA: HTML output file per list,

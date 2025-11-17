@@ -1,9 +1,40 @@
 from dataclasses import dataclass, field
+from enum import Flag, auto
 from typing import List
 
 from pythoncommons.url_utils import UrlUtils
 
-from trello_backup.trello_backup import HtmlParser, CardFilter, MD_FORMATTER, ExtractedCardData, HTTP_SERVER_PORT
+from trello_backup.display.output import MarkdownFormatter
+
+MD_FORMATTER = MarkdownFormatter()
+
+@dataclass
+class ExtractedCardData:
+    description: str
+    attachment_name: str
+    attachment_url: str
+    attachment_file_path: str
+    local_server_path: str
+    cl_item_name: str
+    cl_item_url_title: str
+    cl_item_url: str
+
+
+# TODO Move this to some other module?
+class CardFilter(Flag):
+    NONE = 0
+    OPEN = auto()  # TODO Apply this card filter
+    WITH_CHECKLIST = auto()
+    WITH_DESCRIPTION = auto()
+    WITH_ATTACHMENT = auto()
+
+    @classmethod
+    def ALL(cls):
+        retval = cls.NONE
+        for member in cls.__members__.values():
+            retval |= member
+        return retval
+
 
 
 @dataclass
@@ -192,3 +223,5 @@ class TrelloBoard:
         for list in self.lists:
             for card in list.cards:
                 card.get_checklist_url_titles()
+
+
