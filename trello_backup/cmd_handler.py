@@ -1,8 +1,6 @@
 import atexit
-import logging
 
 from trello_backup.cli.common import TrelloContext
-from trello_backup.config_parser.config import TrelloCfg
 from trello_backup.trello_backup import *
 
 LOG = logging.getLogger(__name__)

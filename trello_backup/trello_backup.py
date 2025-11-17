@@ -2,7 +2,7 @@ import json
 import logging
 import os
 import pickle
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from enum import Enum, Flag, auto
 from typing import List, Dict
 
@@ -10,13 +10,13 @@ import requests
 from bs4 import BeautifulSoup
 from pythoncommons.file_utils import FileUtils, CsvFileUtils
 from pythoncommons.result_printer import TableRenderingConfig, ResultPrinter, TabulateTableFormat
-from pythoncommons.url_utils import UrlUtils
 
 from trello_backup.config_parser.config import TrelloCfg
 from trello_backup.display.output import MarkdownFormatter
 from trello_backup.display.console import CliLogger
 from trello_backup.constants import FilePath
-
+from trello_backup.trello.model import TrelloComment, TrelloList, TrelloAttachment, TrelloChecklistItem, \
+    TrelloChecklist, TrelloCard, TrelloBoard
 
 ORGANIZATION_ID = "60b31169ff7e174519a40577"
 INDENT = "&nbsp;&nbsp;&nbsp;&nbsp;"
@@ -92,195 +92,6 @@ class TrelloUtils:
     headers_accept_json = {
         "Accept": "application/json"
     }
-
-
-@dataclass
-class TrelloComment:
-    id: str
-    author: str
-    date: str
-    contents: str
-
-
-@dataclass
-class TrelloActivity:
-    id: str
-    author: str
-    date: str
-    contents: str
-
-
-@dataclass
-class TrelloChecklistItem:
-    id: str
-    name: str
-    checked: bool
-    url: str = None
-    url_title: str = None
-
-    def get_html(self):
-        if self.url:
-            return f"<a href={self.url}>{self.url_title}</a>"
-        return self.name
-
-
-@dataclass
-class TrelloChecklist:
-    id: str
-    name: str
-    board_id: str
-    card_id: str
-    items: List[TrelloChecklistItem]
-
-    def get_url_titles(self):
-        import re
-        # TODO remove
-        from trello_backup.cmd_handler import webpage_title_cache
-        for item in self.items:
-            try:
-                url = UrlUtils.extract_from_str(item.name)
-            except:
-                url = None
-            if url:
-                url_title = None
-                if url not in webpage_title_cache:
-                    # Fetch title of URL
-                    url_title = HtmlParser.get_title_from_url(url)
-                    url_title = re.sub(r'[\n\t\r]+', ' ', url_title)
-                    if url_title:
-                        webpage_title_cache[url] = url_title
-                else:
-                    # Read from cache
-                    old_url_title = webpage_title_cache[url]
-                    new_url_title = re.sub(r'[\n\t\r]+', ' ', old_url_title)
-                    if old_url_title != new_url_title:
-                        webpage_title_cache[url] = new_url_title
-                    url_title = new_url_title
-
-                if not url_title:
-                    url_title = url
-                item.url_title = url_title
-                item.url = url
-
-
-
-@dataclass
-class TrelloList:
-    closed: bool
-    id: str
-    name: str
-    board_id: str
-    cards: List['TrelloCard'] = field(default_factory=list)
-
-
-@dataclass
-class TrelloAttachment:
-    id: str
-    date: str
-    name: str
-    url: str
-    api_url: str
-    is_upload: bool
-    file_name: str
-    downloaded_file_path: str
-
-
-@dataclass
-class TrelloCard:
-    id: str
-    name: str
-    list: TrelloList
-    description: str
-    attachments: List[TrelloAttachment]
-    checklists: List[TrelloChecklist]
-    labels: List[str]
-    closed: bool
-    comments: List[TrelloComment]
-    due_date: str
-    activities: List[TrelloActivity]
-
-    @property
-    def has_description(self):
-        return len(self.description) > 0
-
-    @property
-    def has_checklist(self):
-        return len(self.checklists) > 0
-
-    @property
-    def has_attachments(self):
-        return len(self.attachments) > 0
-
-    def get_checklist_url_titles(self):
-        for cl in self.checklists:
-            cl.get_url_titles()
-
-    def get_extracted_data(self, card_filter_flags: CardFilter):
-        # Sanity check
-        # has_checklists = self.has_checklist
-        # has_attachments = self.has_attachments
-        # has_description = self.has_description
-        # if has_checklists and CardFilter.WITH_CHECKLIST not in card_filter_flags:
-        #     raise ValueError("Card has checklists but card filters are not enabling checklists! Current filter: {}".format(card_filter_flags))
-        # if has_description and CardFilter.WITH_DESCRIPTION not in card_filter_flags:
-        #     raise ValueError("Card has description but card filters are not enabling description! Current filter: {}".format(card_filter_flags))
-        # if has_attachments and CardFilter.WITH_ATTACHMENT not in card_filter_flags:
-        #     raise ValueError("Card has attachments but card filters are not enabling attachments! Current filter: {}".format(card_filter_flags))
-
-        # 1. Always add description to each row
-        plain_text_description = MD_FORMATTER.to_plain_text(self.description)
-        result = []
-        if len(card_filter_flags) == 1 and CardFilter.WITH_DESCRIPTION in card_filter_flags:
-            result.append(ExtractedCardData(plain_text_description, "", "", "", "", "", ""))
-            return result
-
-        # 2. Add attachments to separate row from checklist items
-        if CardFilter.WITH_ATTACHMENT in card_filter_flags:
-            for attachment in self.attachments:
-                attachment_file_path = "" if not attachment.downloaded_file_path else attachment.downloaded_file_path
-
-                local_server_path = ""
-                if attachment.downloaded_file_path:
-                    local_server_path = "http://localhost:{}/{}".format(HTTP_SERVER_PORT, attachment.downloaded_file_path.split("/")[-1])
-                result.append(ExtractedCardData(plain_text_description, attachment.name, attachment.url, attachment_file_path, local_server_path, "", "", ""))
-
-        # 3. Add checklist items to separate row from attachments
-        if CardFilter.WITH_CHECKLIST in card_filter_flags:
-            for cl in self.checklists:
-                for item in cl.items:
-                    cl_item_name = ""
-                    cl_item_url_title = ""
-                    cl_item_url = ""
-                    if item.url:
-                        cl_item_url_title = item.url_title
-                        cl_item_url = item.url
-                    else:
-                        cl_item_name = item.name
-                    result.append(ExtractedCardData(plain_text_description, "", "", "", "", cl_item_name, cl_item_url_title, cl_item_url))
-
-        # If no append happened, append default ExtractedCardData
-        if not result and CardFilter.WITH_DESCRIPTION in card_filter_flags:
-            result.append(ExtractedCardData(plain_text_description, "", "", "", "", "", "", ""))
-        return result
-
-    def get_labels_as_str(self):
-        return ",".join(self.labels)
-
-
-@dataclass
-class TrelloBoard:
-    id: str
-    name: str
-    lists: List[TrelloList]
-
-    def __post_init__(self):
-        import re
-        self.simple_name = re.sub("[ /\ ]+", "-", self.name).lower()
-
-    def get_checklist_url_titles(self):
-        for list in self.lists:
-            for card in list.cards:
-                card.get_checklist_url_titles()
 
 
 @dataclass
