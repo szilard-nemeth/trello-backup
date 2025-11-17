@@ -1,17 +1,14 @@
 import logging
 import os
-import pickle
 from dataclasses import dataclass
 from enum import Enum
 from typing import List, Dict
-
-import requests
 from pythoncommons.file_utils import FileUtils, CsvFileUtils
 from pythoncommons.result_printer import TableRenderingConfig, ResultPrinter, TabulateTableFormat
-
 from trello_backup.display.console import CliLogger
 from trello_backup.constants import FilePath
 from trello_backup.trello.api import TrelloApi, TrelloUtils
+from trello_backup.trello.cache import WebpageTitleCache
 from trello_backup.trello.model import TrelloComment, TrelloList, TrelloAttachment, TrelloChecklistItem, \
     TrelloChecklist, TrelloCard, TrelloBoard, ExtractedCardData, CardFilter
 
@@ -409,18 +406,6 @@ class DataConverter:
                   h.CHECKLIST_ITEM_URL.value]
         return header
 
-def load_webpage_title_cache() -> Dict[str, str]:
-    try:
-        with open(FilePath.WEBPAGE_TITLE_CACHE_FILE, 'rb') as handle:
-            return pickle.load(handle)
-    except:
-        return {}
-
-
-def save_webpage_title_cache(data):
-    with open(FilePath.WEBPAGE_TITLE_CACHE_FILE, 'wb') as handle:
-        pickle.dump(data, handle, protocol=pickle.HIGHEST_PROTOCOL)
-
 
 class OutputHandler:
     def __init__(self, board: TrelloBoard, html_gen_config):
@@ -446,9 +431,7 @@ class OutputHandler:
         self.html_file_gen.write_to_file(self.html_result_file_path)
 
         # TODO move this elsewhere?
-        # TODO remove
-        from trello_backup.cmd_handler import webpage_title_cache
-        save_webpage_title_cache(webpage_title_cache)
+        WebpageTitleCache.save()
 
         # Output 2: Rich table
         self.rich_table_gen.render(rows, print_console=False)

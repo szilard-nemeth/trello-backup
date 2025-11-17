@@ -8,8 +8,6 @@ from trello_backup.trello_backup import *
 LOG = logging.getLogger(__name__)
 CLI_LOG = CliLogger(LOG)
 
-# TODO snemeth remove this global, search for usages
-webpage_title_cache = None
 
 class MainCommandHandler:
     def __init__(self, ctx: TrelloContext):
@@ -53,8 +51,7 @@ class MainCommandHandler:
         trello_lists_open = list(filter(lambda tl: not tl.closed, trello_lists_all))
         print(trello_lists_open)
 
-        global webpage_title_cache
-        webpage_title_cache = load_webpage_title_cache()
+        WebpageTitleCache.load()
         board = TrelloBoard(board_id, board_name, trello_lists_open)
         board.get_checklist_url_titles()
 
