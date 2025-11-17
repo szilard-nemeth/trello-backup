@@ -1,6 +1,7 @@
 import atexit
 
 from trello_backup.cli.common import TrelloContext
+from trello_backup.config_parser.config import TrelloCfg
 from trello_backup.http_server import HttpServer
 from trello_backup.trello_backup import *
 
@@ -9,28 +10,33 @@ CLI_LOG = CliLogger(LOG)
 
 # TODO snemeth remove this global, search for usages
 webpage_title_cache = None
-# TODO snemeth remove this global, search for usages
-config = None
 
 class MainCommandHandler:
     def __init__(self, ctx: TrelloContext):
         self.ctx = ctx
 
     def backup_board(self):
-        global config
-        config = self.ctx.config
         atexit.register(HttpServer.stop_server)
 
-        validate_config()
+        # TODO Hack!
+        token = self.ctx.config.get_secret(TrelloCfg.TRELLO_TOKEN)
+        api_key = self.ctx.config.get_secret(TrelloCfg.TRELLO_API_KEY)
+        TrelloUtils.auth_query_params = {
+            'key': api_key,
+            'token': token
+        }
+        TrelloUtils.authorization_headers = {
+            "Authorization": "OAuth oauth_consumer_key=\"{}\", oauth_token=\"{}\"".format(api_key, token)
+        }
+
         html_gen_config = TRELLO_CARD_GENERATOR_BASIC_CONFIG
 
         FileUtils.ensure_dir_created(FilePath.TRELLO_OUTPUT_DIR)
         FileUtils.ensure_dir_created(FilePath.OUTPUT_DIR_ATTACHMENTS)
 
         board_name = 'Cloudera'
-        board_id = get_board_id(board_name)
-
-        board_details_json = get_board_details(board_id)
+        board_id = TrelloApi.get_board_id(board_name)
+        board_details_json = TrelloApi.get_board_details(board_id)
 
         # 1. parse lists
         trello_lists_all = parse_trello_lists(board_details_json)
@@ -59,7 +65,7 @@ class MainCommandHandler:
         out.write_outputs()
 
         # Serve attachment files for CSV output
-        if config.get(TrelloCfg.SERVE_ATTACHMENTS):
+        if self.ctx.config.get(TrelloCfg.SERVE_ATTACHMENTS):
             HttpServer.launch_http_server(dir=FilePath.OUTPUT_DIR_ATTACHMENTS)
 
 

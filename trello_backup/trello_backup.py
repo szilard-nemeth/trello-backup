@@ -1,4 +1,3 @@
-import json
 import logging
 import os
 import pickle
@@ -10,13 +9,12 @@ import requests
 from pythoncommons.file_utils import FileUtils, CsvFileUtils
 from pythoncommons.result_printer import TableRenderingConfig, ResultPrinter, TabulateTableFormat
 
-from trello_backup.config_parser.config import TrelloCfg
 from trello_backup.display.console import CliLogger
 from trello_backup.constants import FilePath
+from trello_backup.trello.api import TrelloApi, TrelloUtils
 from trello_backup.trello.model import TrelloComment, TrelloList, TrelloAttachment, TrelloChecklistItem, \
     TrelloChecklist, TrelloCard, TrelloBoard, ExtractedCardData, CardFilter
 
-ORGANIZATION_ID = "60b31169ff7e174519a40577"
 INDENT = "&nbsp;&nbsp;&nbsp;&nbsp;"
 
 
@@ -61,159 +59,6 @@ CARD_FILTER_CHECKLIST_AND_ATTACHMENT = CardFilter.WITH_CHECKLIST | CardFilter.WI
 CARD_FILTER_ONLY_DESC = CardFilter.WITH_DESCRIPTION
 
 ACTIVE_CARD_FILTERS = CARD_FILTER_ALL
-
-
-
-class TrelloUtils:
-    auth_query_params = None
-    authorization_headers = None
-    headers_accept_json = {
-        "Accept": "application/json"
-    }
-
-
-
-
-
-def get_board_details(board_id):
-    params = {
-        "fields": "all",
-        "actions": "all",
-        "action_fields": "all",
-        "actions_limit": 1000,
-        "cards": "all",
-        "card_fields": "all",
-        "card_attachments": "true",
-        "labels": "all",
-        "lists": "all",
-        "list_fields": "all",
-        "members": "all",
-        "member_fields": "all",
-        "checklists": "all",
-        "checklist_fields": "all",
-        "organization": "false",
-    }
-
-    url = "https://api.trello.com/1/boards/{board_id}/".format(board_id=board_id)
-    query = dict(TrelloUtils.auth_query_params)
-    query.update(params)
-    response = requests.request(
-        "GET",
-        url,
-        headers=TrelloUtils.headers_accept_json,
-        params=query
-    )
-    response.raise_for_status()
-
-    parsed_json = json.loads(response.text)
-
-    return parsed_json
-
-
-
-def get_board_json():
-    url = "https://trello.com/b/9GZZWy03/personal-weekly-plan.json"
-
-    response = requests.request(
-        "GET",
-        url,
-        headers=TrelloUtils.headers_accept_json,
-        params=TrelloUtils.auth_query_params
-    )
-    #code = response.status_code
-    response.raise_for_status()
-    return response
-
-
-def get_lists_of_board():
-    # TODO remove
-    from trello_backup.cmd_handler import config
-    url = "https://api.trello.com/1/boards/{id}/lists"
-
-    headers = {
-        "Accept": "application/json"
-    }
-
-    query = {
-        'key': config.api_key,
-        'token': config.token,
-    }
-
-    response = requests.request(
-        "GET",
-        url,
-        headers=headers,
-        params=query
-    )
-
-    print(json.dumps(json.loads(response.text), sort_keys=True, indent=4, separators=(",", ": ")))
-
-
-def get_attachment_of_card(card_id: str):
-    # TODO remove
-    from trello_backup.cmd_handler import config
-    url = "https://api.trello.com/1/cards/{id}/actions".format(id=card_id)
-
-    headers = {
-        "Accept": "application/json"
-    }
-
-    query = {
-        'key': config.api_key,
-        'token': config.token,
-    }
-
-    response = requests.request(
-        "GET",
-        url,
-        headers=headers,
-        params=query
-    )
-
-    # print(json.dumps(json.loads(response.text), sort_keys=True, indent=4, separators=(",", ": ")))
-    parsed_json = json.loads(response.text)
-    return parsed_json
-
-
-def create_card():
-    url = "https://api.trello.com/1/cards"
-
-    headers = {
-        "Accept": "application/json"
-    }
-
-    # TODO hardcoded list id
-    query = TrelloUtils.auth_query_params.update({'idList': '5abbe4b7ddc1b351ef961414'})
-    response = requests.request(
-        "POST",
-        url,
-        headers=headers,
-        params=query
-    )
-
-    print(json.dumps(json.loads(response.text), sort_keys=True, indent=4, separators=(",", ": ")))
-
-
-def list_boards():
-    url = "https://api.trello.com/1/organizations/{org_id}/boards".format(org_id=ORGANIZATION_ID)
-    response = requests.request(
-        "GET",
-        url,
-        headers=TrelloUtils.headers_accept_json,
-        params=TrelloUtils.auth_query_params
-    )
-
-    parsed_json = json.loads(response.text)
-
-    result_dict = {}
-    for board in parsed_json:
-        b_name = board['name']
-        b_id = board['id']
-        result_dict[b_name] = b_id
-
-    # TODO debug log
-    #print(json.dumps(parsed_json, sort_keys=True, indent=4, separators=(",", ": ")))
-    return result_dict
 
 
 def parse_trello_lists(board_details_json):
@@ -278,7 +123,7 @@ def reformat_attachment_url(card_id, attachment_id, attachment_filename):
 
 
 def query_comments_for_card(card) -> List[TrelloComment]:
-    actions = get_actions_for_card(card["id"])
+    actions = TrelloApi.get_actions_for_card(card["id"])
     comment_actions_json = list(filter(lambda a: a['type'] == "commentCard", actions))
     comments = []
     for action in comment_actions_json:
@@ -297,21 +142,6 @@ def query_comments_for_card(card) -> List[TrelloComment]:
     return comments
 
 
-def get_actions_for_card(card_id: str):
-    url = "https://api.trello.com/1/cards/{id}/actions".format(id=card_id)
-
-    response = requests.request(
-        "GET",
-        url,
-        headers=TrelloUtils.headers_accept_json,
-        params=TrelloUtils.auth_query_params
-    )
-
-    #print(json.dumps(json.loads(response.text), sort_keys=True, indent=4, separators=(",", ": ")))
-    parsed_json = json.loads(response.text)
-    return parsed_json
-
-
 def parse_trello_checklists(board_details_json):
     checklists = board_details_json["checklists"]
 
@@ -326,21 +156,6 @@ def parse_trello_checklists(board_details_json):
         trello_checklist = TrelloChecklist(checklist["id"], checklist["name"], checklist["idBoard"], checklist["idCard"], trello_checklist_items)
         trello_checklists.append(trello_checklist)
     return trello_checklists
-
-
-def validate_config():
-    # TODO remove
-    from trello_backup.cmd_handler import config
-    token = config.get_secret(TrelloCfg.TRELLO_TOKEN)
-    api_key = config.get_secret(TrelloCfg.TRELLO_API_KEY)
-
-    TrelloUtils.auth_query_params = {
-        'key': api_key,
-        'token': token
-    }
-    TrelloUtils.authorization_headers = {
-        "Authorization": "OAuth oauth_consumer_key=\"{}\", oauth_token=\"{}\"".format(api_key, token)
-    }
 
 
 class TrelloBoardHtmlTableHeader(Enum):
@@ -690,19 +505,6 @@ def download_attachment(attachment):
 
     del response
     return file_path
-
-
-def get_board_id(board_name):
-    # board_resp = get_board()
-    # print(json.dumps(json.loads(board_resp.text), sort_keys=True, indent=4, separators=(",", ": ")))
-    boards = list_boards()
-    available_board_names = list(boards.keys())
-    print(f"Available boards: {available_board_names}")
-    if board_name not in boards:
-        raise KeyError(f"Cannot find board with name: {board_name}")
-
-    board_id = boards[board_name]
-    return board_id
 
 
 if __name__ == '__main__':
