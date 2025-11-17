@@ -1,6 +1,9 @@
 import json
+import os
 
 import requests
+
+from trello_backup.constants import FilePath
 
 ORGANIZATION_ID = "60b31169ff7e174519a40577"
 
@@ -169,3 +172,46 @@ class TrelloApi:
 
         board_id = boards[board_name]
         return board_id
+
+    @classmethod
+    def download_attachments(cls, board):
+        for list in board.lists:
+            for card in list.cards:
+                for attachment in card.attachments:
+                    if attachment.is_upload:
+                        attachment.downloaded_file_path = "file://" + TrelloApi.download_attachment(attachment)
+
+
+    @classmethod
+    def download_attachment(cls, attachment):
+        # https://community.developer.atlassian.com/t/update-authenticated-access-to-s3/43681
+        response = requests.request(
+            "GET",
+            attachment.api_url,
+            headers=TrelloUtils.authorization_headers
+        )
+        response.raise_for_status()
+        file_path = os.path.join(FilePath.OUTPUT_DIR_ATTACHMENTS, "{}-{}".format(attachment.id, attachment.file_name))
+
+        # TODO Figure out why other 2 Methods resulted in 0-byte files?
+        # Source: https://stackoverflow.com/a/13137873/1106893
+        # Method 1
+        # with open(file_path, 'wb') as out_file:
+        #     shutil.copyfileobj(response.raw, out_file)
+
+        # Method 2
+        # if response.status_code == 200:
+        #     with open(file_path, 'wb') as f:
+        #         response.raw.decode_content = True
+        #         shutil.copyfileobj(response.raw, f)
+
+        # Method 3
+        r = response
+        path = file_path
+        if r.status_code == 200:
+            with open(path, 'wb') as f:
+                for chunk in r.iter_content(1024):
+                    f.write(chunk)
+
+        del response
+        return file_path

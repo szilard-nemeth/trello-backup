@@ -59,7 +59,7 @@ class MainCommandHandler:
         board.get_checklist_url_titles()
 
         # Download attachments
-        download_attachments(board)
+        TrelloApi.download_attachments(board)
 
         out = OutputHandler(board, html_gen_config)
         out.write_outputs()
