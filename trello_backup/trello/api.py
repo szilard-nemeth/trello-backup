@@ -179,39 +179,60 @@ class TrelloApi:
             for card in list.cards:
                 for attachment in card.attachments:
                     if attachment.is_upload:
-                        attachment.downloaded_file_path = "file://" + TrelloApi.download_attachment(attachment)
+                        attachment.downloaded_file_path = "file://" + TrelloApi.download_and_save_attachment(attachment)
+
+    @classmethod
+    def download_and_save_attachment(cls, attachment):
+        """
+        Handles file path generation and persistence of the stream.
+        """
+        file_path = os.path.join(
+            FilePath.OUTPUT_DIR_ATTACHMENTS,
+            f"{attachment.id}-{attachment.file_name}"
+        )
+
+        with open(file_path, 'wb') as out_file:
+            # 2. Get the stream/chunks (Networking logic)
+            for chunk in cls._get_attachment_chunks(attachment):
+                out_file.write(chunk)
+        return file_path
 
 
     @classmethod
-    def download_attachment(cls, attachment):
-        # https://community.developer.atlassian.com/t/update-authenticated-access-to-s3/43681
+    def _get_attachment_stream(cls, attachment):
+        """
+        Initiates the request and returns the raw response stream object.
+        Caller is responsible for closing the stream.
+        """
         response = requests.request(
             "GET",
             attachment.api_url,
-            headers=TrelloUtils.authorization_headers
+            headers=TrelloUtils.authorization_headers,
+            stream=True # Crucial: ensures the entire file isn't loaded into memory
         )
+        # This still belongs here, as it validates the success of the network request
         response.raise_for_status()
-        file_path = os.path.join(FilePath.OUTPUT_DIR_ATTACHMENTS, "{}-{}".format(attachment.id, attachment.file_name))
 
-        # TODO Figure out why other 2 Methods resulted in 0-byte files?
-        # Source: https://stackoverflow.com/a/13137873/1106893
-        # Method 1
-        # with open(file_path, 'wb') as out_file:
-        #     shutil.copyfileobj(response.raw, out_file)
+        # We return the response object itself, but the caller must handle
+        # the response's context manager or call response.close()
+        return response
 
-        # Method 2
-        # if response.status_code == 200:
-        #     with open(file_path, 'wb') as f:
-        #         response.raw.decode_content = True
-        #         shutil.copyfileobj(response.raw, f)
+    @classmethod
+    def _get_attachment_chunks(cls, attachment):
+        """
+        Initiates the request and yields data chunks, ensuring the connection is closed.
+        """
+        with requests.request(
+                "GET",
+                attachment.api_url,
+                headers=TrelloUtils.authorization_headers,
+                stream=True
+        ) as response:
+            response.raise_for_status()
+            # Decode content handles things like gzip compression
+            response.raw.decode_content = True
 
-        # Method 3
-        r = response
-        path = file_path
-        if r.status_code == 200:
-            with open(path, 'wb') as f:
-                for chunk in r.iter_content(1024):
-                    f.write(chunk)
-
-        del response
-        return file_path
+            # Iterating over the response ensures data is streamed
+            for chunk in response.iter_content(chunk_size=1024 * 1024): # 1MB chunks
+                if chunk:  # filter out keep-alive chunks
+                    yield chunk

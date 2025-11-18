@@ -30,8 +30,6 @@ class TrelloOperations:
         board = TrelloBoard(board_id, name, trello_lists.open)
         self._webpage_title_service.process_board_checklist_titles(board)
 
-        # TODO ASAP Revisit impl.
-        # Download attachments
         TrelloApi.download_attachments(board)
         return board
 
