@@ -10,6 +10,7 @@ from trello_backup.http_server import HttpServer
 from trello_backup.trello.api import TrelloUtils
 from trello_backup.trello.cache import WebpageTitleCache
 from trello_backup.trello.model import TrelloBoard
+from trello_backup.trello.parser import TrelloObjectParser
 from trello_backup.trello_backup import *
 
 LOG = logging.getLogger(__name__)
@@ -23,7 +24,7 @@ class MainCommandHandler:
     def backup_board(self):
         atexit.register(HttpServer.stop_server)
 
-        # TODO Hack!
+        # TODO Hack! Move to TrelloApi.init()
         token = self.ctx.config.get_secret(TrelloCfg.TRELLO_TOKEN)
         api_key = self.ctx.config.get_secret(TrelloCfg.TRELLO_API_KEY)
         TrelloUtils.auth_query_params = {
@@ -43,15 +44,16 @@ class MainCommandHandler:
         board_id = TrelloApi.get_board_id(board_name)
         board_details_json = TrelloApi.get_board_details(board_id)
 
+        parser = TrelloObjectParser()
         # 1. parse lists
-        trello_lists_all = parse_trello_lists(board_details_json)
+        trello_lists_all = parser.parse_trello_lists(board_details_json)
         trello_lists_by_id = {l.id: l for l in trello_lists_all}
 
         # 2. Parse checklists
-        trello_checklists = parse_trello_checklists(board_details_json)
+        trello_checklists = parser.parse_trello_checklists(board_details_json)
         trello_checklists_by_id = {c.id: c for c in trello_checklists}
 
-        trello_cards_all = parse_trello_cards(board_details_json, trello_lists_by_id, trello_checklists_by_id, html_gen_config)
+        trello_cards_all = parser.parse_trello_cards(board_details_json, trello_lists_by_id, trello_checklists_by_id, html_gen_config)
         trello_cards_open = list(filter(lambda c: not c.closed, trello_cards_all))
 
         # Filter open trello lists
