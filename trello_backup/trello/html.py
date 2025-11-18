@@ -1,5 +1,5 @@
 from bs4 import BeautifulSoup
-from google.auth.transport import requests
+import requests
 BS4_HTML_PARSER = "html.parser"
 
 class HtmlParser:
