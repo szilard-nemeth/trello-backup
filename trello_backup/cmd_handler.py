@@ -34,7 +34,7 @@ class MainCommandHandler:
             "Authorization": "OAuth oauth_consumer_key=\"{}\", oauth_token=\"{}\"".format(api_key, token)
         }
 
-        html_gen_config = TRELLO_CARD_GENERATOR_BASIC_CONFIG
+        html_gen_config = TrelloCardHtmlGeneratorMode.BASIC.value
 
         FileUtils.ensure_dir_created(FilePath.TRELLO_OUTPUT_DIR)
         FileUtils.ensure_dir_created(FilePath.OUTPUT_DIR_ATTACHMENTS)

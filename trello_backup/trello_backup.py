@@ -1,5 +1,6 @@
 import logging
 from dataclasses import dataclass
+from enum import Enum
 from typing import List, Dict
 from trello_backup.display.console import CliLogger
 from trello_backup.trello.api import TrelloApi
@@ -26,22 +27,22 @@ class TrelloCardHtmlGeneratorConfig:
         return self.include_comments and self.include_activity
 
 
-TRELLO_CARD_GENERATOR_MINIMAL_CONFIG = TrelloCardHtmlGeneratorConfig(include_labels=False,
-                                                                     include_due_date=False,
-                                                                     include_checklists=True,
-                                                                     include_activity=False,
-                                                                     include_comments=False)
-TRELLO_CARD_GENERATOR_FULL_CONFIG = TrelloCardHtmlGeneratorConfig(include_labels=True,
-                                                                     include_due_date=True,
-                                                                     include_checklists=True,
-                                                                     include_activity=True,
-                                                                     include_comments=True)
-
-TRELLO_CARD_GENERATOR_BASIC_CONFIG = TrelloCardHtmlGeneratorConfig(include_labels=True,
-                                                                     include_due_date=True,
-                                                                     include_checklists=True,
-                                                                     include_activity=False,
-                                                                     include_comments=False)
+class TrelloCardHtmlGeneratorMode(Enum):
+    MINIMAL = TrelloCardHtmlGeneratorConfig(include_labels=False,
+                                            include_due_date=False,
+                                            include_checklists=True,
+                                            include_activity=False,
+                                            include_comments=False)
+    BASIC = TrelloCardHtmlGeneratorConfig(include_labels=True,
+                                          include_due_date=True,
+                                          include_checklists=True,
+                                          include_activity=False,
+                                          include_comments=False)
+    FULL = TrelloCardHtmlGeneratorConfig(include_labels=True,
+                                         include_due_date=True,
+                                         include_checklists=True,
+                                         include_activity=True,
+                                         include_comments=True)
 
 CARD_FILTER_ALL = CardFilter.ALL()
 CARD_FILTER_DESC_AND_CHECKLIST = CardFilter.WITH_DESCRIPTION | CardFilter.WITH_CHECKLIST
