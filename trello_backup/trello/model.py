@@ -1,14 +1,14 @@
 from dataclasses import dataclass, field
 from enum import Flag, auto
-from typing import List, Dict
+from typing import List
 
 from pythoncommons.url_utils import UrlUtils
 
-from trello_backup.display.output import MarkdownFormatter
+from trello_backup.http_server import HTTP_SERVER_PORT
 from trello_backup.trello.cache import WebpageTitleCache
 from trello_backup.trello.html import HtmlParser
 
-MD_FORMATTER = MarkdownFormatter()
+# TODO Extract any parsing logic from dataclasses
 
 @dataclass
 class ExtractedCardData:
@@ -158,7 +158,7 @@ class TrelloCard:
         for cl in self.checklists:
             cl.get_url_titles()
 
-    def get_extracted_data(self, card_filter_flags: CardFilter):
+    def get_extracted_data(self, card_filter_flags: CardFilter, md_formatter: 'MarkdownFormatter'):
         # Sanity check
         # has_checklists = self.has_checklist
         # has_attachments = self.has_attachments
@@ -171,7 +171,7 @@ class TrelloCard:
         #     raise ValueError("Card has attachments but card filters are not enabling attachments! Current filter: {}".format(card_filter_flags))
 
         # 1. Always add description to each row
-        plain_text_description = MD_FORMATTER.to_plain_text(self.description)
+        plain_text_description = md_formatter.to_plain_text(self.description)
         result = []
         if len(card_filter_flags) == 1 and CardFilter.WITH_DESCRIPTION in card_filter_flags:
             result.append(ExtractedCardData(plain_text_description, "", "", "", "", "", ""))
