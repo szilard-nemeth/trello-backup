@@ -1,4 +1,5 @@
 import pickle
+from pathlib import Path
 from typing import Dict, Optional
 
 from trello_backup.constants import FilePath
@@ -23,7 +24,9 @@ class WebpageTitleCache:
 
     def save(self) -> None:
         """Saves the current cache data to disk."""
-        # Ensure the directory exists before saving, if necessary (not shown here)
+        path = Path(self._file_path)
+        path.parent.mkdir(parents=True, exist_ok=True) # Ensures the output directory exists
+
         with open(self._file_path, 'wb') as f:
             pickle.dump(self._data, f, protocol=pickle.HIGHEST_PROTOCOL)
 
