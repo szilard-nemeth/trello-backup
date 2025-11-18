@@ -10,7 +10,6 @@ from pythoncommons.file_utils import FileUtils, CsvFileUtils
 from pythoncommons.result_printer import TabulateTableFormat, TableRenderingConfig, ResultPrinter
 
 from trello_backup.constants import FilePath
-from trello_backup.trello.cache import WebpageTitleCache
 
 from trello_backup.trello.model import TrelloComment, TrelloChecklist, TrelloBoard, CardFilter, ExtractedCardData, \
     CardFilters
@@ -270,16 +269,13 @@ class OutputHandler:
         self.csv_file_path = os.path.join(FilePath.TRELLO_OUTPUT_DIR, f"{fname_prefix}.csv")
         self.csv_file_copy_to_file = f"~/Downloads/{fname_prefix}.csv"
 
-    def write_outputs(self, cache: WebpageTitleCache):
+    def write_outputs(self):
         header = DataConverter.get_header()
         rows = DataConverter.convert_to_table_rows(self.board, CardFilters.ALL.value, len(header))
 
         # Output 1: HTML file
         self.html_file_gen.render()
         self.html_file_gen.write_to_file(self.html_result_file_path)
-
-        # TODO ASAP cache move this elsewhere?
-        cache.save()
 
         # Output 2: Rich table
         self.rich_table_gen.render(rows, print_console=False)

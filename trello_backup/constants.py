@@ -25,7 +25,7 @@ class FilePath:
         find_result_type=FindResultType.DIRS,
         exclude_dirs=[],
     )
-    WEBPAGE_TITLE_CACHE_FILE = FileUtils.join_path(TRELLO_OUTPUT_DIR, 'webpage_title_cache.pickle')
+    WEBPAGE_TITLE_CACHE_FILE = FileUtils.join_path(TRELLO_OUTPUT_DIR, 'webpage_title_cache')
 
     @classmethod
     def get_file_from_root(cls, fname):

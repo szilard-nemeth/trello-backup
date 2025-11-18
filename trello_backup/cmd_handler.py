@@ -10,8 +10,6 @@ from trello_backup.display.console import CliLogger
 from trello_backup.display.output import OutputHandler, TrelloCardHtmlGeneratorMode
 from trello_backup.http_server import HttpServer
 from trello_backup.trello.api import TrelloUtils
-from trello_backup.trello.cache import WebpageTitleCache
-from trello_backup.trello.model import TrelloBoard
 from trello_backup.trello.controller import TrelloObjectParser, TrelloOperations
 
 LOG = logging.getLogger(__name__)
@@ -46,7 +44,8 @@ class MainCommandHandler:
         board = trello_ops.get_board("Cloudera", download_comments=html_gen_config.include_comments)
 
         out = OutputHandler(board, html_gen_config)
-        out.write_outputs(trello_ops.cache)
+        out.write_outputs()
+        trello_ops.cache.save()
 
         # Serve attachment files for CSV output
         if self.ctx.config.get(TrelloCfg.SERVE_ATTACHMENTS):
