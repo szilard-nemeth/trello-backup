@@ -2,13 +2,46 @@ from typing import Dict, List
 
 from trello_backup.display.output import TrelloCardHtmlGeneratorConfig
 from trello_backup.trello.api import TrelloApi
+from trello_backup.trello.cache import WebpageTitleCache
 from trello_backup.trello.model import TrelloList, TrelloChecklist, TrelloComment, TrelloChecklistItem, TrelloCard, \
-    TrelloAttachment
+    TrelloAttachment, TrelloBoard
+
+
+class TrelloOperations:
+
+    def get_board(self, name: str, download_comments: bool = False):
+        board_id = TrelloApi.get_board_id(name)
+        board_json = TrelloApi.get_board_details(board_id)
+
+        # 1. parse lists
+        trello_lists_all = TrelloObjectParser.parse_trello_lists(board_json)
+        trello_lists_by_id = {l.id: l for l in trello_lists_all}
+
+        # 2. Parse checklists
+        trello_checklists = TrelloObjectParser.parse_trello_checklists(board_json)
+        trello_checklists_by_id = {c.id: c for c in trello_checklists}
+
+        trello_cards_all = TrelloObjectParser.parse_trello_cards(board_json, trello_lists_by_id, trello_checklists_by_id, download_comments)
+        trello_cards_open = list(filter(lambda c: not c.closed, trello_cards_all))
+
+        # Filter open trello lists
+        trello_lists_open = list(filter(lambda tl: not tl.closed, trello_lists_all))
+        print(trello_lists_open)
+
+        # Initialize WebpageTitleCache before calling 'board.get_checklist_url_titles'
+        WebpageTitleCache.load()
+        board = TrelloBoard(board_id, name, trello_lists_open)
+        board.get_checklist_url_titles()
+
+        # Download attachments
+        TrelloApi.download_attachments(board)
+        return board
 
 
 class TrelloObjectParser:
-    def parse_trello_lists(self, board_details_json):
-        lists = board_details_json["lists"]
+    @staticmethod
+    def parse_trello_lists(board_json):
+        lists = board_json["lists"]
 
         parsed_lists = []
         for list in lists:
@@ -16,11 +49,12 @@ class TrelloObjectParser:
             parsed_lists.append(trello_list)
         return parsed_lists
 
-    def parse_trello_cards(self, board_details_json,
+    @staticmethod
+    def parse_trello_cards(board_json,
                            trello_lists_by_id: Dict[str, TrelloList],
                            trello_checklists_by_id: Dict[str, TrelloChecklist],
-                           html_gen_config: TrelloCardHtmlGeneratorConfig):
-        cards_json = board_details_json["cards"]
+                           download_comments: bool = False):
+        cards_json = board_json["cards"]
         cards = []
         for idx, card in enumerate(cards_json):
             print("Processing card: {} / {}".format(idx + 1, len(cards_json)))
@@ -30,7 +64,7 @@ class TrelloObjectParser:
             checklists = [trello_checklists_by_id[cid] for cid in checklist_ids]
 
             comments = []
-            if html_gen_config.download_comments:
+            if download_comments:
                 comments: List[TrelloComment] = TrelloObjectParser.query_comments_for_card(card)
 
             attachments = []
@@ -57,8 +91,8 @@ class TrelloObjectParser:
             trello_list.cards.append(trello_card)
         return cards
 
-
-    def reformat_attachment_url(self, card_id, attachment_id, attachment_filename):
+    @staticmethod
+    def reformat_attachment_url(card_id, attachment_id, attachment_filename):
         # Convert URLs as Trello attachments cannot be downloaded from trello.com URL anymore..
         # See details here: https://community.developer.atlassian.com/t/update-authenticated-access-to-s3/43681
         # Example URL: https://api.trello.com/1/cards/{idCard}/attachments/{idAttachment}/download/{attachmentFileName}
@@ -66,8 +100,8 @@ class TrelloObjectParser:
         # Target: https://api.trello.com/1/cards/60d8951d65e3c9345794d20a/attachments/631332fc6b78cf0135be0a37/download/image.png
         return "https://api.trello.com/1/cards/{c_id}/attachments/{a_id}/download/{a_fname}".format(c_id=card_id, a_id=attachment_id, a_fname=attachment_filename)
 
-
-    def query_comments_for_card(self, card) -> List[TrelloComment]:
+    @staticmethod
+    def query_comments_for_card(card) -> List[TrelloComment]:
         actions = TrelloApi.get_actions_for_card(card["id"])
         comment_actions_json = list(filter(lambda a: a['type'] == "commentCard", actions))
         comments = []
@@ -86,9 +120,9 @@ class TrelloObjectParser:
             comments.append(trello_comment)
         return comments
 
-
-    def parse_trello_checklists(self, board_details_json):
-        checklists = board_details_json["checklists"]
+    @staticmethod
+    def parse_trello_checklists(board_json):
+        checklists = board_json["checklists"]
 
         trello_checklists = []
         for checklist in checklists:
