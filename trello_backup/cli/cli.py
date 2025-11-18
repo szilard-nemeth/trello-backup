@@ -10,7 +10,7 @@ from rich.table import Table
 from trello_backup.display.console import CliLogger
 from trello_backup.constants import FilePath, CTX_LOG_LEVEL, CTX_WORKING_DIR, CTX_SESSION_DIR, CTX_DRY_RUN
 from trello_backup.exception import TrelloException
-from trello_backup.display.prompt import TrelloPrompt
+from trello_backup.cli.prompt import TrelloPrompt
 from trello_backup.utils import LoggingUtils
 
 import logging
