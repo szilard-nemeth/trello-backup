@@ -46,7 +46,7 @@ class MainCommandHandler:
         board = trello_ops.get_board("Cloudera", download_comments=html_gen_config.include_comments)
 
         out = OutputHandler(board, html_gen_config)
-        out.write_outputs()
+        out.write_outputs(trello_ops.cache)
 
         # Serve attachment files for CSV output
         if self.ctx.config.get(TrelloCfg.SERVE_ATTACHMENTS):

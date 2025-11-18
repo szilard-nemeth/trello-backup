@@ -116,7 +116,7 @@ class TrelloChecklist:
     card_id: str
     items: List[TrelloChecklistItem]
 
-    def get_url_titles(self):
+    def get_url_titles(self, cache: WebpageTitleCache):
         import re
         for item in self.items:
             try:
@@ -124,20 +124,20 @@ class TrelloChecklist:
             except:
                 url = None
             if url:
-                cached_title = WebpageTitleCache.get(url)
+                cached_title = cache.get(url)
                 if not cached_title:
                     # Fetch title of URL
                     url_title = HtmlParser.get_title_from_url(url)
                     url_title = re.sub(r'[\n\t\r]+', ' ', url_title)
                     if url_title:
-                        WebpageTitleCache.put(url, url_title)
+                        cache.put(url, url_title)
 
                 else:
                     # Read from cache
-                    old_url_title = WebpageTitleCache.get(url)
+                    old_url_title = cache.get(url)
                     new_url_title = re.sub(r'[\n\t\r]+', ' ', old_url_title)
                     if old_url_title != new_url_title:
-                        WebpageTitleCache.put(url, new_url_title)
+                        cache.put(url, new_url_title)
                     url_title = new_url_title
 
                 if not url_title:
@@ -179,9 +179,9 @@ class TrelloCard:
     def has_attachments(self):
         return len(self.attachments) > 0
 
-    def get_checklist_url_titles(self):
+    def get_checklist_url_titles(self, cache: WebpageTitleCache):
         for cl in self.checklists:
-            cl.get_url_titles()
+            cl.get_url_titles(cache)
 
     def get_extracted_data(self, card_filter_flags: CardFilter, md_formatter: 'MarkdownFormatter'):
         # Sanity check
@@ -252,9 +252,9 @@ class TrelloBoard:
         import re
         self.simple_name = re.sub("[ /\ ]+", "-", self.name).lower()
 
-    def get_checklist_url_titles(self):
+    def get_checklist_url_titles(self, cache: WebpageTitleCache):
         for list in self.lists:
             for card in list.cards:
-                card.get_checklist_url_titles()
+                card.get_checklist_url_titles(cache)
 
 

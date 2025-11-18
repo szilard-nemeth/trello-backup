@@ -270,7 +270,7 @@ class OutputHandler:
         self.csv_file_path = os.path.join(FilePath.TRELLO_OUTPUT_DIR, f"{fname_prefix}.csv")
         self.csv_file_copy_to_file = f"~/Downloads/{fname_prefix}.csv"
 
-    def write_outputs(self):
+    def write_outputs(self, cache: WebpageTitleCache):
         header = DataConverter.get_header()
         rows = DataConverter.convert_to_table_rows(self.board, CardFilters.ALL.value, len(header))
 
@@ -279,7 +279,7 @@ class OutputHandler:
         self.html_file_gen.write_to_file(self.html_result_file_path)
 
         # TODO ASAP cache move this elsewhere?
-        WebpageTitleCache.save()
+        cache.save()
 
         # Output 2: Rich table
         self.rich_table_gen.render(rows, print_console=False)

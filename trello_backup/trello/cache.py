@@ -1,28 +1,37 @@
 import pickle
+from typing import Dict, Optional
 
 from trello_backup.constants import FilePath
 
 
 class WebpageTitleCache:
-    _DATA = {}
+    def __init__(self, file_path: str = FilePath.WEBPAGE_TITLE_CACHE_FILE):
+        """
+        Initializes the cache and sets the file path.
+        The actual data structure is initialized in the load method.
+        """
+        self._data: Dict[str, str] = {}
+        self._file_path = file_path
 
-    @staticmethod
-    def load():
+    def load(self) -> None:
+        """Loads cache data from disk."""
         try:
-            with open(FilePath.WEBPAGE_TITLE_CACHE_FILE, 'rb') as f:
-                WebpageTitleCache._DATA = pickle.load(f)
-        except:
-            WebpageTitleCache._DATA = {}
+            with open(self._file_path, 'rb') as f:
+                self._data = pickle.load(f)
+        except (FileNotFoundError, EOFError, pickle.UnpicklingError):
+            self._data = {} # Initialize empty if file is missing or corrupt
 
-    @staticmethod
-    def save():
-        with open(FilePath.WEBPAGE_TITLE_CACHE_FILE, 'wb') as f:
-            pickle.dump(WebpageTitleCache._DATA, f, protocol=pickle.HIGHEST_PROTOCOL)
+    def save(self) -> None:
+        """Saves the current cache data to disk."""
+        # Ensure the directory exists before saving, if necessary (not shown here)
+        with open(self._file_path, 'wb') as f:
+            pickle.dump(self._data, f, protocol=pickle.HIGHEST_PROTOCOL)
 
-    @staticmethod
-    def get(url: str):
-        return WebpageTitleCache._DATA[url] if url in WebpageTitleCache._DATA else None
+    def get(self, url: str) -> Optional[str]:
+        """Retrieves a title for a given URL, or None if not found."""
+        # Use the cleaner dict.get() method
+        return self._data.get(url)
 
-    @staticmethod
-    def put(url: str, title: str):
-        WebpageTitleCache._DATA[url] = title
+    def put(self, url: str, title: str) -> None:
+        """Stores a title for a given URL."""
+        self._data[url] = title
