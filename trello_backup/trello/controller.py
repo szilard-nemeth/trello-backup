@@ -1,41 +1,45 @@
-from typing import Dict, List
+from typing import Dict, List, Any
 
-from trello_backup.display.output import TrelloCardHtmlGeneratorConfig
 from trello_backup.trello.api import TrelloApi
 from trello_backup.trello.cache import WebpageTitleCache
 from trello_backup.trello.model import TrelloList, TrelloChecklist, TrelloComment, TrelloChecklistItem, TrelloCard, \
-    TrelloAttachment, TrelloBoard
+    TrelloAttachment, TrelloBoard, TrelloLists, TrelloChecklists, TrelloCards
 
 
 class TrelloOperations:
+    def __init__(self):
+        self._board_name_to_board_id: Dict[str, str] = {}
+        self._board_id_to_board_json: Dict[str, Any] = {}
+
 
     def get_board(self, name: str, download_comments: bool = False):
-        board_id = TrelloApi.get_board_id(name)
-        board_json = TrelloApi.get_board_details(board_id)
+        board_id = self._get_board_id(name)
+        board_json = self._get_board_json(board_id)
 
-        # 1. parse lists
-        trello_lists_all = TrelloObjectParser.parse_trello_lists(board_json)
-        trello_lists_by_id = {l.id: l for l in trello_lists_all}
-
-        # 2. Parse checklists
-        trello_checklists = TrelloObjectParser.parse_trello_checklists(board_json)
-        trello_checklists_by_id = {c.id: c for c in trello_checklists}
-
-        trello_cards_all = TrelloObjectParser.parse_trello_cards(board_json, trello_lists_by_id, trello_checklists_by_id, download_comments)
-        trello_cards_open = list(filter(lambda c: not c.closed, trello_cards_all))
-
-        # Filter open trello lists
-        trello_lists_open = list(filter(lambda tl: not tl.closed, trello_lists_all))
-        print(trello_lists_open)
+        trello_lists = TrelloLists(board_json)
+        trello_checklists = TrelloChecklists(board_json)
+        trello_cards = TrelloCards(board_json, trello_lists, trello_checklists, download_comments=download_comments)
 
         # Initialize WebpageTitleCache before calling 'board.get_checklist_url_titles'
         WebpageTitleCache.load()
-        board = TrelloBoard(board_id, name, trello_lists_open)
+        board = TrelloBoard(board_id, name, trello_lists.open)
         board.get_checklist_url_titles()
 
         # Download attachments
         TrelloApi.download_attachments(board)
         return board
+
+    def _get_board_id(self, name):
+        if name in self._board_name_to_board_id:
+            return self._board_name_to_board_id[name]
+        else:
+            return TrelloApi.get_board_id(name)
+
+    def _get_board_json(self, board_id):
+        if board_id in self._board_id_to_board_json:
+            return self._board_id_to_board_json[board_id]
+        else:
+            return TrelloApi.get_board_details(board_id)
 
 
 class TrelloObjectParser:
@@ -51,17 +55,17 @@ class TrelloObjectParser:
 
     @staticmethod
     def parse_trello_cards(board_json,
-                           trello_lists_by_id: Dict[str, TrelloList],
-                           trello_checklists_by_id: Dict[str, TrelloChecklist],
+                           trello_lists: TrelloLists,
+                           trello_checklists: TrelloChecklists,
                            download_comments: bool = False):
         cards_json = board_json["cards"]
         cards = []
         for idx, card in enumerate(cards_json):
             print("Processing card: {} / {}".format(idx + 1, len(cards_json)))
-            trello_list = trello_lists_by_id[card["idList"]]
+            trello_list = trello_lists.by_id[card["idList"]]
             label_names = [l["name"] for l in card["labels"]]
             checklist_ids = card["idChecklists"]
-            checklists = [trello_checklists_by_id[cid] for cid in checklist_ids]
+            checklists = [trello_checklists.by_id[cid] for cid in checklist_ids]
 
             comments = []
             if download_comments:

@@ -1,6 +1,6 @@
 from dataclasses import dataclass, field
 from enum import Flag, auto
-from typing import List
+from typing import List, Dict
 
 from pythoncommons.url_utils import UrlUtils
 
@@ -54,6 +54,16 @@ class TrelloList:
     name: str
     board_id: str
     cards: List['TrelloCard'] = field(default_factory=list)
+
+
+class TrelloLists:
+    def __init__(self, board_json):
+        from trello_backup.trello.controller import TrelloObjectParser
+        trello_lists_all: List[TrelloList] = TrelloObjectParser.parse_trello_lists(board_json)
+
+        self.by_id: Dict[str, TrelloList] = {l.id: l for l in trello_lists_all}
+        # Filter open trello lists
+        self.open: List[TrelloList] = list(filter(lambda tl: not tl.closed, trello_lists_all))
 
 
 @dataclass
@@ -126,6 +136,13 @@ class TrelloChecklist:
                     url_title = url
                 item.url_title = url_title
                 item.url = url
+
+
+class TrelloChecklists:
+    def __init__(self, board_json):
+        from trello_backup.trello.controller import TrelloObjectParser
+        self.all: List[TrelloChecklist] = TrelloObjectParser.parse_trello_checklists(board_json)
+        self.by_id: Dict[str, TrelloChecklist] = {c.id: c for c in self.all}
 
 
 @dataclass
@@ -208,6 +225,13 @@ class TrelloCard:
 
     def get_labels_as_str(self):
         return ",".join(self.labels)
+
+
+class TrelloCards:
+    def __init__(self, board_json, trello_lists: TrelloLists, trello_checklists: TrelloChecklists, download_comments=False):
+        from trello_backup.trello.controller import TrelloObjectParser
+        self.all: List[TrelloCard] = TrelloObjectParser.parse_trello_cards(board_json, trello_lists, trello_checklists, download_comments)
+        self.open: List[TrelloCard] = list(filter(lambda c: not c.closed, self.all))
 
 
 @dataclass
