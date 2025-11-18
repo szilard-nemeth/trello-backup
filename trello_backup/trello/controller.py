@@ -10,18 +10,19 @@ class TrelloOperations:
     def __init__(self):
         self._board_name_to_board_id: Dict[str, str] = {}
         self._board_id_to_board_json: Dict[str, Any] = {}
+        # Initialize WebpageTitleCache so 'board.get_checklist_url_titles' can use it
+        WebpageTitleCache.load()
 
 
     def get_board(self, name: str, download_comments: bool = False):
         board_id = self._get_board_id(name)
         board_json = self._get_board_json(board_id)
 
+        # Parse JSON to objects
         trello_lists = TrelloLists(board_json)
         trello_checklists = TrelloChecklists(board_json)
         trello_cards = TrelloCards(board_json, trello_lists, trello_checklists, download_comments=download_comments)
 
-        # Initialize WebpageTitleCache before calling 'board.get_checklist_url_titles'
-        WebpageTitleCache.load()
         board = TrelloBoard(board_id, name, trello_lists.open)
         board.get_checklist_url_titles()
 

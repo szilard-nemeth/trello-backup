@@ -118,26 +118,26 @@ class TrelloChecklist:
 
     def get_url_titles(self):
         import re
-        cache = WebpageTitleCache._DATA
         for item in self.items:
             try:
                 url = UrlUtils.extract_from_str(item.name)
             except:
                 url = None
             if url:
-                url_title = None
-                if url not in cache:
+                cached_title = WebpageTitleCache.get(url)
+                if not cached_title:
                     # Fetch title of URL
                     url_title = HtmlParser.get_title_from_url(url)
                     url_title = re.sub(r'[\n\t\r]+', ' ', url_title)
                     if url_title:
-                        cache[url] = url_title
+                        WebpageTitleCache.put(url, url_title)
+
                 else:
                     # Read from cache
-                    old_url_title = cache[url]
+                    old_url_title = WebpageTitleCache.get(url)
                     new_url_title = re.sub(r'[\n\t\r]+', ' ', old_url_title)
                     if old_url_title != new_url_title:
-                        cache[url] = new_url_title
+                        WebpageTitleCache.put(url, new_url_title)
                     url_title = new_url_title
 
                 if not url_title:

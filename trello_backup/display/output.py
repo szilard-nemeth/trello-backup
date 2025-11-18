@@ -278,7 +278,7 @@ class OutputHandler:
         self.html_file_gen.render()
         self.html_file_gen.write_to_file(self.html_result_file_path)
 
-        # TODO ASAP move this elsewhere?
+        # TODO ASAP cache move this elsewhere?
         WebpageTitleCache.save()
 
         # Output 2: Rich table
