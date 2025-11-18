@@ -1,4 +1,5 @@
 import os
+from dataclasses import dataclass
 from enum import Enum
 from typing import List, Dict
 
@@ -12,11 +13,41 @@ from trello_backup.constants import FilePath
 from trello_backup.trello.cache import WebpageTitleCache
 
 from trello_backup.trello.model import TrelloComment, TrelloChecklist, TrelloBoard, CardFilter, ExtractedCardData
-from trello_backup.trello_backup import TrelloCardHtmlGeneratorConfig, INDENT, ACTIVE_CARD_FILTERS
+from trello_backup.trello_backup import INDENT, ACTIVE_CARD_FILTERS
+
+
+@dataclass
+class TrelloCardHtmlGeneratorConfig:
+    include_labels: bool
+    include_due_date: bool
+    include_checklists: bool
+    include_activity: bool
+    include_comments: bool
+
+    @property
+    def download_comments(self):
+        return self.include_comments and self.include_activity
+
+
+class TrelloCardHtmlGeneratorMode(Enum):
+    MINIMAL = TrelloCardHtmlGeneratorConfig(include_labels=False,
+                                            include_due_date=False,
+                                            include_checklists=True,
+                                            include_activity=False,
+                                            include_comments=False)
+    BASIC = TrelloCardHtmlGeneratorConfig(include_labels=True,
+                                          include_due_date=True,
+                                          include_checklists=True,
+                                          include_activity=False,
+                                          include_comments=False)
+    FULL = TrelloCardHtmlGeneratorConfig(include_labels=True,
+                                         include_due_date=True,
+                                         include_checklists=True,
+                                         include_activity=True,
+                                         include_comments=True)
 
 
 # TODO refactor output classes - Decouple model objects?
-
 class MarkdownFormatter:
     def __init__(self):
         # patching Markdown

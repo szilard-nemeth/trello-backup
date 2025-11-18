@@ -5,7 +5,7 @@ from pythoncommons.file_utils import FileUtils
 from trello_backup.cli.common import TrelloContext
 from trello_backup.config_parser.config import TrelloCfg
 from trello_backup.constants import FilePath
-from trello_backup.display.output import OutputHandler
+from trello_backup.display.output import OutputHandler, TrelloCardHtmlGeneratorMode
 from trello_backup.http_server import HttpServer
 from trello_backup.trello.api import TrelloUtils
 from trello_backup.trello.cache import WebpageTitleCache

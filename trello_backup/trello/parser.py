@@ -1,9 +1,9 @@
 from typing import Dict, List
 
+from trello_backup.display.output import TrelloCardHtmlGeneratorConfig
 from trello_backup.trello.api import TrelloApi
 from trello_backup.trello.model import TrelloList, TrelloChecklist, TrelloComment, TrelloChecklistItem, TrelloCard, \
     TrelloAttachment
-from trello_backup.trello_backup import TrelloCardHtmlGeneratorConfig
 
 
 class TrelloObjectParser:
