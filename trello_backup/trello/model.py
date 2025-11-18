@@ -1,5 +1,5 @@
 from dataclasses import dataclass, field
-from enum import Flag, auto
+from enum import Flag, auto, Enum
 from typing import List, Dict
 
 from pythoncommons.url_utils import UrlUtils
@@ -36,6 +36,14 @@ class CardFilter(Flag):
         for member in cls.__members__.values():
             retval |= member
         return retval
+
+
+class CardFilters(Enum):
+    ALL = CardFilter.ALL()
+    DESC_AND_CHECKLIST = CardFilter.WITH_DESCRIPTION | CardFilter.WITH_CHECKLIST
+    DESC_AND_ATTACHMENT = CardFilter.WITH_DESCRIPTION | CardFilter.WITH_ATTACHMENT
+    CHECKLIST_AND_ATTACHMENT = CardFilter.WITH_CHECKLIST | CardFilter.WITH_ATTACHMENT
+    ONLY_DESCRIPTION = CardFilter.WITH_DESCRIPTION
 
 
 

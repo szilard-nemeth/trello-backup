@@ -12,9 +12,10 @@ from pythoncommons.result_printer import TabulateTableFormat, TableRenderingConf
 from trello_backup.constants import FilePath
 from trello_backup.trello.cache import WebpageTitleCache
 
-from trello_backup.trello.model import TrelloComment, TrelloChecklist, TrelloBoard, CardFilter, ExtractedCardData
-from trello_backup.trello_backup import INDENT, ACTIVE_CARD_FILTERS
+from trello_backup.trello.model import TrelloComment, TrelloChecklist, TrelloBoard, CardFilter, ExtractedCardData, \
+    CardFilters
 
+INDENT = "&nbsp;&nbsp;&nbsp;&nbsp;"
 
 # TODO ASAP refactor output classes - Decouple model objects?
 
@@ -268,11 +269,10 @@ class OutputHandler:
         self.html_table_file_path = os.path.join(FilePath.TRELLO_OUTPUT_DIR, f"{fname_prefix}-custom-table.html")
         self.csv_file_path = os.path.join(FilePath.TRELLO_OUTPUT_DIR, f"{fname_prefix}.csv")
         self.csv_file_copy_to_file = f"~/Downloads/{fname_prefix}.csv"
-        self.card_filter_flags = ACTIVE_CARD_FILTERS
 
     def write_outputs(self):
         header = DataConverter.get_header()
-        rows = DataConverter.convert_to_table_rows(self.board, self.card_filter_flags, len(header))
+        rows = DataConverter.convert_to_table_rows(self.board, CardFilters.ALL.value, len(header))
 
         # Output 1: HTML file
         self.html_file_gen.render()
