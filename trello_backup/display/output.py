@@ -16,6 +16,8 @@ from trello_backup.trello.model import TrelloComment, TrelloChecklist, TrelloBoa
 from trello_backup.trello_backup import INDENT, ACTIVE_CARD_FILTERS
 
 
+# TODO ASAP refactor output classes - Decouple model objects?
+
 @dataclass
 class TrelloCardHtmlGeneratorConfig:
     include_labels: bool
@@ -47,7 +49,6 @@ class TrelloCardHtmlGeneratorMode(Enum):
                                          include_comments=True)
 
 
-# TODO refactor output classes - Decouple model objects?
 class MarkdownFormatter:
     def __init__(self):
         # patching Markdown
@@ -277,7 +278,7 @@ class OutputHandler:
         self.html_file_gen.render()
         self.html_file_gen.write_to_file(self.html_result_file_path)
 
-        # TODO move this elsewhere?
+        # TODO ASAP move this elsewhere?
         WebpageTitleCache.save()
 
         # Output 2: Rich table

@@ -112,7 +112,7 @@ class TrelloApi:
             "Accept": "application/json"
         }
 
-        # TODO hardcoded list id
+        # TODO ASAP hardcoded list id
         query = TrelloUtils.auth_query_params.update({'idList': '5abbe4b7ddc1b351ef961414'})
         response = requests.request(
             "POST",
@@ -141,7 +141,7 @@ class TrelloApi:
             b_id = board['id']
             result_dict[b_name] = b_id
 
-        # TODO debug log
+        # TODO ASAP debug log
         #print(json.dumps(parsed_json, sort_keys=True, indent=4, separators=(",", ": ")))
         return result_dict
 

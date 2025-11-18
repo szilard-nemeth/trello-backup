@@ -24,7 +24,7 @@ class MainCommandHandler:
     def backup_board(self):
         atexit.register(HttpServer.stop_server)
 
-        # TODO Hack! Move to TrelloApi.init()
+        # TODO ASAP Hack! Move to TrelloApi.init()
         token = self.ctx.config.get_secret(TrelloCfg.TRELLO_TOKEN)
         api_key = self.ctx.config.get_secret(TrelloCfg.TRELLO_API_KEY)
         TrelloUtils.auth_query_params = {
@@ -37,7 +37,7 @@ class MainCommandHandler:
 
         html_gen_config = TrelloCardHtmlGeneratorMode.BASIC.value
 
-        # TODO are these required here? Can we move it to FilePath directly?
+        # TODO ASAP are these required here? Can we move it to FilePath directly?
         FileUtils.ensure_dir_created(FilePath.TRELLO_OUTPUT_DIR)
         FileUtils.ensure_dir_created(FilePath.OUTPUT_DIR_ATTACHMENTS)
 

@@ -8,7 +8,7 @@ from trello_backup.http_server import HTTP_SERVER_PORT
 from trello_backup.trello.cache import WebpageTitleCache
 from trello_backup.trello.html import HtmlParser
 
-# TODO Extract any parsing logic from dataclasses
+# TODO ASAP Extract any parsing logic from dataclasses
 
 @dataclass
 class ExtractedCardData:
@@ -22,10 +22,10 @@ class ExtractedCardData:
     cl_item_url: str
 
 
-# TODO Move this to some other module?
+# TODO ASAP Move this to some other module?
 class CardFilter(Flag):
     NONE = 0
-    OPEN = auto()  # TODO Apply this card filter
+    OPEN = auto()  # TODO ASAP Apply this card filter
     WITH_CHECKLIST = auto()
     WITH_DESCRIPTION = auto()
     WITH_ATTACHMENT = auto()

@@ -81,19 +81,19 @@ class FilePath:
 
 FilePath.CONFIG_DIR = FilePath.get_dir_from_root("config", parent_dir=FilePath.MODULE_ROOT_NAME, excludes=["config_parser"])
 
-# TODO use this constant
+# TODO ASAP2 use this constant
 CTX_LOG_LEVEL = 'loglevel'
 
-# TODO use this constant
+# TODO ASAP2 use this constant
 CTX_WORKING_DIR = 'workingDir'
 
-# TODO use this constant
+# TODO ASAP2 use this constant
 CTX_SESSION_DIR = 'sessionDir'
 
-# TODO use this constant
+# TODO ASAP2 use this constant
 CTX_LOG_FILES = "logFiles"
 
-# TODO use this constant
+# TODO ASAP2 use this constant
 CTX_DRY_RUN = 'dryRun'
 
 CTX_HANDLER = 'handler'
