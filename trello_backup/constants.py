@@ -26,6 +26,8 @@ class FilePath:
         exclude_dirs=[],
     )
     WEBPAGE_TITLE_CACHE_FILE = FileUtils.join_path(TRELLO_OUTPUT_DIR, 'webpage_title_cache')
+    FileUtils.ensure_dir_created(TRELLO_OUTPUT_DIR)
+    FileUtils.ensure_dir_created(OUTPUT_DIR_ATTACHMENTS)
 
     @classmethod
     def get_file_from_root(cls, fname):

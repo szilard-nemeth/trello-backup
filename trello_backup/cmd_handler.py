@@ -23,13 +23,7 @@ class MainCommandHandler:
 
     def backup_board(self, board_name: str):
         atexit.register(HttpServer.stop_server)
-
         html_gen_config = TrelloCardHtmlGeneratorMode.BASIC.value
-
-        # TODO ASAP are these required here? Can we move it to FilePath directly?
-        FileUtils.ensure_dir_created(FilePath.TRELLO_OUTPUT_DIR)
-        FileUtils.ensure_dir_created(FilePath.OUTPUT_DIR_ATTACHMENTS)
-
         trello_ops = TrelloOperations()
         board = trello_ops.get_board(board_name, download_comments=html_gen_config.include_comments)
 
