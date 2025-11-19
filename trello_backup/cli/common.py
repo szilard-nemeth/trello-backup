@@ -3,9 +3,10 @@ from dataclasses import dataclass
 from typing import Iterable
 
 
-from trello_backup.config_parser.config import ConfigLoader, ConfigReader, TrelloConfig
+from trello_backup.config_parser.config import ConfigLoader, ConfigReader, TrelloConfig, TrelloCfg
 from trello_backup.constants import CTX_DRY_RUN, CTX_LOG_FILES
 from trello_backup.exception import TrelloConfigException
+from trello_backup.trello.api import TrelloApi
 
 LOG = logging.getLogger(__name__)
 
@@ -49,4 +50,7 @@ class TrelloContext:
         ctx = TrelloContext(conf,
                             dry_run=dry_run,
                             log_files=log_files)
+        api_key = conf.get_secret(TrelloCfg.TRELLO_API_KEY)
+        token = conf.get_secret(TrelloCfg.TRELLO_TOKEN)
+        TrelloApi.init(api_key, token)
         return ctx

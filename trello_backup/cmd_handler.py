@@ -24,17 +24,6 @@ class MainCommandHandler:
     def backup_board(self):
         atexit.register(HttpServer.stop_server)
 
-        # TODO ASAP Hack! Move to TrelloApi.init()
-        token = self.ctx.config.get_secret(TrelloCfg.TRELLO_TOKEN)
-        api_key = self.ctx.config.get_secret(TrelloCfg.TRELLO_API_KEY)
-        TrelloApi.auth_query_params = {
-            'key': api_key,
-            'token': token
-        }
-        TrelloApi.authorization_headers = {
-            "Authorization": "OAuth oauth_consumer_key=\"{}\", oauth_token=\"{}\"".format(api_key, token)
-        }
-
         html_gen_config = TrelloCardHtmlGeneratorMode.BASIC.value
 
         # TODO ASAP are these required here? Can we move it to FilePath directly?

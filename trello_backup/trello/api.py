@@ -19,6 +19,16 @@ class TrelloApi:
         pass
 
     @classmethod
+    def init(cls, api_key, token):
+        TrelloApi.auth_query_params = {
+            'key': api_key,
+            'token': token
+        }
+        TrelloApi.authorization_headers = {
+            "Authorization": "OAuth oauth_consumer_key=\"{}\", oauth_token=\"{}\"".format(api_key, token)
+        }
+
+    @classmethod
     def get_board_details(cls, board_id):
         params = {
             "fields": "all",
