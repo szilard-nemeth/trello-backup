@@ -7,16 +7,14 @@ from trello_backup.constants import FilePath
 
 ORGANIZATION_ID = "60b31169ff7e174519a40577"
 
-class TrelloUtils:
+
+class TrelloApi:
     auth_query_params = None
     authorization_headers = None
     headers_accept_json = {
         "Accept": "application/json"
     }
 
-
-
-class TrelloApi:
     def __init__(self):
         pass
 
@@ -41,12 +39,12 @@ class TrelloApi:
         }
 
         url = "https://api.trello.com/1/boards/{board_id}/".format(board_id=board_id)
-        query = dict(TrelloUtils.auth_query_params)
+        query = dict(TrelloApi.auth_query_params)
         query.update(params)
         response = requests.request(
             "GET",
             url,
-            headers=TrelloUtils.headers_accept_json,
+            headers=TrelloApi.headers_accept_json,
             params=query
         )
         response.raise_for_status()
@@ -61,8 +59,8 @@ class TrelloApi:
         response = requests.request(
             "GET",
             url,
-            headers=TrelloUtils.headers_accept_json,
-            params=TrelloUtils.auth_query_params
+            headers=TrelloApi.headers_accept_json,
+            params=TrelloApi.auth_query_params
         )
         #code = response.status_code
         response.raise_for_status()
@@ -80,7 +78,7 @@ class TrelloApi:
             "GET",
             url,
             headers=headers,
-            params=TrelloUtils.auth_query_params
+            params=TrelloApi.auth_query_params
         )
 
         print(json.dumps(json.loads(response.text), sort_keys=True, indent=4, separators=(",", ": ")))
@@ -97,7 +95,7 @@ class TrelloApi:
             "GET",
             url,
             headers=headers,
-            params=TrelloUtils.auth_query_params
+            params=TrelloApi.auth_query_params
         )
 
         # print(json.dumps(json.loads(response.text), sort_keys=True, indent=4, separators=(",", ": ")))
@@ -113,7 +111,7 @@ class TrelloApi:
         }
 
         # TODO ASAP hardcoded list id
-        query = TrelloUtils.auth_query_params.update({'idList': '5abbe4b7ddc1b351ef961414'})
+        query = TrelloApi.auth_query_params.update({'idList': '5abbe4b7ddc1b351ef961414'})
         response = requests.request(
             "POST",
             url,
@@ -129,8 +127,8 @@ class TrelloApi:
         response = requests.request(
             "GET",
             url,
-            headers=TrelloUtils.headers_accept_json,
-            params=TrelloUtils.auth_query_params
+            headers=TrelloApi.headers_accept_json,
+            params=TrelloApi.auth_query_params
         )
 
         parsed_json = json.loads(response.text)
@@ -152,8 +150,8 @@ class TrelloApi:
         response = requests.request(
             "GET",
             url,
-            headers=TrelloUtils.headers_accept_json,
-            params=TrelloUtils.auth_query_params
+            headers=TrelloApi.headers_accept_json,
+            params=TrelloApi.auth_query_params
         )
 
         #print(json.dumps(json.loads(response.text), sort_keys=True, indent=4, separators=(",", ": ")))
@@ -207,7 +205,7 @@ class TrelloApi:
         response = requests.request(
             "GET",
             attachment.api_url,
-            headers=TrelloUtils.authorization_headers,
+            headers=TrelloApi.authorization_headers,
             stream=True # Crucial: ensures the entire file isn't loaded into memory
         )
         # This still belongs here, as it validates the success of the network request
@@ -225,7 +223,7 @@ class TrelloApi:
         with requests.request(
                 "GET",
                 attachment.api_url,
-                headers=TrelloUtils.authorization_headers,
+                headers=TrelloApi.authorization_headers,
                 stream=True
         ) as response:
             response.raise_for_status()

@@ -10,7 +10,7 @@ from trello_backup.constants import FilePath
 from trello_backup.display.console import CliLogger
 from trello_backup.display.output import OutputHandler, TrelloCardHtmlGeneratorMode
 from trello_backup.http_server import HttpServer
-from trello_backup.trello.api import TrelloUtils
+from trello_backup.trello.api import TrelloApi
 from trello_backup.trello.service import TrelloOperations
 
 LOG = logging.getLogger(__name__)
@@ -27,11 +27,11 @@ class MainCommandHandler:
         # TODO ASAP Hack! Move to TrelloApi.init()
         token = self.ctx.config.get_secret(TrelloCfg.TRELLO_TOKEN)
         api_key = self.ctx.config.get_secret(TrelloCfg.TRELLO_API_KEY)
-        TrelloUtils.auth_query_params = {
+        TrelloApi.auth_query_params = {
             'key': api_key,
             'token': token
         }
-        TrelloUtils.authorization_headers = {
+        TrelloApi.authorization_headers = {
             "Authorization": "OAuth oauth_consumer_key=\"{}\", oauth_token=\"{}\"".format(api_key, token)
         }
 
