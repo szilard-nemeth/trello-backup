@@ -4,8 +4,7 @@ from typing import List, Dict
 
 from trello_backup.http_server import HTTP_SERVER_PORT
 
-# TODO ASAP Extract any parsing logic from dataclasses
-
+# TODO ASAP: Revisit this class?
 @dataclass
 class ExtractedCardData:
     description: str
@@ -151,6 +150,7 @@ class TrelloCard:
         return len(self.attachments) > 0
 
     def get_extracted_data(self, card_filter_flags: CardFilter, md_formatter: 'MarkdownFormatter'):
+        # TODO ASAP Extract this to service object?
         # Sanity check
         # has_checklists = self.has_checklist
         # has_attachments = self.has_attachments

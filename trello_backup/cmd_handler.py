@@ -1,5 +1,6 @@
 import atexit
 import logging
+from typing import List
 
 from pythoncommons.file_utils import FileUtils
 
@@ -41,6 +42,7 @@ class MainCommandHandler:
         FileUtils.ensure_dir_created(FilePath.OUTPUT_DIR_ATTACHMENTS)
 
         trello_ops = TrelloOperations()
+        # TODO ASAP Hardcoded board name
         board = trello_ops.get_board("Cloudera", download_comments=html_gen_config.include_comments)
 
         out = OutputHandler(board, html_gen_config)
@@ -58,6 +60,9 @@ class MainCommandHandler:
 
         # TODO add file cache that stores in the following hierarchy:
         #  <maindir>/boards/<board>/cards/<card>/actions/<action_id>.json
+
+    def print_cards(self, board: str, lists: List[str]):
+        pass
 
 
 
