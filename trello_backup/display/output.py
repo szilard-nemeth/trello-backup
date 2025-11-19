@@ -1,13 +1,17 @@
 import os
 from dataclasses import dataclass
 from enum import Enum
-from typing import List, Dict
+from typing import List, Dict, Any
 
 from markdown import Markdown
 from io import StringIO
 
 from pythoncommons.file_utils import FileUtils, CsvFileUtils
 from pythoncommons.result_printer import TabulateTableFormat, TableRenderingConfig, ResultPrinter
+from rich.console import Console
+from rich.style import Style
+from rich.table import Table
+from rich.text import Text
 
 from trello_backup.constants import FilePath
 
@@ -323,6 +327,103 @@ class TrelloBoardRichTableGenerator:
     def write_file(self, file):
         self.console.save_html(file)
         print("Generated rich table to: " + file)
+
+class TrelloListAndCardsPrinter:
+    @staticmethod
+    def print_rich(trello_data: List[Dict[str, Any]]):
+        """
+        Prints the structured Trello data using the rich library for nice formatting.
+        """
+        console = Console()
+
+        # Define styles for reuse
+        list_style = Style(color="cyan", bold=True, reverse=True)
+        card_style = Style(color="green", bold=True)
+        header_style = Style(color="yellow", bold=True)
+
+        for list_obj in trello_data:
+            list_name = list_obj["name"]
+
+            # Print List Header
+            console.rule(Text(f" Trello List: {list_name} ", style=list_style))
+
+            if not list_obj["cards"]:
+                console.print("[i]No cards found in this list.[/i]")
+                print("\n")
+                continue
+
+            for card in list_obj["cards"]:
+                # Print Card Header
+                console.print(f"\n[b]📌 Card:[/b] [bold green]{card['name']}[/bold green]", style=card_style)
+
+                # Print Description (if available)
+                if card["description"]:
+                    console.print(f"\n[b]📝 Description:[/b]")
+                    console.print(f"[italic]{card['description']}[/italic]")
+
+                # Print Attachments
+                if card["attachments"]:
+                    attachment_table = Table(title=Text("Attachments", style=header_style), show_header=True, header_style="magenta", show_lines=True)
+                    attachment_table.add_column("Name", style="dim", overflow="fold")
+                    attachment_table.add_column("URL", style="blue", overflow="fold")
+                    attachment_table.add_column("Local Server Link", style="green", overflow="fold")
+
+                    for a in card["attachments"]:
+                        local_link = Text(a["local_server_path"] or "N/A", style="link " + ("bold blue" if a["local_server_path"] else "dim"))
+                        attachment_table.add_row(
+                            a["name"],
+                            a["url"],
+                            local_link
+                        )
+                    console.print(attachment_table)
+
+                # Print Checklists
+                if card["checklists"]:
+                    for checklist in card["checklists"]:
+                        cl_table = Table(title=Text(f"Checklist: {checklist['name']}", style=header_style), show_header=True, header_style="red", show_lines=False)
+                        cl_table.add_column("Status", width=10, style="bold")
+                        cl_table.add_column("Item / Title", style="bold", overflow="fold")
+                        cl_table.add_column("URL", style="blue", overflow="fold")
+
+                        for item in checklist["items"]:
+                            status = "[bold green]✓[/bold green]" if item["checked"] else "[bold red]✗[/bold red]"
+
+                            # Use the URL title if available, otherwise use the item name
+                            item_text = item["url_title"] if item["url_title"] else item["value"]
+                            url_text = Text(item["url"] or "N/A", style="link " + ("blue" if item["url"] else "dim"))
+
+                            cl_table.add_row(status, item_text, url_text)
+
+                        console.print(cl_table)
+
+                console.print("-" * 60) # Separator for cards
+
+        print("\n")
+
+    @staticmethod
+    def print_plain_text(trello_data: List[Dict[str, Any]]):
+        for list_obj in trello_data:
+            #for name, list in trello_lists.by_name.items():
+            print(f"List: {list_obj['name']}")
+            for card in list_obj["cards"]:
+                print(f"\nCard: {card['name']}")
+                if card['description']:
+                    print(f"Description: \n{card['description']}")
+                else:
+                    print("<NO DESCRIPTION>")
+
+                if not card["checklists"]:
+                    print("<NO CHECKLISTS>")
+                for checklist in card["checklists"]:
+                    print(f"{checklist['name']}: ")
+                    for item in checklist['items']:
+                        # sanity check
+                        if item['url'] and not item['url_title']:
+                            raise ValueError(f"CLI should have URL title if URL is parsed. CLI details: {item}")
+                        if item['url']:
+                            print(f"[{'x' if item['checked'] else ''}] {item['url_title']}: {item['url']}")
+                        else:
+                            print(f"[{'x' if item['checked'] else ''}] {item['value']}")
 
 
 class TrelloBoardHtmlTableHeader(Enum):

@@ -1,6 +1,6 @@
 import atexit
 import logging
-from typing import List
+from typing import List, Dict, Any
 
 from pythoncommons.file_utils import FileUtils
 
@@ -8,7 +8,7 @@ from trello_backup.cli.common import TrelloContext
 from trello_backup.config_parser.config import TrelloCfg
 from trello_backup.constants import FilePath
 from trello_backup.display.console import CliLogger
-from trello_backup.display.output import OutputHandler, TrelloCardHtmlGeneratorMode
+from trello_backup.display.output import OutputHandler, TrelloCardHtmlGeneratorMode, TrelloListAndCardsPrinter
 from trello_backup.http_server import HttpServer
 from trello_backup.trello.api import TrelloApi
 from trello_backup.trello.service import TrelloOperations
@@ -45,21 +45,7 @@ class MainCommandHandler:
 
     def print_cards(self, board: str, lists: List[str]):
         trello_ops = TrelloOperations()
-        trello_lists = trello_ops.get_lists(board, lists)
+        trello_data: List[Dict[str, Any]] = trello_ops.get_lists_and_cards(board, lists)
+        # TrelloListAndCardsPrinter.print_plain_text(trello_data)
+        TrelloListAndCardsPrinter.print_rich(trello_data)
 
-        for name, list in trello_lists.by_name.items():
-            print(f"List: {name}")
-            for c in list.cards:
-                print(f"Card: {c.name}")
-                if c.description:
-                    print(f"Description: \n{c.description}")
-                for cl in c.checklists:
-                    print(f"{cl.name}: ")
-                    for cli in cl.items:
-                        # sanity
-                        if cli.url and not cli.url_title:
-                            raise ValueError(f"CLI should have URL title if URL is parsed. CLI details: {cli}")
-                        if cli.url:
-                            print(f"[{'x' if cli.checked else ''}] {cli.url_title}: {cli.url}")
-                        else:
-                            print(f"[{'x' if cli.checked else ''}] {cli.value}")
