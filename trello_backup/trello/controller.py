@@ -66,19 +66,14 @@ class TrelloObjectParser:
         cards = []
         for idx, card in enumerate(cards_json):
             print("Processing card: {} / {}".format(idx + 1, len(cards_json)))
-            trello_list = trello_lists.by_id[card["idList"]]
-            label_names = [l["name"] for l in card["labels"]]
-            checklist_ids = card["idChecklists"]
-            checklists = [trello_checklists.by_id[cid] for cid in checklist_ids]
-
             comments = []
+            # TODO ASAP Decouple fetching API from parser logic - Here we fetch the comments, this does not belong here
             if download_comments:
                 comments: List[TrelloComment] = TrelloObjectParser.query_comments_for_card(card)
 
             attachments = []
             if "attachments" in card and len(card["attachments"]) > 0:
                 for attachment_json in card["attachments"]:
-                    #attachment_json = get_attachment_of_card(card["id"])
                     is_upload = attachment_json["isUpload"]
                     attachment_api_url = None
                     if is_upload:
@@ -94,6 +89,10 @@ class TrelloObjectParser:
                                                          None)
                     attachments.append(trello_attachment)
 
+            trello_list = trello_lists.by_id[card["idList"]]
+            label_names = [l["name"] for l in card["labels"]]
+            checklist_ids = card["idChecklists"]
+            checklists = [trello_checklists.by_id[cid] for cid in checklist_ids]
             trello_card = TrelloCard(card["id"], card["name"], trello_list, card["desc"], attachments, checklists, label_names, card["closed"], comments, card["due"], [])
             cards.append(trello_card)
             trello_list.cards.append(trello_card)
