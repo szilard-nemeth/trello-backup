@@ -21,7 +21,7 @@ class MainCommandHandler:
     def __init__(self, ctx: TrelloContext):
         self.ctx = ctx
 
-    def backup_board(self):
+    def backup_board(self, board_name: str):
         atexit.register(HttpServer.stop_server)
 
         html_gen_config = TrelloCardHtmlGeneratorMode.BASIC.value
@@ -31,8 +31,7 @@ class MainCommandHandler:
         FileUtils.ensure_dir_created(FilePath.OUTPUT_DIR_ATTACHMENTS)
 
         trello_ops = TrelloOperations()
-        # TODO ASAP Hardcoded board name
-        board = trello_ops.get_board("Cloudera", download_comments=html_gen_config.include_comments)
+        board = trello_ops.get_board(board_name, download_comments=html_gen_config.include_comments)
 
         out = OutputHandler(board, html_gen_config)
         out.write_outputs()
