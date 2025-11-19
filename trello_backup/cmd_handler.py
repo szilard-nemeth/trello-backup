@@ -10,7 +10,7 @@ from trello_backup.display.console import CliLogger
 from trello_backup.display.output import OutputHandler, TrelloCardHtmlGeneratorMode
 from trello_backup.http_server import HttpServer
 from trello_backup.trello.api import TrelloUtils
-from trello_backup.trello.controller import TrelloObjectParser, TrelloOperations
+from trello_backup.trello.service import TrelloOperations
 
 LOG = logging.getLogger(__name__)
 CLI_LOG = CliLogger(LOG)

@@ -62,7 +62,7 @@ class TrelloList:
 
 class TrelloLists:
     def __init__(self, board_json):
-        from trello_backup.trello.controller import TrelloObjectParser
+        from trello_backup.trello.parser import TrelloObjectParser
         trello_lists_all: List[TrelloList] = TrelloObjectParser.parse_trello_lists(board_json)
 
         self.by_id: Dict[str, TrelloList] = {l.id: l for l in trello_lists_all}
@@ -119,7 +119,7 @@ class TrelloChecklist:
 
 class TrelloChecklists:
     def __init__(self, board_json):
-        from trello_backup.trello.controller import TrelloObjectParser
+        from trello_backup.trello.parser import TrelloObjectParser
         self.all: List[TrelloChecklist] = TrelloObjectParser.parse_trello_checklists(board_json)
         self.by_id: Dict[str, TrelloChecklist] = {c.id: c for c in self.all}
 
@@ -204,7 +204,7 @@ class TrelloCard:
 
 class TrelloCards:
     def __init__(self, board_json, trello_lists: TrelloLists, trello_checklists: TrelloChecklists, download_comments=False):
-        from trello_backup.trello.controller import TrelloObjectParser
+        from trello_backup.trello.parser import TrelloObjectParser
         self.all: List[TrelloCard] = TrelloObjectParser.parse_trello_cards(board_json, trello_lists, trello_checklists, download_comments)
         self.open: List[TrelloCard] = list(filter(lambda c: not c.closed, self.all))
 
