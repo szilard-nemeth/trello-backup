@@ -46,6 +46,6 @@ class MainCommandHandler:
     def print_cards(self, board: str, lists: List[str]):
         trello_ops = TrelloOperations()
         trello_data: List[Dict[str, Any]] = trello_ops.get_lists_and_cards(board, lists)
-        # TrelloListAndCardsPrinter.print_plain_text(trello_data)
-        TrelloListAndCardsPrinter.print_rich(trello_data)
+        TrelloListAndCardsPrinter.print_plain_text(trello_data, only_open=True)
+        # TrelloListAndCardsPrinter.print_rich(trello_data)
 

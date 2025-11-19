@@ -401,18 +401,22 @@ class TrelloListAndCardsPrinter:
         print("\n")
 
     @staticmethod
-    def print_plain_text(trello_data: List[Dict[str, Any]]):
+    def print_plain_text(trello_data: List[Dict[str, Any]], print_placeholders=False, only_open=False):
+        # TODO ASAP Apply CardFilters
         for list_obj in trello_data:
             #for name, list in trello_lists.by_name.items():
             print(f"List: {list_obj['name']}")
             for card in list_obj["cards"]:
-                print(f"\nCard: {card['name']}")
+                if only_open and card["closed"]:
+                    continue
+                print(f"Card: {card['name']}")
                 if card['description']:
-                    print(f"Description: \n{card['description']}")
+                    print(f"{card['description']}")
                 else:
-                    print("<NO DESCRIPTION>")
+                    if print_placeholders:
+                        print("<NO DESCRIPTION>")
 
-                if not card["checklists"]:
+                if print_placeholders and not card["checklists"]:
                     print("<NO CHECKLISTS>")
                 for checklist in card["checklists"]:
                     print(f"{checklist['name']}: ")
@@ -424,6 +428,7 @@ class TrelloListAndCardsPrinter:
                             print(f"[{'x' if item['checked'] else ''}] {item['url_title']}: {item['url']}")
                         else:
                             print(f"[{'x' if item['checked'] else ''}] {item['value']}")
+                print("-" * 60) # Separator for cards
 
 
 class TrelloBoardHtmlTableHeader(Enum):

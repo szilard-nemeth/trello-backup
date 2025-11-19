@@ -79,6 +79,7 @@ class TrelloOperations:
                 card_data = {
                     "id": card.id,
                     "name": card.name,
+                    "closed": card.closed,
                     # "description": md_formatter.to_plain_text(card.description),
                     "description": md_formatter.to_plain_text(card.description),
                     "attachments": [
