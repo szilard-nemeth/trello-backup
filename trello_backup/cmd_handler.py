@@ -44,8 +44,22 @@ class MainCommandHandler:
         #  <maindir>/boards/<board>/cards/<card>/actions/<action_id>.json
 
     def print_cards(self, board: str, lists: List[str]):
-        pass
+        trello_ops = TrelloOperations()
+        trello_lists = trello_ops.get_lists(board, lists)
 
-
-
-
+        for name, list in trello_lists.by_name.items():
+            print(f"List: {name}")
+            for c in list.cards:
+                print(f"Card: {c.name}")
+                if c.description:
+                    print(f"Description: \n{c.description}")
+                for cl in c.checklists:
+                    print(f"{cl.name}: ")
+                    for cli in cl.items:
+                        # sanity
+                        if cli.url and not cli.url_title:
+                            raise ValueError(f"CLI should have URL title if URL is parsed. CLI details: {cli}")
+                        if cli.url:
+                            print(f"[{'x' if cli.checked else ''}] {cli.url_title}: {cli.url}")
+                        else:
+                            print(f"[{'x' if cli.checked else ''}] {cli.value}")

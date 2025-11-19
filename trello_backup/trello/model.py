@@ -1,6 +1,6 @@
 from dataclasses import dataclass, field
 from enum import Flag, auto, Enum
-from typing import List, Dict
+from typing import List, Dict, Optional
 
 from trello_backup.http_server import HTTP_SERVER_PORT
 
@@ -60,14 +60,45 @@ class TrelloList:
 
 
 class TrelloLists:
-    def __init__(self, board_json):
+    def __init__(self, board_json, trello_lists_param: Optional[List[TrelloList]] = None):
         from trello_backup.trello.parser import TrelloObjectParser
-        trello_lists_all: List[TrelloList] = TrelloObjectParser.parse_trello_lists(board_json)
+        self._board_json = board_json
+        self._filtered = False
 
-        self.by_id: Dict[str, TrelloList] = {l.id: l for l in trello_lists_all}
+        trello_lists: List[TrelloList] = TrelloObjectParser.parse_trello_lists(board_json)
+
+        if trello_lists_param:
+            trello_lists = trello_lists_param
+            self._filtered = True
+
+        self.by_id: Dict[str, TrelloList] = {l.id: l for l in trello_lists}
+        self.by_name: Dict[str, TrelloList] = {l.name: l for l in trello_lists}
         # Filter open trello lists
-        self.open: List[TrelloList] = list(filter(lambda tl: not tl.closed, trello_lists_all))
+        self.open: List[TrelloList] = list(filter(lambda tl: not tl.closed, trello_lists))
 
+    def filter(self, list_names: List[str]) -> 'TrelloLists':
+        """
+        Retrieves TrelloList objects corresponding to the provided list names.
+        Creates a new TrelloLists to only contain the filtered items.
+        """
+        found: List[TrelloList] = []
+        not_found: List[str] = []
+
+        # Iterate through the requested names to check and collect results
+        for name in list_names:
+            if name in self.by_name:
+                found.append(self.by_name[name])
+            else:
+                not_found.append(name)
+
+        # Raise an error if any lists were missing
+        if not_found:
+            missing_names = ', '.join(f"'{n}'" for n in not_found)
+            raise ValueError(
+                f"The following lists were not found on the board: {missing_names}"
+            )
+
+        return TrelloLists(self._board_json, trello_lists_param=found)
 
 @dataclass
 class TrelloAttachment:
@@ -92,7 +123,7 @@ class TrelloActivity:
 @dataclass
 class TrelloChecklistItem:
     id: str
-    name: str
+    value: str
     checked: bool
     url: str = None
     url_title: str = None
@@ -100,7 +131,7 @@ class TrelloChecklistItem:
     def get_html(self):
         if self.url:
             return f"<a href={self.url}>{self.url_title}</a>"
-        return self.name
+        return self.value
 
 
 @dataclass
@@ -190,7 +221,7 @@ class TrelloCard:
                         cl_item_url_title = item.url_title
                         cl_item_url = item.url
                     else:
-                        cl_item_name = item.name
+                        cl_item_name = item.value
                     result.append(ExtractedCardData(plain_text_description, "", "", "", "", cl_item_name, cl_item_url_title, cl_item_url))
 
         # If no append happened, append default ExtractedCardData

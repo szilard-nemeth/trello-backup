@@ -169,7 +169,7 @@ class TrelloApi:
         return parsed_json
 
     @classmethod
-    def get_board_id(cls, board_name):
+    def get_board_id(cls, board_name: str):
         # board_resp = get_board()
         # print(json.dumps(json.loads(board_resp.text), sort_keys=True, indent=4, separators=(",", ": ")))
         boards = cls.list_boards()

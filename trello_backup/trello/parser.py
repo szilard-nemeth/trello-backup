@@ -48,6 +48,10 @@ class TrelloObjectParser:
                                                          None)
                     attachments.append(trello_attachment)
 
+            if trello_lists._filtered and card["idList"] not in trello_lists.by_id:
+                # Skip this card.
+                # If TrelloLists are filtered (does not contain all the lists), we allow the card to be not present for the lists.
+                continue
             trello_list = trello_lists.by_id[card["idList"]]
             label_names = [l["name"] for l in card["labels"]]
             checklist_ids = card["idChecklists"]
@@ -98,6 +102,7 @@ class TrelloObjectParser:
                 trello_checklist_item = TrelloChecklistItem(checkitem["id"], checkitem["name"], checkitem["state"] == "complete")
                 trello_checklist_items.append(trello_checklist_item)
 
+            # TODO ASAP Add checklist object to card object
             trello_checklist = TrelloChecklist(checklist["id"], checklist["name"], checklist["idBoard"], checklist["idCard"], trello_checklist_items)
             trello_checklists.append(trello_checklist)
         return trello_checklists
