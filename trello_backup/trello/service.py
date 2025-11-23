@@ -24,6 +24,11 @@ class TrelloOperations:
         TrelloApi.download_attachments(board)
         return board
 
+    def get_lists_and_cards(self, board_name: str, list_names: List[str]) -> List[Dict[str, Any]]:
+        board, trello_lists = self._get_trello_board_and_lists(board_name, list_names)
+        output_data = self._convert_to_output_data(trello_lists)
+        return output_data
+
     def _get_trello_board_and_lists(self, name: str, list_names: List[str] = None, download_comments: bool = False) -> Tuple[TrelloBoard, TrelloLists]:
         board_id = self._get_board_id(name)
         board_json = self._get_board_json(board_id)
@@ -56,11 +61,6 @@ class TrelloOperations:
             return self._board_id_to_board_json[board_id]
         else:
             return TrelloApi.get_board_details(board_id)
-
-    def get_lists_and_cards(self, board_name: str, list_names: List[str]) -> List[Dict[str, Any]]:
-        board, trello_lists = self._get_trello_board_and_lists(board_name, list_names)
-        output_data = self._convert_to_output_data(trello_lists)
-        return output_data
 
     def _convert_to_output_data(self, trello_lists) -> List[Dict[str, Any]]:
         md_formatter = MarkdownFormatter()

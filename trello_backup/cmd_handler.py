@@ -16,7 +16,12 @@ from trello_backup.trello.service import TrelloOperations
 LOG = logging.getLogger(__name__)
 CLI_LOG = CliLogger(LOG)
 
+# TODO IDEA: HTML output file per list,
+#  only include: card name (bold), description (plain text), Checklists with check items
+#  Add WARNING text if has attachment OR add attachment links
 
+# TODO IDEA add file cache that stores in the following hierarchy:
+#  <maindir>/boards/<board>/cards/<card>/actions/<action_id>.json
 class MainCommandHandler:
     def __init__(self, ctx: TrelloContext):
         self.ctx = ctx
@@ -33,14 +38,6 @@ class MainCommandHandler:
         # Serve attachment files for CSV output
         if self.ctx.config.get(TrelloCfg.SERVE_ATTACHMENTS):
             HttpServer.launch_http_server(dir=FilePath.OUTPUT_DIR_ATTACHMENTS)
-
-
-        # TODO IDEA: HTML output file per list,
-        #  only include: card name (bold), description (plain text), Checklists with check items
-        #  Add WARNING text if has attachment OR add attachment links
-
-        # TODO IDEA add file cache that stores in the following hierarchy:
-        #  <maindir>/boards/<board>/cards/<card>/actions/<action_id>.json
 
     def print_cards(self, board: str, lists: List[str]):
         trello_ops = TrelloOperations()
