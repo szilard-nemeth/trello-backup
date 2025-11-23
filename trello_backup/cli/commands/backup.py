@@ -29,8 +29,8 @@ def board(ctx, board_name: str):
 @click.option('-l', '--list', "list_names",  multiple=True, required=True, help='Trello list name')
 @click.pass_context
 def cards(ctx, board: str, list_names: Tuple[str]):
-    if not list:
-        raise BadOptionUsage("versions", "At least one version need to be specified!")
+    if not list_names:
+        raise BadOptionUsage("list_names", "At least one list need to be specified!")
 
     list_names = list(list_names)
     handler = CliCommon.init_main_cmd_handler(ctx)
