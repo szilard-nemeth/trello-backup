@@ -3,7 +3,7 @@ import json
 import os
 from dataclasses import dataclass
 from enum import Enum
-from typing import Dict, Any, Callable, Optional, List, Iterable
+from typing import Dict, Any, Callable, Optional, List, Iterable, Tuple
 
 from pythoncommons.file_utils import FileUtils, JsonFileUtils
 
@@ -34,6 +34,18 @@ class TypeChecker(Enum):
     def __str__(self):
         return f"{{checker_func: {self.checker_func.__name__}, required type: {self.typing} }}"
 
+class ValueChecker(Enum):
+    FILE_PATH = (ObjectUtils.value_check_file_path, )
+
+    def __init__(self, checker_func: Callable):
+        self.checker_func = checker_func
+
+    def check(self, value):
+        return self.checker_func(value)
+
+    def __str__(self):
+        return f"checker_func: {self.checker_func.__name__}"
+
 
 
 class TrelloConfigType(Enum):
@@ -59,6 +71,11 @@ class TrelloConfigCategory(Enum):
 
 class TrelloCfg(Enum):
     __BY_KEY__ = None
+
+    ########################################
+    # dotenv configs
+    CONFIG_PATH= (TrelloConfigType.GLOBAL, TrelloConfigCategory.GENERIC, "config_path", TypeChecker.STR, ValueChecker.FILE_PATH)
+    SECRETS_PATH= (TrelloConfigType.GLOBAL, TrelloConfigCategory.GENERIC, "secrets_path", TypeChecker.STR, ValueChecker.FILE_PATH)
 
     ########################################
     # Secret configs
@@ -212,16 +229,38 @@ class Secrets:
 
 
 class ConfigReader:
-    def __init__(self):
-        self._conf_dir = FilePath.CONFIG_DIR
+    def __init__(self, validator):
+        user_config: Dict[str, str]
+        self._user_config, _, err_msg = self.read_user_config()
+        if err_msg:
+            raise TrelloConfigException(err_msg)
+
+        d = self._validate_and_parse_user_configs(validator)
+        validator.fail_if_errors()
+        self._config_path = d[TrelloCfg.CONFIG_PATH]
+        self._secrets_path = d[TrelloCfg.SECRETS_PATH]
+
+    def _validate_and_parse_user_configs(self, validator):
+        mandatory_cfgs = {TrelloCfg.CONFIG_PATH, TrelloCfg.SECRETS_PATH}
+
+        d = {}
+        for cfg in mandatory_cfgs:
+            if cfg.key not in self._user_config:
+                raise TrelloConfigException(f"Missing mandatory config: {cfg.key}")
+            value = self._user_config[cfg.key]
+            # Example path: '~/development/my-repos/project-data/input-data/trello-backup/config.json'
+            # Should resolve home dir (~) to actual home dir
+            value = os.path.expanduser(value)
+            d[cfg] = CfgValidator.validate_type_and_value(cfg, value, validator)
+        return d
 
     @property
     def config(self):
-        return f"{self._conf_dir}/config.json"
+        return self._config_path
 
     @property
     def secrets(self):
-        return f"{self._conf_dir}/secrets.json"
+        return self._secrets_path
 
     @staticmethod
     def _read(filename):
@@ -248,6 +287,26 @@ class ConfigReader:
         json_contents, _ = JsonFileUtils.load_data_from_json_file(filename)
         return json_contents
 
+    def read_user_config(self) -> Tuple[Dict[str, str], str, Optional[str]]:
+        return ConfigReader.read_user_config_from_env()
+
+    @staticmethod
+    def read_user_config_from_env() -> Tuple[Dict[str, str], str, Optional[str]]:
+        from dotenv import load_dotenv
+        from dotenv import dotenv_values
+
+        # file_name = f".env_{env}"
+        file_name = f".env"
+        dotenv_path = FilePath.get_file_path_from_root(file_name)
+        if not os.path.exists(dotenv_path):
+            LOG.error(f"Cannot find user config file with file name: {dotenv_path}")
+            return None, dotenv_path, f"Cannot find user config file with file name: {dotenv_path}"
+        success = load_dotenv(dotenv_path)
+        if not success:
+            LOG.error(f"Failed to load user config file with file name: {file_name}")
+            return None, dotenv_path, f"Failed to load user config file with file name: {dotenv_path}"
+        config = dotenv_values(dotenv_path)
+        return config, dotenv_path, None
 
 
 @dataclass
@@ -265,22 +324,22 @@ class TrelloConfig:
 
 
 class ConfigLoader:
-    def __init__(self, config_reader):
+    def __init__(self, config_reader, validator):
         self.config_reader = config_reader
+        self._validator = validator
 
     def load(self, ctx) -> TrelloConfig:
-        main_conf_validator = ConfigValidator()
-        main_conf_validator.set_context(ValidationContext(ConfigSource.MAIN, self.config_reader.config))
+        self._validator.set_context(ValidationContext(ConfigSource.MAIN, self.config_reader.config))
         conf: Config = self._read_config(self.config_reader.read_config,
                                          self.config_reader.config,
-                                         main_conf_validator)
+                                         self._validator)
 
         secrets_validator = ConfigValidator()
         secrets_validator.set_context(ValidationContext(ConfigSource.SECRETS, self.config_reader.secrets))
         secrets = self._read_config(self.config_reader.read_secrets, self.config_reader.secrets,  secrets_validator)
 
         trello_conf = TrelloConfig(conf, secrets)
-        ConfigLoader.validate_config(trello_conf, {main_conf_validator, secrets_validator})
+        ConfigLoader.validate_config(trello_conf, {self._validator, secrets_validator})
         return trello_conf
 
     @staticmethod

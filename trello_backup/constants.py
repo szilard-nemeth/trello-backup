@@ -12,7 +12,6 @@ PROJECT_NAME = "trello-backup"
 
 
 class FilePath:
-    CONFIG_DIR = None
     REPO_ROOT_DIRNAME = "trello-backup"
     MODULE_ROOT_NAME = "trello_backup"
     REPO_ROOT_DIR = FileUtils.find_repo_root_dir(__file__, REPO_ROOT_DIRNAME)
@@ -80,8 +79,6 @@ class FilePath:
         os.makedirs(session_dir)
         LOG.debug("Session dir: %s", session_dir)
         return session_dir
-
-FilePath.CONFIG_DIR = FilePath.get_dir_from_root("config", parent_dir=FilePath.MODULE_ROOT_NAME, excludes=["config_parser"])
 
 # TODO ASAP2 use this constant
 CTX_LOG_LEVEL = 'loglevel'
