@@ -29,7 +29,6 @@ class MainCommandHandler:
 
         out = OutputHandler(board, html_gen_config)
         out.write_outputs()
-        trello_ops.cache.save()
 
         # Serve attachment files for CSV output
         if self.ctx.config.get(TrelloCfg.SERVE_ATTACHMENTS):
@@ -40,7 +39,7 @@ class MainCommandHandler:
         #  only include: card name (bold), description (plain text), Checklists with check items
         #  Add WARNING text if has attachment OR add attachment links
 
-        # TODO add file cache that stores in the following hierarchy:
+        # TODO IDEA add file cache that stores in the following hierarchy:
         #  <maindir>/boards/<board>/cards/<card>/actions/<action_id>.json
 
     def print_cards(self, board: str, lists: List[str]):
