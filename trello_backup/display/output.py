@@ -258,7 +258,6 @@ class DataConverter:
                   h.CHECKLIST_ITEM_URL.value]
         return header
 
-
 class OutputHandler:
     def __init__(self, board: TrelloBoard, html_gen_config):
         self.board = board
@@ -295,6 +294,13 @@ class OutputHandler:
         CsvFileUtils.append_rows_to_csv_file(self.csv_file_path, rows, header=header)
         print("Generated CSV file: " + self.csv_file_path)
         print(f"cp {self.csv_file_path} {self.csv_file_copy_to_file} && subl {self.csv_file_copy_to_file}")
+
+
+class OutputHandlerFactory:
+    @staticmethod
+    def create_for_board(board: TrelloBoard, html_gen_config: TrelloCardHtmlGeneratorMode) -> OutputHandler:
+        return OutputHandler(board, html_gen_config)
+
 
 
 class TrelloBoardRichTableGenerator:

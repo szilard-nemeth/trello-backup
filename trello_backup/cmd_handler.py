@@ -8,7 +8,8 @@ from trello_backup.cli.common import TrelloContext
 from trello_backup.config_parser.config import TrelloCfg
 from trello_backup.constants import FilePath
 from trello_backup.display.console import CliLogger
-from trello_backup.display.output import OutputHandler, TrelloCardHtmlGeneratorMode, TrelloListAndCardsPrinter
+from trello_backup.display.output import OutputHandler, TrelloCardHtmlGeneratorMode, TrelloListAndCardsPrinter, \
+    OutputHandlerFactory
 from trello_backup.http_server import HttpServer
 from trello_backup.trello.api import TrelloApi
 from trello_backup.trello.service import TrelloOperations
@@ -23,16 +24,21 @@ CLI_LOG = CliLogger(LOG)
 # TODO IDEA add file cache that stores in the following hierarchy:
 #  <maindir>/boards/<board>/cards/<card>/actions/<action_id>.json
 class MainCommandHandler:
-    def __init__(self, ctx: TrelloContext):
+    def __init__(self,
+                 ctx: TrelloContext,
+                 trello_ops: TrelloOperations,
+                 output_factory: OutputHandlerFactory):
         self.ctx = ctx
+        self._trello_ops = trello_ops
+        self.output_factory = output_factory
 
     def backup_board(self, board_name: str):
+        # TODO ASAP Move http server logic
         atexit.register(HttpServer.stop_server)
         html_gen_config = TrelloCardHtmlGeneratorMode.BASIC.value
-        trello_ops = TrelloOperations()
-        board = trello_ops.get_board(board_name, download_comments=html_gen_config.include_comments)
+        board = self._trello_ops.get_board(board_name, download_comments=html_gen_config.include_comments)
 
-        out = OutputHandler(board, html_gen_config)
+        out = self.output_factory.create_for_board(board, html_gen_config)
         out.write_outputs()
 
         # Serve attachment files for CSV output
@@ -40,8 +46,7 @@ class MainCommandHandler:
             HttpServer.launch_http_server(dir=FilePath.OUTPUT_DIR_ATTACHMENTS)
 
     def print_cards(self, board: str, lists: List[str]):
-        trello_ops = TrelloOperations()
-        trello_data: List[Dict[str, Any]] = trello_ops.get_lists_and_cards(board, lists)
+        trello_data: List[Dict[str, Any]] = self._trello_ops.get_lists_and_cards(board, lists)
         TrelloListAndCardsPrinter.print_plain_text(trello_data, only_open=True)
         # TrelloListAndCardsPrinter.print_rich(trello_data)
 
