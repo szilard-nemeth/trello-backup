@@ -53,16 +53,18 @@ class TrelloOperations:
         return board, trello_lists
 
     def _get_board_id(self, name):
-        if name in self._board_name_to_board_id:
-            return self._board_name_to_board_id[name]
-        else:
-            return TrelloApi.get_board_id(name)
+        board_id = self._board_name_to_board_id.get(name)
+        if board_id is None:
+            board_id = TrelloApi.get_board_id(name)
+            self._board_name_to_board_id[name] = board_id
+        return board_id
 
     def _get_board_json(self, board_id):
-        if board_id in self._board_id_to_board_json:
-            return self._board_id_to_board_json[board_id]
-        else:
-            return TrelloApi.get_board_details(board_id)
+        board_json = self._board_id_to_board_json.get(board_id)
+        if board_json is None:
+            board_json = TrelloApi.get_board_details(board_id)
+            self._board_id_to_board_json[board_id] = board_json
+        return board_json
 
 
 class TrelloTitleService:
