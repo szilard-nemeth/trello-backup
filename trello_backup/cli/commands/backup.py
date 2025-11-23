@@ -27,6 +27,7 @@ def board(ctx, board_name: str):
 @backup.command()
 @click.option('-b', '--board', required=True, help='Trello board name')
 @click.option('-l', '--list', "list_names",  multiple=True, required=True, help='Trello list name')
+# @click.option('-l', '--list', "list_names",  multiple=True, required=True, help='Trello list names to print cards from. Accepts "*" to print cards from all lists.')
 @click.pass_context
 def cards(ctx, board: str, list_names: Tuple[str]):
     if not list_names:
