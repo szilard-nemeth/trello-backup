@@ -409,17 +409,19 @@ class TrelloListAndCardsPrinter:
             for card in list_obj["cards"]:
                 if only_open and card["closed"]:
                     continue
-                print(f"Card: {card['name']}")
+                print(f"CARD: {card['name']}")
+                print("DESCRIPTION:")
                 if card['description']:
                     print(f"{card['description']}")
                 else:
                     if print_placeholders:
-                        print("<NO DESCRIPTION>")
+                        print("<EMPTY>")
 
                 if print_placeholders and not card["checklists"]:
                     print("<NO CHECKLISTS>")
+                print()
                 for checklist in card["checklists"]:
-                    print(f"{checklist['name']}: ")
+                    print(f"{checklist['name']} ({len(checklist['items'])}): ")
                     for item in checklist['items']:
                         # sanity check
                         if item['url'] and not item['url_title']:
@@ -428,7 +430,7 @@ class TrelloListAndCardsPrinter:
                             print(f"[{'x' if item['checked'] else ''}] {item['url_title']}: {item['url']}")
                         else:
                             print(f"[{'x' if item['checked'] else ''}] {item['value']}")
-                print("-" * 60) # Separator for cards
+                print("=" * 60) # Separator for cards
 
 
 class TrelloBoardHtmlTableHeader(Enum):
