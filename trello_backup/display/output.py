@@ -191,15 +191,17 @@ class OutputHandler:
         self.html_file_gen = TrelloBoardHtmlFileGenerator(board, html_gen_config)
         self.html_table_gen = TrelloBoardHtmlTableGenerator(board)
         self.rich_table_gen = TrelloBoardRichTableGenerator(board)
-
-        fname_prefix = f"trelloboard-{self.board.simple_name}"
-        self.html_result_file_path = os.path.join(FilePath.TRELLO_OUTPUT_DIR, f"{fname_prefix}-htmlexport.html")
-        self.rich_table_file_path = os.path.join(FilePath.TRELLO_OUTPUT_DIR, f"{fname_prefix}-rich-table.html")
-        self.html_table_file_path = os.path.join(FilePath.TRELLO_OUTPUT_DIR, f"{fname_prefix}-custom-table.html")
-        self.csv_file_path = os.path.join(FilePath.TRELLO_OUTPUT_DIR, f"{fname_prefix}.csv")
-        self.csv_file_copy_to_file = f"~/Downloads/{fname_prefix}.csv"
-
+        self._set_file_paths()
         self._md_formatter = MarkdownFormatter()
+
+    def _set_file_paths(self):
+        fname_prefix = f"trelloboard-{self.board.simple_name}"
+        output_dir = FilePath.TRELLO_OUTPUT_DIR
+        self.html_result_file_path = os.path.join(output_dir, f"{fname_prefix}-htmlexport.html")
+        self.rich_table_file_path = os.path.join(output_dir, f"{fname_prefix}-rich-table.html")
+        self.html_table_file_path = os.path.join(output_dir, f"{fname_prefix}-custom-table.html")
+        self.csv_file_path = os.path.join(output_dir, f"{fname_prefix}.csv")
+        self.csv_file_copy_to_file = f"~/Downloads/{fname_prefix}.csv"
 
     def write_outputs(self):
         header = TrelloDataConverter.get_header()
