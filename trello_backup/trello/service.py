@@ -19,6 +19,7 @@ class TrelloOperations:
         # Initialize WebpageTitleCache so 'board.get_checklist_url_titles' can use it
         self.cache = WebpageTitleCache()
         self._webpage_title_service = TrelloTitleService(self.cache)
+        self._md_formatter = MarkdownFormatter()
 
     def get_board(self, name: str, download_comments: bool = False):
         board, _ = self._get_trello_board_and_lists(name, download_comments=download_comments)
@@ -27,7 +28,7 @@ class TrelloOperations:
 
     def get_lists_and_cards(self, board_name: str, list_names: List[str]) -> List[Dict[str, Any]]:
         board, trello_lists = self._get_trello_board_and_lists(board_name, list_names)
-        output_data = TrelloDataConverter.convert_to_output_data(trello_lists)
+        output_data = TrelloDataConverter.convert_to_output_data(trello_lists, self._md_formatter)
         return output_data
 
     def _get_trello_board_and_lists(self, name: str, list_names: List[str] = None, download_comments: bool = False) -> Tuple[TrelloBoard, TrelloLists]:
