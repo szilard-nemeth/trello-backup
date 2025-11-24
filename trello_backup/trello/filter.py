@@ -1,17 +1,41 @@
+from enum import Enum, Flag, auto
 from typing import List
 
-from trello_backup.trello.model import TrelloList, CardFilter, TrelloCard
+
+class CardPropertyFilter(Flag):
+    NONE = 0
+    OPEN = auto()  # TODO ASAP Apply this card filter
+    WITH_CHECKLIST = auto()
+    WITH_DESCRIPTION = auto()
+    WITH_ATTACHMENT = auto()
+
+    @classmethod
+    def ALL(cls):
+        retval = cls.NONE
+        for member in cls.__members__.values():
+            retval |= member
+        return retval
+
+
+class CardFilters(Enum):
+    ALL = CardPropertyFilter.ALL()
+    DESC_AND_CHECKLIST = CardPropertyFilter.WITH_DESCRIPTION | CardPropertyFilter.WITH_CHECKLIST
+    DESC_AND_ATTACHMENT = CardPropertyFilter.WITH_DESCRIPTION | CardPropertyFilter.WITH_ATTACHMENT
+    CHECKLIST_AND_ATTACHMENT = CardPropertyFilter.WITH_CHECKLIST | CardPropertyFilter.WITH_ATTACHMENT
+    ONLY_DESCRIPTION = CardPropertyFilter.WITH_DESCRIPTION
+
 
 
 class CardFilterer:
+    from trello_backup.trello.model import TrelloList, TrelloCard
     @staticmethod
-    def filter_cards(trello_list: TrelloList, card_filter_flags: CardFilter) -> List[TrelloCard]:
-        if CardFilter.ALL() == card_filter_flags:
+    def filter_cards(trello_list: TrelloList, card_prop_flags: CardPropertyFilter) -> List[TrelloCard]:
+        if CardPropertyFilter.ALL() == card_prop_flags:
             return trello_list.cards
 
-        with_attachment = CardFilter.WITH_ATTACHMENT in card_filter_flags
-        with_description = CardFilter.WITH_DESCRIPTION in card_filter_flags
-        with_checklist = CardFilter.WITH_CHECKLIST in card_filter_flags
+        with_attachment = CardPropertyFilter.WITH_ATTACHMENT in card_prop_flags
+        with_description = CardPropertyFilter.WITH_DESCRIPTION in card_prop_flags
+        with_checklist = CardPropertyFilter.WITH_CHECKLIST in card_prop_flags
 
         filtered_cards = []
         for card in trello_list.cards:
@@ -26,6 +50,6 @@ class CardFilterer:
             if keep:
                 filtered_cards.append(card)
             else:
-                print("Not keeping card: {}, filters: {}".format(card, card_filter_flags))
+                print("Not keeping card: {}, filters: {}".format(card, card_prop_flags))
 
         return filtered_cards

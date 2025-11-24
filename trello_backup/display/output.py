@@ -14,9 +14,9 @@ from rich.text import Text
 
 from trello_backup.constants import FilePath
 from trello_backup.display.console import ConsoleUtils
-from trello_backup.trello.filter import CardFilterer
-from trello_backup.trello.model import TrelloComment, TrelloChecklist, TrelloBoard, CardFilter, ExtractedCardData, \
-    CardFilters, TrelloLists
+from trello_backup.trello.filter import CardFilterer, CardFilters, CardPropertyFilter
+from trello_backup.trello.model import TrelloComment, TrelloChecklist, TrelloBoard, ExtractedCardData, \
+    TrelloLists
 
 INDENT = "&nbsp;&nbsp;&nbsp;&nbsp;"
 
@@ -125,7 +125,7 @@ class TrelloDataConverter:
             output_data.append(list_data)
         return output_data
 
-    def convert_to_table_rows(self, board: TrelloBoard, card_filter_flags: CardFilter, header_len, md_formatter) -> List[List[str]]:
+    def convert_to_table_rows(self, board: TrelloBoard, card_filter_flags: CardPropertyFilter, header_len, md_formatter) -> List[List[str]]:
         rows = []
         for list in board.lists:
             cards = CardFilterer.filter_cards(list, card_filter_flags)
