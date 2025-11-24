@@ -2,7 +2,7 @@ import os
 from dataclasses import dataclass
 from enum import Enum
 from io import StringIO
-from typing import List, Dict, Any
+from typing import List, Dict, Any, Tuple
 
 from markdown import Markdown
 from pythoncommons.file_utils import FileUtils, CsvFileUtils
@@ -14,11 +14,46 @@ from rich.text import Text
 
 from trello_backup.constants import FilePath
 from trello_backup.display.console import ConsoleUtils
+from trello_backup.exception import TrelloException
 from trello_backup.trello.filter import CardFilterer, CardFilters, CardPropertyFilter
 from trello_backup.trello.model import TrelloComment, TrelloChecklist, TrelloBoard, ExtractedCardData, \
     TrelloLists
 
 INDENT = "&nbsp;&nbsp;&nbsp;&nbsp;"
+
+class TableHeaderFieldName(Enum):
+    BOARD = "Board"
+    LIST = "List"
+    CARD = "Card"
+    LABELS = "Labels"
+    DUE_DATE = "Due date"
+    DESCRIPTION = "Description"
+    ATTACHMENT_NAME = "Attachment name"
+    ATTACHMENT_URL = "Attachment URL"
+    ATTACHMENT_LOCAL_URL = "Attachment Local URL"
+    ATTACHMENT_FILE_PATH = "Attachment File path"
+    CHECKLIST_ITEM_NAME = "Checklist item Name"
+    CHECKLIST_ITEM_URL_TITLE = "Checklist item URL Title"
+    CHECKLIST_ITEM_URL = "Checklist item URL"
+
+
+
+class TableHeader:
+    def __init__(self, cols: List[TableHeaderFieldName]):
+        self._cols = cols
+
+    def __len__(self):
+        return len(self._cols)
+
+    def as_string_headers(self):
+        return [c.value for c in self._cols]
+
+    def cols_set(self):
+        return set(self._cols)
+
+    def cols_list(self):
+        return list(self._cols)
+
 
 @dataclass
 class TrelloCardHtmlGeneratorConfig:
@@ -86,6 +121,48 @@ class TrelloDataConverter:
     def __init__(self, md_formatter: 'MarkdownFormatter', http_server_port: int):
         self._md_formatter = md_formatter
         self._http_server_port = http_server_port
+        h = TableHeaderFieldName
+        # Board name, List name, Card name, card labels, card due date, Description, Attachment name, Attachment URL, Checklist item name, Checklist item URL Title, Checklist item URL
+        self._header = TableHeader([h.BOARD,
+                  h.LIST,
+                  h.CARD,
+                  h.LABELS,
+                  h.DUE_DATE,
+                  h.DESCRIPTION,
+                  h.ATTACHMENT_NAME,
+                  h.ATTACHMENT_URL,
+                  h.ATTACHMENT_LOCAL_URL,
+                  h.ATTACHMENT_FILE_PATH,
+                  h.CHECKLIST_ITEM_NAME,
+                  h.CHECKLIST_ITEM_URL_TITLE,
+                  h.CHECKLIST_ITEM_URL])
+        self._col_value_getters = {
+            h.BOARD: lambda board, list, card, item: board.name,
+            h.LIST: lambda board, list, card, item: list.name,
+            h.CARD: lambda board, list, card, item: card.name,
+            h.LABELS: lambda board, list, card, item: card.get_labels_as_str(),
+            h.DUE_DATE: lambda board, list, card, item: card.due_date if card.due_date else "",
+            h.DESCRIPTION: lambda board, list, card, item: item.description,
+            h.ATTACHMENT_NAME: lambda board, list, card, item: item.attachment_name,
+            h.ATTACHMENT_URL: lambda board, list, card, item: item.attachment_url,
+            h.ATTACHMENT_LOCAL_URL: lambda board, list, card, item: item.local_server_path,
+            h.ATTACHMENT_FILE_PATH: lambda board, list, card, item: item.attachment_file_path,
+            h.CHECKLIST_ITEM_NAME: lambda board, list, card, item: item.cl_item_name,
+            h.CHECKLIST_ITEM_URL_TITLE: lambda board, list, card, item: item.cl_item_url_title,
+            h.CHECKLIST_ITEM_URL: lambda board, list, card, item: item.cl_item_url
+        }
+        self._sanity_check_col_value_getters()
+
+    def _sanity_check_col_value_getters(self):
+        cols_set = self._header.cols_set()
+        missing_getters = []
+        for col in cols_set:
+            if col not in self._col_value_getters:
+                missing_getters.append(col)
+
+        if missing_getters:
+            raise TrelloException(
+                f"Value getters are not configured for the following columns: {', '.join([g.value for g in missing_getters])}")
 
     def convert_to_output_data(self, trello_lists: TrelloLists) -> List[Dict[str, Any]]:
         output_data = []
@@ -125,50 +202,21 @@ class TrelloDataConverter:
             output_data.append(list_data)
         return output_data
 
-    def convert_to_table_rows(self, board: TrelloBoard, card_filter_flags: CardPropertyFilter, header_len, md_formatter) -> List[List[str]]:
+    def convert_to_table_rows(self, board: TrelloBoard, card_filter_flags: CardPropertyFilter, md_formatter) -> Tuple[List[List[str]], List[str]]:
         rows = []
         for list in board.lists:
             cards = CardFilterer.filter_cards(list, card_filter_flags)
             for card in cards:
                 items: List[ExtractedCardData] = card.get_extracted_data(card_filter_flags, md_formatter)
                 for item in items:
-                    due_date = card.due_date if card.due_date else ""
-                    # Board name, List name, Card name, card labels, card due date, Description, Attachment name, Attachment URL, Attachment Local URL, Attachment file path, Checklist item name, URL Title, URL
-                    row = [board.name,
-                           list.name,
-                           card.name,
-                           card.get_labels_as_str(),
-                           due_date,
-                           item.description,
-                           item.attachment_name,
-                           item.attachment_url,
-                           item.local_server_path,
-                           item.attachment_file_path,
-                           item.cl_item_name,
-                           item.cl_item_url_title,
-                           item.cl_item_url]
-                    if header_len != len(row):
-                        raise ValueError("Mismatch in number of columns in row({}) vs. number of header columns ({})".format(len(row), header_len))
+                    row = []
+                    for col in self._header.cols_list():
+                        val = self._col_value_getters[col](board, list, card, item)
+                        row.append(val)
+                    if len(self._header) != len(row):
+                        raise ValueError("Mismatch in number of columns in row({}) vs. number of header columns ({})".format(len(row), self._header))
                     rows.append(row)
-        return rows
-
-    def get_header(self):
-        h = TrelloBoardHtmlTableHeader
-        # Board name, List name, Card name, card labels, card due date, Description, Attachment name, Attachment URL, Checklist item name, Checklist item URL Title, Checklist item URL
-        header = [h.BOARD.value,
-                  h.LIST.value,
-                  h.CARD.value,
-                  h.LABELS.value,
-                  h.DUE_DATE.value,
-                  h.DESCRIPTION.value,
-                  h.ATTACHMENT_NAME.value,
-                  h.ATTACHMENT_URL.value,
-                  h.ATTACHMENT_LOCAL_URL.value,
-                  h.ATTACHMENT_FILE__PATH.value,
-                  h.CHECKLIST_ITEM_NAME.value,
-                  h.CHECKLIST_ITEM_URL_TITLE.value,
-                  h.CHECKLIST_ITEM_URL.value]
-        return header
+        return rows, self._header.as_string_headers()
 
 
 
@@ -305,8 +353,7 @@ class OutputHandler:
         ]
 
     def write_outputs(self):
-        header = self._data_converter.get_header()
-        rows = self._data_converter.convert_to_table_rows(self.board, CardFilters.ALL.value, len(header), self._md_formatter)
+        rows, header = self._data_converter.convert_to_table_rows(self.board, CardFilters.ALL.value, self._md_formatter)
 
         # Outputs: HTML file, HTML table, Rich table
         for generator, path in self._generators:
@@ -464,21 +511,6 @@ class TrelloListAndCardsPrinter:
                             print(f"[{'x' if item['checked'] else ''}] {item['value']}")
                 print("=" * 60) # Separator for cards
 
-
-class TrelloBoardHtmlTableHeader(Enum):
-    BOARD = "Board"
-    LIST = "List"
-    CARD = "Card"
-    LABELS = "Labels"
-    DUE_DATE = "Due date"
-    DESCRIPTION = "Description"
-    ATTACHMENT_NAME = "Attachment name"
-    ATTACHMENT_URL = "Attachment URL"
-    ATTACHMENT_LOCAL_URL = "Attachment Local URL"
-    ATTACHMENT_FILE__PATH = "Attachment File path"
-    CHECKLIST_ITEM_NAME = "Checklist item Name"
-    CHECKLIST_ITEM_URL_TITLE = "Checklist item URL Title"
-    CHECKLIST_ITEM_URL = "Checklist item URL"
 
 
 class TrelloBoardHtmlTableGenerator:
