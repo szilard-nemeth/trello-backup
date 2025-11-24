@@ -13,13 +13,12 @@ from trello_backup.trello.model import TrelloChecklist, TrelloBoard, TrelloLists
 
 
 class TrelloOperations:
-    def __init__(self):
+    def __init__(self, cache: WebpageTitleCache, title_service: 'TrelloTitleService', md_formatter: MarkdownFormatter):
         self._board_name_to_board_id: Dict[str, str] = {}
         self._board_id_to_board_json: Dict[str, Any] = {}
-        # Initialize WebpageTitleCache so 'board.get_checklist_url_titles' can use it
-        self.cache = WebpageTitleCache()
-        self._webpage_title_service = TrelloTitleService(self.cache)
-        self._md_formatter = MarkdownFormatter()
+        self.cache = cache
+        self._webpage_title_service = title_service
+        self._md_formatter = md_formatter
 
     def get_board(self, name: str, download_comments: bool = False):
         board, _ = self._get_trello_board_and_lists(name, download_comments=download_comments)
