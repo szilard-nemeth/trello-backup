@@ -1,11 +1,10 @@
 import os
 from dataclasses import dataclass
 from enum import Enum
+from io import StringIO
 from typing import List, Dict, Any
 
 from markdown import Markdown
-from io import StringIO
-
 from pythoncommons.file_utils import FileUtils, CsvFileUtils
 from pythoncommons.result_printer import TabulateTableFormat, TableRenderingConfig, ResultPrinter
 from rich.console import Console
@@ -15,7 +14,7 @@ from rich.text import Text
 
 from trello_backup.constants import FilePath
 from trello_backup.display.console import ConsoleUtils
-
+from trello_backup.trello.filter import CardFilterer
 from trello_backup.trello.model import TrelloComment, TrelloChecklist, TrelloBoard, CardFilter, ExtractedCardData, \
     CardFilters, TrelloLists
 
@@ -126,11 +125,10 @@ class TrelloDataConverter:
             output_data.append(list_data)
         return output_data
 
-
     def convert_to_table_rows(self, board: TrelloBoard, card_filter_flags: CardFilter, header_len, md_formatter) -> List[List[str]]:
         rows = []
         for list in board.lists:
-            cards = self.filter_cards(list, card_filter_flags)
+            cards = CardFilterer.filter_cards(list, card_filter_flags)
             for card in cards:
                 items: List[ExtractedCardData] = card.get_extracted_data(card_filter_flags, md_formatter)
                 for item in items:
@@ -153,31 +151,6 @@ class TrelloDataConverter:
                         raise ValueError("Mismatch in number of columns in row({}) vs. number of header columns ({})".format(len(row), header_len))
                     rows.append(row)
         return rows
-
-    def filter_cards(self, list, card_filter_flags: CardFilter):
-        if CardFilter.ALL() == card_filter_flags:
-            return list.cards
-
-        with_attachment = CardFilter.WITH_ATTACHMENT in card_filter_flags
-        with_description = CardFilter.WITH_DESCRIPTION in card_filter_flags
-        with_checklist = CardFilter.WITH_CHECKLIST in card_filter_flags
-
-        filtered_cards = []
-        for card in list.cards:
-            keep = False
-            if with_attachment and card.has_attachments:
-                keep = True
-            if with_description and card.has_description:
-                keep = True
-            if with_checklist and card.has_checklist:
-                keep = True
-
-            if keep:
-                filtered_cards.append(card)
-            else:
-                print("Not keeping card: {}, filters: {}".format(card, card_filter_flags))
-
-        return filtered_cards
 
     def get_header(self):
         h = TrelloBoardHtmlTableHeader
