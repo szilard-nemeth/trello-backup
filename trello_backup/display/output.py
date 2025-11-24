@@ -250,7 +250,6 @@ class TrelloBoardRichTableGenerator:
 
     def render(self, rows, header):
         # TODO implement console mode --> Just print this and do not log anything to console other than the table
-        # TODO add progressbar while loading emails
         from rich.console import Console
         from rich.table import Table
         table = Table(title=f"TRELLO EXPORT OF BOARD: {self.board.name}", expand=True, min_width=800)

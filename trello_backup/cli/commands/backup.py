@@ -14,13 +14,17 @@ LOG = logging.getLogger(__name__)
 def backup():
     pass
 
+def get_handler_and_setup_ctx(ctx):
+    handler = CliCommon.init_main_cmd_handler(ctx)
+    ctx.obj[CTX_HANDLER] = handler
+    return handler
+
 
 @backup.command()
 @click.pass_context
 @click.argument("board_name")
 def board(ctx, board_name: str):
-    handler = CliCommon.init_main_cmd_handler(ctx)
-    ctx.obj[CTX_HANDLER] = handler
+    handler = get_handler_and_setup_ctx(ctx)
     handler.backup_board(board_name)
 
 
@@ -34,6 +38,5 @@ def cards(ctx, board: str, list_names: Tuple[str]):
         raise BadOptionUsage("list_names", "At least one list need to be specified!")
 
     list_names = list(list_names)
-    handler = CliCommon.init_main_cmd_handler(ctx)
-    ctx.obj[CTX_HANDLER] = handler
+    handler = get_handler_and_setup_ctx(ctx)
     handler.print_cards(board, list_names)
