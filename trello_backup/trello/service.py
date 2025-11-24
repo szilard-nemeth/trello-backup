@@ -1,5 +1,5 @@
 import re
-from typing import Dict, Any, List, Tuple
+from typing import Dict, Any, List, Tuple, Optional
 
 from pythoncommons.url_utils import UrlUtils
 
@@ -7,6 +7,7 @@ from trello_backup.display.output import MarkdownFormatter, TrelloDataConverter
 from trello_backup.http_server import HTTP_SERVER_PORT
 from trello_backup.trello.api import TrelloApi
 from trello_backup.trello.cache import WebpageTitleCache
+from trello_backup.trello.filter import CardFilters, CardFilterer
 from trello_backup.trello.html import HtmlParser
 from trello_backup.trello.model import TrelloChecklist, TrelloBoard, TrelloLists, TrelloChecklists, TrelloCards
 
@@ -22,17 +23,21 @@ class TrelloOperations:
         self._webpage_title_service = title_service
         self._data_converter = data_converter
 
-    def get_board(self, name: str, download_comments: bool = False):
+    def get_board(self, name: str, download_comments: bool = False) -> Tuple[TrelloBoard, Optional[TrelloLists]]:
         board, _ = self._get_trello_board_and_lists(name, download_comments=download_comments)
         TrelloApi.download_attachments(board)
-        return board
+        return board, None
 
-    def get_lists_and_cards(self, board_name: str, list_names: List[str]) -> List[Dict[str, Any]]:
-        board, trello_lists = self._get_trello_board_and_lists(board_name, list_names)
-        output_data = self._data_converter.convert_to_output_data(trello_lists)
-        return output_data
+    def get_lists_and_cards(self, board_name: str, list_names: List[str], card_filters: CardFilters) -> Tuple[TrelloBoard, TrelloLists]:
+        board, trello_lists = self._get_trello_board_and_lists(board_name, list_names, card_filters)
+        return board, trello_lists
 
-    def _get_trello_board_and_lists(self, name: str, list_names: List[str] = None, download_comments: bool = False) -> Tuple[TrelloBoard, TrelloLists]:
+
+    def _get_trello_board_and_lists(self,
+                                    name: str,
+                                    list_names: List[str] = None,
+                                    card_filters: CardFilters = None,
+                                    download_comments: bool = False) -> Tuple[TrelloBoard, TrelloLists]:
         board_id = self._get_board_id(name)
         board_json = self._get_board_json(board_id)
 
@@ -40,13 +45,18 @@ class TrelloOperations:
         trello_lists = TrelloLists(board_json)
         if list_names:
             # TODO Add '*' list filter?
-            trello_lists: TrelloLists = trello_lists.filter(list_names)
+            trello_lists = trello_lists.filter(list_names)
 
         trello_checklists = TrelloChecklists(board_json)
         # After this call, TrelloList will contain every card belonging to each list
         trello_cards = TrelloCards(board_json, trello_lists, trello_checklists, download_comments=download_comments)
 
         board = TrelloBoard(board_id, name, trello_lists.open)
+        for list in board.lists:
+            # Overwrite list.cards
+            filtered_cards = CardFilterer.filter_cards(list, card_filters)
+            list.cards = filtered_cards
+
         # Call to fill webpage title and URL
         self._webpage_title_service.process_board_checklist_titles(board)
         self.cache.save()

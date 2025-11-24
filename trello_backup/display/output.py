@@ -16,7 +16,7 @@ from trello_backup.constants import FilePath
 from trello_backup.display.console import ConsoleUtils
 from trello_backup.display.table import TrelloTable, TrelloTableRenderSettings, TrelloTableColumnStyles
 from trello_backup.exception import TrelloException
-from trello_backup.trello.filter import CardFilterer, CardFilters, CardPropertyFilter
+from trello_backup.trello.filter import CardFilterer, CardFilters
 from trello_backup.trello.model import TrelloComment, TrelloChecklist, TrelloBoard, ExtractedCardData, \
     TrelloLists
 

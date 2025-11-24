@@ -157,6 +157,10 @@ class TrelloCard:
     def has_attachments(self):
         return len(self.attachments) > 0
 
+    @property
+    def open(self):
+        return not self.closed
+
     def get_extracted_data(self, card_filters: CardFilters, md_formatter: 'MarkdownFormatter'):
         # TODO ASAP Extract this to service object?
         # Sanity check

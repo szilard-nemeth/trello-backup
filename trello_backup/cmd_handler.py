@@ -30,12 +30,14 @@ class MainCommandHandler:
     def backup_board(self, board_name: str):
         html_gen_config = TrelloCardHtmlGeneratorMode.BASIC.value
         card_filters = CardFilters.ALL
-        board = self._trello_ops.get_board(board_name, download_comments=html_gen_config.include_comments)
+        board, _ = self._trello_ops.get_board(board_name, download_comments=html_gen_config.include_comments)
         out = self.output_factory.create_for_board(self._data_converter, board, html_gen_config, card_filters)
         out.write_outputs()
 
     def print_cards(self, board: str, lists: List[str]):
-        trello_data: List[Dict[str, Any]] = self._trello_ops.get_lists_and_cards(board, lists)
-        TrelloListAndCardsPrinter.print_plain_text(trello_data, only_open=True)
+        card_filters = CardFilters.OPEN
+        board, trello_lists = self._trello_ops.get_lists_and_cards(board, lists, card_filters)
+        trello_data = self._data_converter.convert_to_output_data(trello_lists)
+        TrelloListAndCardsPrinter.print_plain_text(trello_data, card_filters, only_open=True)
         # TrelloListAndCardsPrinter.print_rich(trello_data)
 
