@@ -13,12 +13,15 @@ from trello_backup.trello.model import TrelloChecklist, TrelloBoard, TrelloLists
 
 
 class TrelloOperations:
-    def __init__(self, cache: WebpageTitleCache, title_service: 'TrelloTitleService', md_formatter: MarkdownFormatter):
+    def __init__(self,
+                 cache: WebpageTitleCache,
+                 title_service: 'TrelloTitleService',
+                 data_converter: TrelloDataConverter):
         self._board_name_to_board_id: Dict[str, str] = {}
         self._board_id_to_board_json: Dict[str, Any] = {}
         self.cache = cache
         self._webpage_title_service = title_service
-        self._md_formatter = md_formatter
+        self._data_converter = data_converter
 
     def get_board(self, name: str, download_comments: bool = False):
         board, _ = self._get_trello_board_and_lists(name, download_comments=download_comments)
@@ -27,7 +30,7 @@ class TrelloOperations:
 
     def get_lists_and_cards(self, board_name: str, list_names: List[str]) -> List[Dict[str, Any]]:
         board, trello_lists = self._get_trello_board_and_lists(board_name, list_names)
-        output_data = TrelloDataConverter.convert_to_output_data(trello_lists, self._md_formatter)
+        output_data = self._data_converter.convert_to_output_data(trello_lists)
         return output_data
 
     def _get_trello_board_and_lists(self, name: str, list_names: List[str] = None, download_comments: bool = False) -> Tuple[TrelloBoard, TrelloLists]:

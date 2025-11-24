@@ -1,17 +1,11 @@
-import atexit
 import logging
 from typing import List, Dict, Any
 
-from pythoncommons.file_utils import FileUtils
-
 from trello_backup.cli.common import TrelloContext
-from trello_backup.config_parser.config import TrelloCfg
-from trello_backup.constants import FilePath
 from trello_backup.display.console import CliLogger
-from trello_backup.display.output import OutputHandler, TrelloCardHtmlGeneratorMode, TrelloListAndCardsPrinter, \
+from trello_backup.display.converter import TrelloDataConverter
+from trello_backup.display.output import TrelloCardHtmlGeneratorMode, TrelloListAndCardsPrinter, \
     OutputHandlerFactory
-from trello_backup.http_server import HttpServer
-from trello_backup.trello.api import TrelloApi
 from trello_backup.trello.service import TrelloOperations
 
 LOG = logging.getLogger(__name__)
@@ -27,15 +21,17 @@ class MainCommandHandler:
     def __init__(self,
                  ctx: TrelloContext,
                  trello_ops: TrelloOperations,
+                 data_converter: TrelloDataConverter,
                  output_factory: OutputHandlerFactory):
         self.ctx = ctx
         self._trello_ops = trello_ops
+        self._data_converter = data_converter
         self.output_factory = output_factory
 
     def backup_board(self, board_name: str):
         html_gen_config = TrelloCardHtmlGeneratorMode.BASIC.value
         board = self._trello_ops.get_board(board_name, download_comments=html_gen_config.include_comments)
-        out = self.output_factory.create_for_board(board, html_gen_config)
+        out = self.output_factory.create_for_board(self._data_converter, board, html_gen_config)
         out.write_outputs()
 
     def print_cards(self, board: str, lists: List[str]):

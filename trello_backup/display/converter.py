@@ -1,12 +1,14 @@
 from typing import List, Dict, Any
 
-from trello_backup.http_server import HTTP_SERVER_PORT
 from trello_backup.trello.model import TrelloLists, TrelloBoard, CardFilter, ExtractedCardData
 
 
 class TrelloDataConverter:
-    @staticmethod
-    def convert_to_output_data(trello_lists: TrelloLists, md_formatter) -> List[Dict[str, Any]]:
+    def __init__(self, md_formatter: 'MarkdownFormatter', http_server_port: int):
+        self._md_formatter = md_formatter
+        self._http_server_port = http_server_port
+
+    def convert_to_output_data(self, trello_lists: TrelloLists) -> List[Dict[str, Any]]:
         output_data = []
         for list_name, list_obj in trello_lists.by_name.items():
             list_data = {
@@ -20,13 +22,13 @@ class TrelloDataConverter:
                     "id": card.id,
                     "name": card.name,
                     "closed": card.closed,
-                    "description": md_formatter.to_plain_text(card.description),
+                    "description": self._md_formatter.to_plain_text(card.description),
                     "attachments": [
                         {
                             "name": a.name,
                             "url": a.url,
                             "local_path": a.downloaded_file_path,
-                            "local_server_path": f"http://localhost:{HTTP_SERVER_PORT}/{a.downloaded_file_path.split('/')[-1]}" if a.downloaded_file_path else ""
+                            "local_server_path": f"http://localhost:{self._http_server_port}/{a.downloaded_file_path.split('/')[-1]}" if a.downloaded_file_path else ""
                         } for a in card.attachments
                     ],
                     "checklists": [
@@ -45,11 +47,10 @@ class TrelloDataConverter:
         return output_data
 
 
-    @staticmethod
-    def convert_to_table_rows(board: TrelloBoard, card_filter_flags: CardFilter, header_len, md_formatter) -> List[List[str]]:
+    def convert_to_table_rows(self, board: TrelloBoard, card_filter_flags: CardFilter, header_len, md_formatter) -> List[List[str]]:
         rows = []
         for list in board.lists:
-            cards = TrelloDataConverter.filter_cards(list, card_filter_flags)
+            cards = self.filter_cards(list, card_filter_flags)
             for card in cards:
                 items: List[ExtractedCardData] = card.get_extracted_data(card_filter_flags, md_formatter)
                 for item in items:
@@ -73,8 +74,7 @@ class TrelloDataConverter:
                     rows.append(row)
         return rows
 
-    @staticmethod
-    def filter_cards(list, card_filter_flags: CardFilter):
+    def filter_cards(self, list, card_filter_flags: CardFilter):
         if CardFilter.ALL() == card_filter_flags:
             return list.cards
 
@@ -99,8 +99,7 @@ class TrelloDataConverter:
 
         return filtered_cards
 
-    @staticmethod
-    def get_header():
+    def get_header(self):
         from trello_backup.display.output import TrelloBoardHtmlTableHeader
         h = TrelloBoardHtmlTableHeader
         # Board name, List name, Card name, card labels, card due date, Description, Attachment name, Attachment URL, Checklist item name, Checklist item URL Title, Checklist item URL
