@@ -203,12 +203,12 @@ class TrelloDataConverter:
             output_data.append(list_data)
         return output_data
 
-    def convert_to_table_rows(self, board: TrelloBoard, card_filter_flags: CardPropertyFilter, md_formatter) -> Tuple[List[List[str]], List[str]]:
+    def convert_to_table_rows(self, board: TrelloBoard, card_filters: CardFilters, md_formatter) -> Tuple[List[List[str]], List[str]]:
         rows = []
         for list in board.lists:
-            cards = CardFilterer.filter_cards(list, card_filter_flags)
+            cards = CardFilterer.filter_cards(list, card_filters)
             for card in cards:
-                items: List[ExtractedCardData] = card.get_extracted_data(card_filter_flags, md_formatter)
+                items: List[ExtractedCardData] = card.get_extracted_data(card_filters, md_formatter)
                 for item in items:
                     row = []
                     for col in self._header.cols_list():
@@ -326,13 +326,13 @@ class TrelloBoardHtmlFileGenerator:
 
 
 class OutputHandler:
-    def __init__(self, data_converter: TrelloDataConverter, board: TrelloBoard, html_gen_config, cardfilters: CardFilters):
+    def __init__(self, data_converter: TrelloDataConverter, board: TrelloBoard, html_gen_config, card_filters: CardFilters):
         self.board = board
         self._data_converter = data_converter
         self._set_file_paths()
         self._set_generators(board, html_gen_config)
         self._md_formatter = MarkdownFormatter()
-        self._cardfilters = cardfilters
+        self._card_filters = card_filters
 
     def _set_file_paths(self):
         fname_prefix = f"trelloboard-{self.board.simple_name}"
@@ -356,7 +356,7 @@ class OutputHandler:
 
     def write_outputs(self):
         header: List[str]
-        rows, header = self._data_converter.convert_to_table_rows(self.board, self._cardfilters.value, self._md_formatter)
+        rows, header = self._data_converter.convert_to_table_rows(self.board, self._card_filters, self._md_formatter)
 
         # Outputs: HTML file, HTML table, Rich table
         for generator, path in self._generators:
@@ -377,8 +377,8 @@ class OutputHandler:
 
 class OutputHandlerFactory:
     @staticmethod
-    def create_for_board(data_converter: TrelloDataConverter, board: TrelloBoard, html_gen_config: TrelloCardHtmlGeneratorMode, cardfilters: CardFilters) -> OutputHandler:
-        return OutputHandler(data_converter, board, html_gen_config, cardfilters)
+    def create_for_board(data_converter: TrelloDataConverter, board: TrelloBoard, html_gen_config: TrelloCardHtmlGeneratorMode, card_filters: CardFilters) -> OutputHandler:
+        return OutputHandler(data_converter, board, html_gen_config, card_filters)
 
 
 

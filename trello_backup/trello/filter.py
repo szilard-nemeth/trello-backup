@@ -29,7 +29,8 @@ class CardFilters(Enum):
 class CardFilterer:
     from trello_backup.trello.model import TrelloList, TrelloCard
     @staticmethod
-    def filter_cards(trello_list: TrelloList, card_prop_flags: CardPropertyFilter) -> List[TrelloCard]:
+    def filter_cards(trello_list: TrelloList, card_filters: CardFilters) -> List[TrelloCard]:
+        card_prop_flags = card_filters.value
         if CardPropertyFilter.ALL() == card_prop_flags:
             return trello_list.cards
 

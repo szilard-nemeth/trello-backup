@@ -1,6 +1,5 @@
 import logging
 from typing import List, Dict, Any
-
 from trello_backup.cli.common import TrelloContext
 from trello_backup.display.console import CliLogger
 from trello_backup.display.output import TrelloCardHtmlGeneratorMode, TrelloListAndCardsPrinter, \
@@ -30,9 +29,9 @@ class MainCommandHandler:
 
     def backup_board(self, board_name: str):
         html_gen_config = TrelloCardHtmlGeneratorMode.BASIC.value
-        cardfilters = CardFilters.ALL
+        card_filters = CardFilters.ALL
         board = self._trello_ops.get_board(board_name, download_comments=html_gen_config.include_comments)
-        out = self.output_factory.create_for_board(self._data_converter, board, html_gen_config, cardfilters)
+        out = self.output_factory.create_for_board(self._data_converter, board, html_gen_config, card_filters)
         out.write_outputs()
 
     def print_cards(self, board: str, lists: List[str]):

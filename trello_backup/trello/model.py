@@ -2,7 +2,7 @@ from dataclasses import dataclass, field
 from typing import List, Dict, Optional
 
 from trello_backup.http_server import HTTP_SERVER_PORT
-from trello_backup.trello.filter import CardPropertyFilter
+from trello_backup.trello.filter import CardPropertyFilter, CardFilters
 
 
 # TODO ASAP: Revisit this class?
@@ -157,7 +157,7 @@ class TrelloCard:
     def has_attachments(self):
         return len(self.attachments) > 0
 
-    def get_extracted_data(self, card_filter_flags: CardPropertyFilter, md_formatter: 'MarkdownFormatter'):
+    def get_extracted_data(self, card_filters: CardFilters, md_formatter: 'MarkdownFormatter'):
         # TODO ASAP Extract this to service object?
         # Sanity check
         # has_checklists = self.has_checklist
@@ -173,12 +173,14 @@ class TrelloCard:
         # 1. Always add description to each row
         plain_text_description = md_formatter.to_plain_text(self.description)
         result = []
-        if len(card_filter_flags) == 1 and CardPropertyFilter.WITH_DESCRIPTION in card_filter_flags:
+
+        card_prop_flags = card_filters.value
+        if len(card_prop_flags) == 1 and CardPropertyFilter.WITH_DESCRIPTION in card_prop_flags:
             result.append(ExtractedCardData(plain_text_description, "", "", "", "", "", ""))
             return result
 
         # 2. Add attachments to separate row from checklist items
-        if CardPropertyFilter.WITH_ATTACHMENT in card_filter_flags:
+        if CardPropertyFilter.WITH_ATTACHMENT in card_prop_flags:
             for attachment in self.attachments:
                 attachment_file_path = "" if not attachment.downloaded_file_path else attachment.downloaded_file_path
 
@@ -188,7 +190,7 @@ class TrelloCard:
                 result.append(ExtractedCardData(plain_text_description, attachment.name, attachment.url, attachment_file_path, local_server_path, "", "", ""))
 
         # 3. Add checklist items to separate row from attachments
-        if CardPropertyFilter.WITH_CHECKLIST in card_filter_flags:
+        if CardPropertyFilter.WITH_CHECKLIST in card_prop_flags:
             for cl in self.checklists:
                 for item in cl.items:
                     cl_item_name = ""
@@ -202,7 +204,7 @@ class TrelloCard:
                     result.append(ExtractedCardData(plain_text_description, "", "", "", "", cl_item_name, cl_item_url_title, cl_item_url))
 
         # If no append happened, append default ExtractedCardData
-        if not result and CardPropertyFilter.WITH_DESCRIPTION in card_filter_flags:
+        if not result and CardPropertyFilter.WITH_DESCRIPTION in card_prop_flags:
             result.append(ExtractedCardData(plain_text_description, "", "", "", "", "", "", ""))
         return result
 
