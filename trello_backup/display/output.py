@@ -14,6 +14,7 @@ from rich.table import Table
 from rich.text import Text
 
 from trello_backup.constants import FilePath
+from trello_backup.display.console import ConsoleUtils
 from trello_backup.display.converter import TrelloDataConverter
 
 from trello_backup.trello.model import TrelloComment, TrelloChecklist, TrelloBoard, CardFilter, ExtractedCardData, \
@@ -206,7 +207,7 @@ class OutputHandler:
     def _set_generators(self, board, html_gen_config):
         self.html_file_gen = TrelloBoardHtmlFileGenerator(board, html_gen_config)
         self.html_table_gen = TrelloBoardHtmlTableGenerator(board)
-        self.rich_table_gen = TrelloBoardRichTableGenerator(board, print_console=False)
+        self.rich_table_gen = TrelloBoardRichTableGenerator(board, print_to_console=False)
 
         self._generators = [
             (self.html_file_gen, self.html_result_file_path),
@@ -243,9 +244,9 @@ class OutputHandlerFactory:
 
 
 class TrelloBoardRichTableGenerator:
-    def __init__(self, board, print_console=False):
+    def __init__(self, board, print_to_console=False):
         self._board = board
-        self._print_console: bool = print_console
+        self._console = ConsoleUtils.create_console(record=True, log_to_console=print_to_console)
 
     def render(self, rows, header):
         # TODO implement console mode --> Just print this and do not log anything to console other than the table
@@ -265,13 +266,10 @@ class TrelloBoardRichTableGenerator:
         for row in rows:
             table.add_row(*row)
 
-        self.console = Console(record=True)
-        if self._print_console:
-            # TODO ASAP This creates an empty file!
-            self.console.print(table)
+        self._console.print(table)
 
     def write_file(self, file):
-        self.console.save_html(file)
+        self._console.save_html(file)
         print("Generated rich table to: " + file)
 
 class TrelloListAndCardsPrinter:

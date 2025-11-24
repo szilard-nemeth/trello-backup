@@ -1,6 +1,7 @@
 import enum
 import logging
 import os.path
+import sys
 
 from rich.console import Console
 from rich.markdown import Markdown
@@ -23,6 +24,25 @@ class TextStyle(enum.Enum):
 
 CUSTOM_THEME = Theme({t.style_name: t.style for t in TextStyle})
 
+class ConsoleUtils:
+    @classmethod
+    def create_console(cls, record=False, log_to_console=True, wide=False):
+        width = 80
+        if wide:
+            width = CliLogger.WIDE_PRINT_WIDTH
+
+        file = open(os.devnull, "wt")
+        if log_to_console:
+            file = sys.stdout
+
+
+        console = Console(
+            record=record,
+            file=file,
+            color_system="truecolor", # Ensures maximum color fidelity in the HTML
+            width=width
+        )
+        return console
 
 
 class CliLogger(logging.Logger):
