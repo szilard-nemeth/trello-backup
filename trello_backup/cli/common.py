@@ -6,8 +6,7 @@ from typing import Iterable
 from trello_backup.config_parser.config import ConfigLoader, ConfigReader, TrelloConfig, TrelloCfg
 from trello_backup.config_parser.config_validation import ConfigValidator, ValidationContext, ConfigSource
 from trello_backup.constants import CTX_DRY_RUN, CTX_LOG_FILES, FilePath
-from trello_backup.display.converter import TrelloDataConverter
-from trello_backup.display.output import OutputHandlerFactory, MarkdownFormatter
+from trello_backup.display.output import OutputHandlerFactory, MarkdownFormatter, TrelloDataConverter
 from trello_backup.exception import TrelloConfigException
 from trello_backup.http_server import HttpServer, HTTP_SERVER_PORT
 from trello_backup.trello.api import TrelloApi

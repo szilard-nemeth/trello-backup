@@ -3,9 +3,8 @@ from typing import List, Dict, Any
 
 from trello_backup.cli.common import TrelloContext
 from trello_backup.display.console import CliLogger
-from trello_backup.display.converter import TrelloDataConverter
 from trello_backup.display.output import TrelloCardHtmlGeneratorMode, TrelloListAndCardsPrinter, \
-    OutputHandlerFactory
+    OutputHandlerFactory, TrelloDataConverter
 from trello_backup.trello.service import TrelloOperations
 
 LOG = logging.getLogger(__name__)

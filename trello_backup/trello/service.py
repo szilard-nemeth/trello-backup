@@ -3,8 +3,7 @@ from typing import Dict, Any, List, Tuple
 
 from pythoncommons.url_utils import UrlUtils
 
-from trello_backup.display.converter import TrelloDataConverter
-from trello_backup.display.output import MarkdownFormatter
+from trello_backup.display.output import MarkdownFormatter, TrelloDataConverter
 from trello_backup.http_server import HTTP_SERVER_PORT
 from trello_backup.trello.api import TrelloApi
 from trello_backup.trello.cache import WebpageTitleCache
