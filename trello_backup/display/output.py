@@ -14,6 +14,7 @@ from rich.text import Text
 
 from trello_backup.constants import FilePath
 from trello_backup.display.console import ConsoleUtils
+from trello_backup.display.table import TrelloTable, TrelloTableRenderSettings, TrelloTableColumnStyles
 from trello_backup.exception import TrelloException
 from trello_backup.trello.filter import CardFilterer, CardFilters, CardPropertyFilter
 from trello_backup.trello.model import TrelloComment, TrelloChecklist, TrelloBoard, ExtractedCardData, \
@@ -353,6 +354,7 @@ class OutputHandler:
         ]
 
     def write_outputs(self):
+        header: List[str]
         rows, header = self._data_converter.convert_to_table_rows(self.board, CardFilters.ALL.value, self._md_formatter)
 
         # Outputs: HTML file, HTML table, Rich table
@@ -382,26 +384,30 @@ class OutputHandlerFactory:
 class TrelloBoardRichTableGenerator:
     def __init__(self, board, print_to_console=False):
         self._board = board
-        self._console = ConsoleUtils.create_console(record=True, log_to_console=print_to_console)
+        self._console = ConsoleUtils.create_console(record=True, log_to_console=print_to_console, wide=True)
 
-    def render(self, rows, header):
+    def render(self, rows, header: List[str]):
         # TODO implement console mode --> Just print this and do not log anything to console other than the table
-        from rich.table import Table
-        table = Table(title=f"TRELLO EXPORT OF BOARD: {self._board.name}", expand=True, min_width=800)
 
-        table.add_column("Board", justify="left", style="cyan", no_wrap=True)
-        table.add_column("List", justify="right", style="cyan", no_wrap=True)
-        table.add_column("Card", style="magenta", no_wrap=False)
-        table.add_column("Labels", style="magenta", no_wrap=True)
-        table.add_column("Due date", style="magenta", no_wrap=True)
-        table.add_column("Checklist item name", no_wrap=False)
-        table.add_column("URL Title", no_wrap=False)
-        table.add_column("URL", no_wrap=False, overflow="fold")
-
-        for row in rows:
-            table.add_row(*row)
-
-        self._console.print(table)
+        # white color is just dummy for empty cells - Not really important
+        col_styles = TrelloTableColumnStyles()
+        (col_styles
+         .bind_style(TableHeaderFieldName.BOARD.value, "", "white", {"justify": "left", "style": "cyan", "no_wrap": True})
+         .bind_style(TableHeaderFieldName.LIST.value, "", "white", {"justify": "right", "style": "cyan", "no_wrap": True})
+         .bind_style(TableHeaderFieldName.CARD.value, "", "white", {"style": "magenta", "no_wrap": False})
+         .bind_style(TableHeaderFieldName.LABELS.value, "", "white", {"style": "magenta", "no_wrap": True})
+         .bind_style(TableHeaderFieldName.DUE_DATE.value, "", "white", {"style": "magenta", "no_wrap": True})
+         .bind_style(TableHeaderFieldName.CHECKLIST_ITEM_NAME.value, "", "white", {"no_wrap": False})
+         .bind_style(TableHeaderFieldName.CHECKLIST_ITEM_URL_TITLE.value, "", "white", {"no_wrap": False})
+         .bind_style(TableHeaderFieldName.CHECKLIST_ITEM_URL.value, "", "white", {"overflow": "fold", "no_wrap": False})
+         )
+        render = TrelloTableRenderSettings(col_styles,
+                                           wide_print=True,
+                                           show_lines=True,
+                                           additional_table_config={"expand": True, "min_width": 800})
+        table = TrelloTable(header, render, title=f"TRELLO EXPORT OF BOARD: {self._board.name}")
+        table.render(rows)
+        self._console.print(table._table)
 
     def write_file(self, file):
         self._console.save_html(file)
