@@ -171,7 +171,10 @@ class TrelloBoardHtmlFileGenerator:
         html += "</div>"
         return html
 
-    def render(self):
+    def render(self, rows, header):
+        """
+        Accept rows and header parameters to conform with other Trello output renderer interfaces
+        """
         html = self.default_style
         for trello_list in self.board.lists:
             html += f"<h1>LIST: {trello_list.name} ({len(trello_list.cards)} cards)</h1><br><br>"
@@ -179,7 +182,7 @@ class TrelloBoardHtmlFileGenerator:
                 html += self._render_card(trello_list, card)
         self.html = html
 
-    def write_to_file(self, file):
+    def write_file(self, file):
         FileUtils.write_to_file(file, self.html)
         print("Generated HTML file output to: " + file)
 
@@ -188,10 +191,8 @@ class TrelloBoardHtmlFileGenerator:
 class OutputHandler:
     def __init__(self, board: TrelloBoard, html_gen_config):
         self.board = board
-        self.html_file_gen = TrelloBoardHtmlFileGenerator(board, html_gen_config)
-        self.html_table_gen = TrelloBoardHtmlTableGenerator(board)
-        self.rich_table_gen = TrelloBoardRichTableGenerator(board)
         self._set_file_paths()
+        self._set_generators(board, html_gen_config)
         self._md_formatter = MarkdownFormatter()
 
     def _set_file_paths(self):
@@ -203,23 +204,31 @@ class OutputHandler:
         self.csv_file_path = os.path.join(output_dir, f"{fname_prefix}.csv")
         self.csv_file_copy_to_file = f"~/Downloads/{fname_prefix}.csv"
 
+    def _set_generators(self, board, html_gen_config):
+        self.html_file_gen = TrelloBoardHtmlFileGenerator(board, html_gen_config)
+        self.html_table_gen = TrelloBoardHtmlTableGenerator(board)
+        self.rich_table_gen = TrelloBoardRichTableGenerator(board, print_console=False)
+
+        self._generators = [
+            (self.html_file_gen, self.html_result_file_path),
+            (self.html_table_gen, self.html_table_file_path),
+            (self.rich_table_gen, self.rich_table_file_path),
+        ]
+
     def write_outputs(self):
         header = TrelloDataConverter.get_header()
         rows = TrelloDataConverter.convert_to_table_rows(self.board, CardFilters.ALL.value, len(header), self._md_formatter)
 
-        # Output 1: HTML file
-        self.html_file_gen.render()
-        self.html_file_gen.write_to_file(self.html_result_file_path)
+        # Outputs: HTML file, HTML table, Rich table
+        for generator, path in self._generators:
+            # Assuming all generators have a compatible render signature
+            generator.render(rows, header)
+            generator.write_file(path)
 
-        # Output 2: Rich table
-        self.rich_table_gen.render(rows, print_console=False)
-        self.rich_table_gen.write_file(self.rich_table_file_path)
+        # Handle CSV separately due to unique logic (removal, printing)
+        self._generate_csv_file(header, rows)
 
-        # Output 3: HTML table
-        self.html_table_gen.render(rows, header)
-        self.html_table_gen.write_file(self.html_table_file_path)
-
-        # Output 4: CSV file
+    def _generate_csv_file(self, header: list[str | Any], rows: list[Any]):
         if os.path.exists(self.csv_file_path):
             FileUtils.remove_file(self.csv_file_path)
         CsvFileUtils.append_rows_to_csv_file(self.csv_file_path, rows, header=header)
@@ -235,10 +244,11 @@ class OutputHandlerFactory:
 
 
 class TrelloBoardRichTableGenerator:
-    def __init__(self, board):
+    def __init__(self, board, print_console=False):
         self.board = board
+        self._print_console: bool = print_console
 
-    def render(self, rows, print_console=True):
+    def render(self, rows, header):
         # TODO implement console mode --> Just print this and do not log anything to console other than the table
         # TODO add progressbar while loading emails
         from rich.console import Console
@@ -258,7 +268,8 @@ class TrelloBoardRichTableGenerator:
             table.add_row(*row)
 
         self.console = Console(record=True)
-        if print_console:
+        if self._print_console:
+            # TODO ASAP This creates an empty file!
             self.console.print(table)
 
     def write_file(self, file):

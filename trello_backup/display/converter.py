@@ -20,7 +20,6 @@ class TrelloDataConverter:
                     "id": card.id,
                     "name": card.name,
                     "closed": card.closed,
-                    # "description": md_formatter.to_plain_text(card.description),
                     "description": md_formatter.to_plain_text(card.description),
                     "attachments": [
                         {
@@ -47,7 +46,7 @@ class TrelloDataConverter:
 
 
     @staticmethod
-    def convert_to_table_rows(board: TrelloBoard, card_filter_flags: CardFilter, header_len, md_formatter):
+    def convert_to_table_rows(board: TrelloBoard, card_filter_flags: CardFilter, header_len, md_formatter) -> List[List[str]]:
         rows = []
         for list in board.lists:
             cards = TrelloDataConverter.filter_cards(list, card_filter_flags)
