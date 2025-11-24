@@ -5,9 +5,10 @@ from typing import Iterable
 
 from trello_backup.config_parser.config import ConfigLoader, ConfigReader, TrelloConfig, TrelloCfg
 from trello_backup.config_parser.config_validation import ConfigValidator, ValidationContext, ConfigSource
-from trello_backup.constants import CTX_DRY_RUN, CTX_LOG_FILES
+from trello_backup.constants import CTX_DRY_RUN, CTX_LOG_FILES, FilePath
 from trello_backup.display.output import OutputHandlerFactory
 from trello_backup.exception import TrelloConfigException
+from trello_backup.http_server import HttpServer
 from trello_backup.trello.api import TrelloApi
 from trello_backup.trello.service import TrelloOperations
 
@@ -26,6 +27,11 @@ class CliCommon:
         conf: TrelloConfig = conf_loader.load(ctx)
         context = TrelloContext.create_from_config(ctx, conf, dry_run=ctx.obj[CTX_DRY_RUN])
         trello_ops = TrelloOperations()
+
+        # Serve attachment files with http server
+        if context.config.get(TrelloCfg.SERVE_ATTACHMENTS):
+            http_server = HttpServer(FilePath.OUTPUT_DIR_ATTACHMENTS)
+            http_server.launch()
         handler = MainCommandHandler(context, trello_ops, OutputHandlerFactory)
         return handler
 

@@ -33,17 +33,10 @@ class MainCommandHandler:
         self.output_factory = output_factory
 
     def backup_board(self, board_name: str):
-        # TODO ASAP Move http server logic
-        atexit.register(HttpServer.stop_server)
         html_gen_config = TrelloCardHtmlGeneratorMode.BASIC.value
         board = self._trello_ops.get_board(board_name, download_comments=html_gen_config.include_comments)
-
         out = self.output_factory.create_for_board(board, html_gen_config)
         out.write_outputs()
-
-        # Serve attachment files for CSV output
-        if self.ctx.config.get(TrelloCfg.SERVE_ATTACHMENTS):
-            HttpServer.launch_http_server(dir=FilePath.OUTPUT_DIR_ATTACHMENTS)
 
     def print_cards(self, board: str, lists: List[str]):
         trello_data: List[Dict[str, Any]] = self._trello_ops.get_lists_and_cards(board, lists)

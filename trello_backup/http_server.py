@@ -1,14 +1,19 @@
+import atexit
+
 HTTP_SERVER_PORT = 8000
 
 
 class HttpServer:
-    INSTANCE = None
+    def __init__(self, dir):
+        atexit.register(self.stop)
+        self._dir = dir
+        self._httpd = None
 
-    @staticmethod
-    def launch_http_server(dir):
+    def launch(self):
         import http.server
         import socketserver
 
+        dir = self._dir
         class Handler(http.server.SimpleHTTPRequestHandler):
             def __init__(self, *args, **kwargs):
                 super().__init__(*args, directory=dir, **kwargs)
@@ -16,12 +21,11 @@ class HttpServer:
         #Handler = http.server.SimpleHTTPRequestHandler
 
         with socketserver.TCPServer(("", HTTP_SERVER_PORT), Handler) as httpd:
-            HttpServer.INSTANCE = httpd
+            self._httpd = httpd
             print("serving at port", HTTP_SERVER_PORT)
             httpd.serve_forever()
             httpd.shutdown()
 
-    @staticmethod
-    def stop_server():
-        if HttpServer.INSTANCE:
-            HttpServer.INSTANCE.shutdown()
+    def stop(self):
+        if self._httpd:
+            self._httpd.shutdown()
