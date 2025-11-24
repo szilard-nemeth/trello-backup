@@ -84,7 +84,7 @@ class MarkdownFormatter:
 
 class TrelloBoardHtmlFileGenerator:
     def __init__(self, board, config):
-        self.board = board
+        self._board = board
         self.config: TrelloCardHtmlGeneratorConfig = config
         self.default_style = """
             <style>
@@ -174,7 +174,7 @@ class TrelloBoardHtmlFileGenerator:
         Accept rows and header parameters to conform with other Trello output renderer interfaces
         """
         html = self.default_style
-        for trello_list in self.board.lists:
+        for trello_list in self._board.lists:
             html += f"<h1>LIST: {trello_list.name} ({len(trello_list.cards)} cards)</h1><br><br>"
             for card in trello_list.cards:
                 html += self._render_card(trello_list, card)
@@ -244,14 +244,14 @@ class OutputHandlerFactory:
 
 class TrelloBoardRichTableGenerator:
     def __init__(self, board, print_console=False):
-        self.board = board
+        self._board = board
         self._print_console: bool = print_console
 
     def render(self, rows, header):
         # TODO implement console mode --> Just print this and do not log anything to console other than the table
         from rich.console import Console
         from rich.table import Table
-        table = Table(title=f"TRELLO EXPORT OF BOARD: {self.board.name}", expand=True, min_width=800)
+        table = Table(title=f"TRELLO EXPORT OF BOARD: {self._board.name}", expand=True, min_width=800)
 
         table.add_column("Board", justify="left", style="cyan", no_wrap=True)
         table.add_column("List", justify="right", style="cyan", no_wrap=True)
@@ -399,8 +399,7 @@ class TrelloBoardHtmlTableGenerator:
     DEFAULT_TABLE_FORMATS = [TabulateTableFormat.HTML]
 
     def __init__(self, board):
-        self.board = board
-        self.tables = {}
+        self._tables = {}
 
     def render(self, rows, header):
         render_conf = TableRenderingConfig(
@@ -410,15 +409,13 @@ class TrelloBoardHtmlTableGenerator:
             max_width_separator=os.sep,
             tabulate_formats=TrelloBoardHtmlTableGenerator.DEFAULT_TABLE_FORMATS,
         )
-        gen_tables = ResultPrinter.print_tables(
+        self._tables: Dict[TabulateTableFormat, str] = ResultPrinter.print_tables(
             data=rows,
             header=header,
             render_conf=render_conf,
         )
 
-        self.tables: Dict[TabulateTableFormat, str] = gen_tables
-
     def write_file(self, file):
-        for fmt, table in self.tables.items():
+        for fmt, table in self._tables.items():
             FileUtils.save_to_file(file, table)
             print(f"Generated HTML table to file: {file}")
