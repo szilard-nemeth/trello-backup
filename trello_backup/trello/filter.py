@@ -33,23 +33,21 @@ class CardFilterer:
         if CardPropertyFilter.ALL() == card_prop_flags:
             return trello_list.cards
 
-        with_attachment = CardPropertyFilter.WITH_ATTACHMENT in card_prop_flags
-        with_description = CardPropertyFilter.WITH_DESCRIPTION in card_prop_flags
-        with_checklist = CardPropertyFilter.WITH_CHECKLIST in card_prop_flags
+        required_checks = []
+        if CardPropertyFilter.WITH_ATTACHMENT in card_prop_flags:
+            required_checks.append(lambda card: card.has_attachments)
+        if CardPropertyFilter.WITH_DESCRIPTION in card_prop_flags:
+            required_checks.append(lambda card: card.has_description)
+        if CardPropertyFilter.WITH_CHECKLIST in card_prop_flags:
+            required_checks.append(lambda card: card.has_checklist)
 
         filtered_cards = []
         for card in trello_list.cards:
-            keep = False
-            if with_attachment and card.has_attachments:
-                keep = True
-            if with_description and card.has_description:
-                keep = True
-            if with_checklist and card.has_checklist:
-                keep = True
-
-            if keep:
+            # Keep the card if ANY of the required checks pass
+            if any(check(card) for check in required_checks):
                 filtered_cards.append(card)
             else:
-                print("Not keeping card: {}, filters: {}".format(card, card_prop_flags))
+                # Use logging instead of print if possible
+                print(f"Not keeping card: {card.name}, filters: {card_filter_flags}")
 
         return filtered_cards
