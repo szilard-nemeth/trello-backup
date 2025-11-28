@@ -1,3 +1,4 @@
+import json
 import os
 from dataclasses import dataclass
 from enum import Enum
@@ -341,6 +342,7 @@ class OutputHandler:
         self.rich_table_file_path = os.path.join(output_dir, f"{fname_prefix}-rich-table.html")
         self.html_table_file_path = os.path.join(output_dir, f"{fname_prefix}-custom-table.html")
         self.csv_file_path = os.path.join(output_dir, f"{fname_prefix}.csv")
+        self.json_file_path = os.path.join(output_dir, f"{fname_prefix}.json")
         self.csv_file_copy_to_file = f"~/Downloads/{fname_prefix}.csv"
 
     def _set_generators(self, board, html_gen_config):
@@ -364,15 +366,23 @@ class OutputHandler:
             generator.render(rows, header)
             generator.write_file(path)
 
-        # Handle CSV separately due to unique logic (removal, printing)
+        # Handle these output types separately due to unique logic (removal, printing)
         self._generate_csv_file(header, rows)
+        self._write_board_json()
 
     def _generate_csv_file(self, header: list[str | Any], rows: list[Any]):
         if os.path.exists(self.csv_file_path):
             FileUtils.remove_file(self.csv_file_path)
         CsvFileUtils.append_rows_to_csv_file(self.csv_file_path, rows, header=header)
         print("Generated CSV file: " + self.csv_file_path)
+        # TODO ASAP remove this
         print(f"cp {self.csv_file_path} {self.csv_file_copy_to_file} && subl {self.csv_file_copy_to_file}")
+
+    def _write_board_json(self):
+        with open(self.json_file_path, "w") as f:
+            json.dump(self.board.json, f, indent=4)
+        print("Saved board JSON to file: " + self.json_file_path)
+
 
 
 class OutputHandlerFactory:

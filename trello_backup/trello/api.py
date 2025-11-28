@@ -29,6 +29,41 @@ class TrelloApi:
         }
 
     @classmethod
+    def get_all_board_ids_and_names(cls):
+        """
+        Gets all boards associated with the API token's user.
+        https://developer.atlassian.com/cloud/trello/rest/api-group-members/#api-members-id-boards-get
+        """
+        url = "https://api.trello.com/1/members/me/boards"
+        params = {
+            "filter": "all",  # Return all board types (open, closed, pinned, etc.)
+            "fields": "id,name"  # Only request the ID and name fields for efficiency
+        }
+
+        query = dict(TrelloApi.auth_query_params)
+        query.update(params)
+
+        response = requests.request(
+            "GET",
+            url,
+            headers=TrelloApi.headers_accept_json,
+            params=query
+        )
+        response.raise_for_status()
+
+        # The response is a list of board objects
+        parsed_json = json.loads(response.text)
+
+        result_dict = {}
+        for board in parsed_json:
+            b_name = board.get('name')
+            b_id = board.get('id')
+            if b_name and b_id:
+                result_dict[b_name] = b_id
+
+        return result_dict
+
+    @classmethod
     def get_board_details(cls, board_id):
         params = {
             "fields": "all",
@@ -65,6 +100,7 @@ class TrelloApi:
 
     @classmethod
     def get_board_json(cls):
+        # TODO ASAP Hardcoded board name
         url = "https://trello.com/b/9GZZWy03/personal-weekly-plan.json"
         response = requests.request(
             "GET",

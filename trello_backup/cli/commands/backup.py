@@ -1,5 +1,5 @@
 import logging
-from typing import List, Tuple
+from typing import List, Tuple, Dict
 
 import click
 from click import BadOptionUsage
@@ -26,6 +26,14 @@ def get_handler_and_setup_ctx(ctx):
 def board(ctx, board_name: str):
     handler = get_handler_and_setup_ctx(ctx)
     handler.backup_board(board_name)
+
+
+@backup.command()
+@click.pass_context
+def boards(ctx):
+    handler = get_handler_and_setup_ctx(ctx)
+    handler.backup_all_boards()
+
 
 
 @backup.command()

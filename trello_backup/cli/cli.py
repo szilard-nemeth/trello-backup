@@ -24,11 +24,6 @@ def setup_dirs(ctx, use_session_dir: bool, add_console_handler: bool = False):
         session_dir = FilePath.get_session_dir(logs_dir)
         ctx.obj[CTX_SESSION_DIR] = session_dir
         level = ctx.obj[CTX_LOG_LEVEL]
-        # TODO  Logs to multiple places
-        #   Example output: Logging to file: /Users/snemeth/dexter/logs/session-20240716_191629/dexter-session.log
-        #   Also logs to files:
-        #       /Users/snemeth/dexter/test/logs/dexter-TEST-INFO-20240716_232628
-        #       /Users/snemeth/dexter/test/logs/dexter-TEST-DEBUG-20240716_232628
         LoggingUtils.configure_file_logging(ctx, level, session_dir)
         # TODO: execmode should come from param
         LoggingUtils.project_setup(ctx, execution_mode=ExecutionMode.TEST, add_console_handler=add_console_handler)

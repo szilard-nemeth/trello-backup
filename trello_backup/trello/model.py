@@ -226,6 +226,7 @@ class TrelloCards:
 @dataclass
 class TrelloBoard:
     id: str
+    json: str
     name: str
     lists: List[TrelloList]
 

@@ -27,12 +27,21 @@ class MainCommandHandler:
         self._data_converter = data_converter
         self.output_factory = output_factory
 
-    def backup_board(self, board_name: str):
-        html_gen_config = TrelloCardHtmlGeneratorMode.BASIC.value
+    def backup_board(self, board_name: str,
+                     html_gen_config: TrelloCardHtmlGeneratorMode = TrelloCardHtmlGeneratorMode.BASIC):
         card_filters = CardFilters.ALL
-        board, _ = self._trello_ops.get_board(board_name, download_comments=html_gen_config.include_comments)
-        out = self.output_factory.create_for_board(self._data_converter, board, html_gen_config, card_filters)
+        board, _ = self._trello_ops.get_board(board_name, card_filters=card_filters, download_comments=html_gen_config.value.include_comments)
+        # TODO ASAP Save trello board json with outputfactory
+        # TODO ASAP Make output formats configurable: txt, html, rich, json, ...
+        # TODO ASAP use session_dir = ctx.obj[CTX_SESSION_DIR] as output dir
+        out = self.output_factory.create_for_board(self._data_converter, board, html_gen_config.value, card_filters)
         out.write_outputs()
+
+    def backup_all_boards(self,
+                          html_gen_config: TrelloCardHtmlGeneratorMode = TrelloCardHtmlGeneratorMode.FULL):
+        boards: Dict[str, str] = self._trello_ops.get_board_ids_and_names()
+        for name in boards.keys():
+            self.backup_board(name, html_gen_config=html_gen_config)
 
     def print_cards(self, board: str, lists: List[str]):
         card_filters = CardFilters.OPEN
