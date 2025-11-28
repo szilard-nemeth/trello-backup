@@ -35,7 +35,7 @@ def boards(ctx):
     handler.backup_all_boards()
 
 
-
+# TODO ASAP This should be a separate CLI command: 'print board'
 @backup.command()
 @click.option('-b', '--board', required=True, help='Trello board name')
 @click.option('-l', '--list', "list_names",  multiple=True, required=True, help='Trello list name')

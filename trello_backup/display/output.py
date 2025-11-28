@@ -242,7 +242,7 @@ class TrelloBoardHtmlFileGenerator:
 
     @staticmethod
     def format_plain_text_description(card):
-        # TODO is this required?
+        # TODO ASAP is this required?
         # print("Original description: {}".format(card.description))
         if not card.description:
             return ""

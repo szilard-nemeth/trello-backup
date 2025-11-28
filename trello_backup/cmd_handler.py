@@ -31,7 +31,6 @@ class MainCommandHandler:
                      html_gen_config: TrelloCardHtmlGeneratorMode = TrelloCardHtmlGeneratorMode.BASIC):
         card_filters = CardFilters.ALL
         board, _ = self._trello_ops.get_board(board_name, card_filters=card_filters, download_comments=html_gen_config.value.include_comments)
-        # TODO ASAP Save trello board json with outputfactory
         # TODO ASAP Make output formats configurable: txt, html, rich, json, ...
         out = self.output_factory.create_for_board(self._data_converter, self.ctx.backup_dir, board, html_gen_config.value, card_filters)
         out.write_outputs()
