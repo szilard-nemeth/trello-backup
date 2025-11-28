@@ -1,5 +1,6 @@
 import json
 import os
+from typing import Dict
 
 import requests
 
@@ -29,7 +30,7 @@ class TrelloApi:
         }
 
     @classmethod
-    def get_all_board_ids_and_names(cls):
+    def list_boards(cls):
         """
         Gets all boards associated with the API token's user.
         https://developer.atlassian.com/cloud/trello/rest/api-group-members/#api-members-id-boards-get
@@ -61,6 +62,9 @@ class TrelloApi:
             if b_name and b_id:
                 result_dict[b_name] = b_id
 
+        # TODO ASAP debug log instead of print
+        # TODO ASAP Replace all print with logging: CLI_LOG
+        #print(json.dumps(parsed_json, sort_keys=True, indent=4, separators=(",", ": ")))
         return result_dict
 
     @classmethod
@@ -167,29 +171,6 @@ class TrelloApi:
         print(json.dumps(json.loads(response.text), sort_keys=True, indent=4, separators=(",", ": ")))
 
     @classmethod
-    def list_boards(cls):
-        url = "https://api.trello.com/1/organizations/{org_id}/boards".format(org_id=ORGANIZATION_ID)
-        response = requests.request(
-            "GET",
-            url,
-            headers=TrelloApi.headers_accept_json,
-            params=TrelloApi.auth_query_params
-        )
-
-        parsed_json = json.loads(response.text)
-
-        result_dict = {}
-        for board in parsed_json:
-            b_name = board['name']
-            b_id = board['id']
-            result_dict[b_name] = b_id
-
-        # TODO ASAP debug log
-        # TODO ASAP Replace all print with logging: CLI_LOG
-        #print(json.dumps(parsed_json, sort_keys=True, indent=4, separators=(",", ": ")))
-        return result_dict
-
-    @classmethod
     def get_actions_for_card(cls, card_id: str):
         url = "https://api.trello.com/1/cards/{id}/actions".format(id=card_id)
 
@@ -208,7 +189,7 @@ class TrelloApi:
     def get_board_id(cls, board_name: str):
         # board_resp = get_board()
         # print(json.dumps(json.loads(board_resp.text), sort_keys=True, indent=4, separators=(",", ": ")))
-        boards = cls.list_boards()
+        boards: Dict[str, str] = cls.list_boards()
         available_board_names = list(boards.keys())
         print(f"Available boards: {available_board_names}")
         if board_name not in boards:

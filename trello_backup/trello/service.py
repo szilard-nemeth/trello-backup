@@ -23,8 +23,8 @@ class TrelloOperations:
         self._webpage_title_service = title_service
         self._data_converter = data_converter
 
-    def get_board_ids_and_names(self):
-        d = TrelloApi.get_all_board_ids_and_names()
+    def get_board_names_and_ids(self):
+        d = TrelloApi.list_boards()
         for board_name, board_id in d.items():
             self._board_name_to_board_id[board_name] = board_id
         return d

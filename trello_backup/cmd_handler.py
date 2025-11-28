@@ -38,7 +38,7 @@ class MainCommandHandler:
 
     def backup_all_boards(self,
                           html_gen_config: TrelloCardHtmlGeneratorMode = TrelloCardHtmlGeneratorMode.FULL):
-        boards: Dict[str, str] = self._trello_ops.get_board_ids_and_names()
+        boards: Dict[str, str] = self._trello_ops.get_board_names_and_ids()
         for name in boards.keys():
             self.backup_board(name, html_gen_config=html_gen_config)
 
