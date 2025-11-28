@@ -343,7 +343,6 @@ class OutputHandler:
         self.html_table_file_path = os.path.join(output_dir, f"{fname_prefix}-custom-table.html")
         self.csv_file_path = os.path.join(output_dir, f"{fname_prefix}.csv")
         self.json_file_path = os.path.join(output_dir, f"{fname_prefix}.json")
-        self.csv_file_copy_to_file = f"~/Downloads/{fname_prefix}.csv"
 
     def _set_generators(self, board, html_gen_config):
         self.html_file_gen = TrelloBoardHtmlFileGenerator(board, html_gen_config)
@@ -375,8 +374,6 @@ class OutputHandler:
             FileUtils.remove_file(self.csv_file_path)
         CsvFileUtils.append_rows_to_csv_file(self.csv_file_path, rows, header=header)
         print("Generated CSV file: " + self.csv_file_path)
-        # TODO ASAP remove this
-        print(f"cp {self.csv_file_path} {self.csv_file_copy_to_file} && subl {self.csv_file_copy_to_file}")
 
     def _write_board_json(self):
         with open(self.json_file_path, "w") as f:
