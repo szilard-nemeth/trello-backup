@@ -1,19 +1,11 @@
 from bs4 import BeautifulSoup
 import requests
+
+DEFAULT_TIMEOUT_SECONDS = 5
 BS4_HTML_PARSER = "html.parser"
 
 class HtmlParser:
     js_renderer = None
-
-    @staticmethod
-    def create_bs(html) -> BeautifulSoup:
-        return BeautifulSoup(html, features=BS4_HTML_PARSER)
-
-    @staticmethod
-    def create_bs_from_url(url, headers=None):
-        resp = requests.get(url, headers=headers)
-        soup = HtmlParser.create_bs(resp.text)
-        return soup
 
     @classmethod
     def get_title_from_url(cls, url):
@@ -24,15 +16,28 @@ class HtmlParser:
         """
         print("Getting webpage title for URL: {}".format(url))
         try:
-            soup = HtmlParser.create_bs_from_url(url)
+            soup = HtmlParser._create_bs_from_url(url)
         except requests.exceptions.ConnectionError as e:
             print("Failed to get page title from URL: " + url)
+            return url
+        except requests.exceptions.Timeout as e:
+            print("Failed to get page title from URL (timeout): " + url)
             return url
         if soup.title is None:
             return url
         title = soup.title.string
         print("Found webpage title: {}".format(title))
         return str(title)
+
+    @staticmethod
+    def _create_bs_from_url(url, headers=None):
+        resp = requests.get(url, headers=headers, timeout=DEFAULT_TIMEOUT_SECONDS)
+        soup = HtmlParser._create_bs(resp.text)
+        return soup
+
+    @staticmethod
+    def _create_bs(html) -> BeautifulSoup:
+        return BeautifulSoup(html, features=BS4_HTML_PARSER)
 
     @classmethod
     def get_title_from_url_with_js(cls, url):
