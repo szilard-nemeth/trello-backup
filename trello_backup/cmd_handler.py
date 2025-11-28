@@ -33,8 +33,7 @@ class MainCommandHandler:
         board, _ = self._trello_ops.get_board(board_name, card_filters=card_filters, download_comments=html_gen_config.value.include_comments)
         # TODO ASAP Save trello board json with outputfactory
         # TODO ASAP Make output formats configurable: txt, html, rich, json, ...
-        # TODO ASAP use session_dir = ctx.obj[CTX_SESSION_DIR] as output dir
-        out = self.output_factory.create_for_board(self._data_converter, board, html_gen_config.value, card_filters)
+        out = self.output_factory.create_for_board(self._data_converter, self.ctx.backup_dir, board, html_gen_config.value, card_filters)
         out.write_outputs()
 
     def backup_all_boards(self,

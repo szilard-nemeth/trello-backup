@@ -15,8 +15,8 @@ class FilePath:
     REPO_ROOT_DIRNAME = "trello-backup"
     MODULE_ROOT_NAME = "trello_backup"
     REPO_ROOT_DIR = FileUtils.find_repo_root_dir(__file__, REPO_ROOT_DIRNAME)
-    TRELLO_OUTPUT_DIR = os.path.join(os.path.expanduser("~"), "trello-backup-output")
-    OUTPUT_DIR_ATTACHMENTS = os.path.join(TRELLO_OUTPUT_DIR, "attachments")
+    _TRELLO_OUTPUT_DIR = os.path.join(os.path.expanduser("~"), "trello-backup-output")
+    OUTPUT_DIR_ATTACHMENTS = os.path.join(_TRELLO_OUTPUT_DIR, "attachments")
     TRELLO_BACKUP_DIR = SimpleProjectUtils.get_project_dir(
         basedir=REPO_ROOT_DIR,
         parent_dir=REPO_ROOT_DIRNAME,
@@ -24,9 +24,11 @@ class FilePath:
         find_result_type=FindResultType.DIRS,
         exclude_dirs=[],
     )
-    WEBPAGE_TITLE_CACHE_FILE = FileUtils.join_path(TRELLO_OUTPUT_DIR, 'webpage_title_cache')
-    FileUtils.ensure_dir_created(TRELLO_OUTPUT_DIR)
+    WEBPAGE_TITLE_CACHE_FILE = FileUtils.join_path(_TRELLO_OUTPUT_DIR, 'webpage_title_cache')
+    FileUtils.ensure_dir_created(_TRELLO_OUTPUT_DIR)
     FileUtils.ensure_dir_created(OUTPUT_DIR_ATTACHMENTS)
+
+    SESSION_DIR = None
 
     @classmethod
     def get_file_from_root(cls, fname):
@@ -58,8 +60,20 @@ class FilePath:
         return os.path.join(FilePath.REPO_ROOT_DIR, fname)
 
     @classmethod
-    def get_logs_dir(cls):
-        return cls._get_child_dir(FilePath.TRELLO_OUTPUT_DIR, "logs")
+    def get_logs_dir(cls, use_session_dir: bool):
+        if use_session_dir:
+            return cls._get_session_child_dir("logs")
+        return cls._get_child_dir(cls._get_output_dir(), "logs")
+
+    @classmethod
+    def get_backups_dir(cls, use_session_dir: bool):
+        if use_session_dir:
+            return cls._get_session_child_dir("backups")
+        return cls._get_child_dir(cls._get_output_dir(), "backups")
+
+    @classmethod
+    def _get_output_dir(cls):
+        return FilePath._TRELLO_OUTPUT_DIR
 
     @classmethod
     def _get_child_dir(cls, parent, child, create=False):
@@ -73,16 +87,30 @@ class FilePath:
         return os.getcwd()
 
     @classmethod
-    def get_session_dir(cls, logs_dir):
+    def get_session_dir(cls):
         from trello_backup.utils import DateUtils
-        session_dir = os.path.join(logs_dir, f"session-{DateUtils.get_current_datetime()}")
+        if cls.SESSION_DIR:
+            return cls.SESSION_DIR
+        session_dir = os.path.join(cls._get_output_dir(), f"session-{DateUtils.get_current_datetime()}")
         os.makedirs(session_dir)
+        cls.SESSION_DIR = session_dir
         LOG.debug("Session dir: %s", session_dir)
         return session_dir
 
+    @classmethod
+    def _get_session_child_dir(cls, dir_name):
+        if not cls.SESSION_DIR:
+            cls.SESSION_DIR = cls.get_session_dir()
+        d = os.path.join(cls._get_output_dir(), cls.SESSION_DIR, dir_name)
+        os.makedirs(d)
+        LOG.debug("Session child dir for '{}': %s", dir_name, d)
+        return d
+
+# TODO ASAP Add property getter/setter for all to TrelloContext
 CTX_LOG_LEVEL = 'loglevel'  # TODO ASAP use this constant
-CTX_WORKING_DIR = 'workingDir'  # TODO ASAP use this constant
-CTX_SESSION_DIR = 'sessionDir'  # TODO ASAP use this constant
+CTX_WORKING_DIR = 'workingDir'
+CTX_SESSION_DIR = 'sessionDir'
+CTX_BACKUP_DIR = "backupDir"
 CTX_LOG_FILES = "logFiles"  # TODO ASAP use this constant
 CTX_DRY_RUN = 'dryRun'  # TODO ASAP use this constant
 CTX_HANDLER = 'handler'

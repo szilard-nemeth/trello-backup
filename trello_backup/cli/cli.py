@@ -8,7 +8,8 @@ from trello_backup.cli.commands.backup import backup
 from rich.table import Table
 
 from trello_backup.display.console import CliLogger
-from trello_backup.constants import FilePath, CTX_LOG_LEVEL, CTX_WORKING_DIR, CTX_SESSION_DIR, CTX_DRY_RUN
+from trello_backup.constants import FilePath, CTX_LOG_LEVEL, CTX_WORKING_DIR, CTX_SESSION_DIR, CTX_DRY_RUN, \
+    CTX_BACKUP_DIR
 from trello_backup.exception import TrelloException
 from trello_backup.cli.prompt import TrelloPrompt
 from trello_backup.utils import LoggingUtils
@@ -18,16 +19,16 @@ LOG = logging.getLogger(__name__)
 CLI_LOG = CliLogger(LOG)
 
 def setup_dirs(ctx, use_session_dir: bool, add_console_handler: bool = False):
-    logs_dir = FilePath.get_logs_dir()
-    working_dir = FilePath.get_working_dir()
+    logs_dir = FilePath.get_logs_dir(use_session_dir)
     if use_session_dir:
-        session_dir = FilePath.get_session_dir(logs_dir)
-        ctx.obj[CTX_SESSION_DIR] = session_dir
-        level = ctx.obj[CTX_LOG_LEVEL]
-        LoggingUtils.configure_file_logging(ctx, level, session_dir)
-        # TODO: execmode should come from param
-        LoggingUtils.project_setup(ctx, execution_mode=ExecutionMode.TEST, add_console_handler=add_console_handler)
-    ctx.obj[CTX_WORKING_DIR] = working_dir
+        ctx.obj[CTX_SESSION_DIR] = FilePath.get_session_dir()
+        ctx.obj[CTX_BACKUP_DIR] = FilePath.get_backups_dir(use_session_dir)
+
+    level = ctx.obj[CTX_LOG_LEVEL]
+    LoggingUtils.configure_file_logging(ctx, level, logs_dir)
+    # TODO: execmode should come from param
+    LoggingUtils.project_setup(ctx, execution_mode=ExecutionMode.TEST, add_console_handler=add_console_handler)
+    ctx.obj[CTX_WORKING_DIR] = FilePath.get_working_dir()
 
 
 @click.group()

@@ -5,7 +5,7 @@ from typing import Iterable
 
 from trello_backup.config_parser.config import ConfigLoader, ConfigReader, TrelloConfig, TrelloCfg
 from trello_backup.config_parser.config_validation import ConfigValidator, ValidationContext, ConfigSource
-from trello_backup.constants import CTX_DRY_RUN, CTX_LOG_FILES, FilePath
+from trello_backup.constants import CTX_DRY_RUN, CTX_LOG_FILES, FilePath, CTX_BACKUP_DIR
 from trello_backup.display.output import OutputHandlerFactory, MarkdownFormatter, TrelloDataConverter
 from trello_backup.exception import TrelloConfigException
 from trello_backup.http_server import HttpServer, HTTP_SERVER_PORT
@@ -43,15 +43,15 @@ class CliCommon:
         return handler
 
 
-@dataclass
 class TrelloContext:
-    config: 'TrelloConfig'
-    raise_exc_if_empty = False
-    dry_run: bool
-    log_files: Iterable[str] = None
-
-    def __post_init__(self):
+    def __init__(self, config, backup_dir, dry_run, log_files):
         LOG.info("Creating context")
+        self.raise_exc_if_empty = False
+
+        self.config: 'TrelloConfig' = config
+        self.backup_dir = backup_dir
+        self.dry_run: bool = dry_run
+        self.log_files: Iterable[str] = log_files
         if not self.config:
             if self.raise_exc_if_empty:
                 raise TrelloConfigException("Config not defined for TrelloContext")
@@ -66,7 +66,9 @@ class TrelloContext:
             LOG.info("Using normal mode for initializing context")
 
         log_files = ctx.obj[CTX_LOG_FILES]
+        backup_dir = ctx.obj[CTX_BACKUP_DIR]
         ctx = TrelloContext(conf,
+                            backup_dir,
                             dry_run=dry_run,
                             log_files=log_files)
         api_key = conf.get_secret(TrelloCfg.TRELLO_API_KEY)
