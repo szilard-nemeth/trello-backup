@@ -148,15 +148,15 @@ class TrelloApi:
         return parsed_json
 
     @classmethod
-    def create_card(cls):
+    def create_card(cls, list_id):
         url = "https://api.trello.com/1/cards"
 
         headers = {
             "Accept": "application/json"
         }
 
-        # TODO ASAP hardcoded list id
-        query = TrelloApi.auth_query_params.update({'idList': '5abbe4b7ddc1b351ef961414'})
+        # list_id_example: 5abbe4b7ddc1b351ef961414
+        query = TrelloApi.auth_query_params.update({'idList': list_id})
         response = requests.request(
             "POST",
             url,
