@@ -80,19 +80,9 @@ class FilePath:
         LOG.debug("Session dir: %s", session_dir)
         return session_dir
 
-# TODO ASAP2 use this constant
-CTX_LOG_LEVEL = 'loglevel'
-
-# TODO ASAP2 use this constant
-CTX_WORKING_DIR = 'workingDir'
-
-# TODO ASAP2 use this constant
-CTX_SESSION_DIR = 'sessionDir'
-
-# TODO ASAP2 use this constant
-CTX_LOG_FILES = "logFiles"
-
-# TODO ASAP2 use this constant
-CTX_DRY_RUN = 'dryRun'
-
+CTX_LOG_LEVEL = 'loglevel'  # TODO ASAP use this constant
+CTX_WORKING_DIR = 'workingDir'  # TODO ASAP use this constant
+CTX_SESSION_DIR = 'sessionDir'  # TODO ASAP use this constant
+CTX_LOG_FILES = "logFiles"  # TODO ASAP use this constant
+CTX_DRY_RUN = 'dryRun'  # TODO ASAP use this constant
 CTX_HANDLER = 'handler'

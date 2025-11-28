@@ -99,9 +99,8 @@ class TrelloApi:
         return parsed_json
 
     @classmethod
-    def get_board_json(cls):
-        # TODO ASAP Hardcoded board name
-        url = "https://trello.com/b/9GZZWy03/personal-weekly-plan.json"
+    def get_board_json(cls, board_name):
+        url = f"https://trello.com/b/9GZZWy03/{board_name}.json"
         response = requests.request(
             "GET",
             url,
