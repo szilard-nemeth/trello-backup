@@ -1,35 +1,75 @@
-from typing import Any
+from dataclasses import dataclass
+from typing import Any, Type, Dict, List
 
 import click
 
-# TODO ASAP use loglevel
-# TODO ASAP use logFiles
-# TODO ASAP use dryRun
-# --- SINGLE SOURCE OF TRUTH ---
-# 1. Update this dictionary ONLY when adding, removing, or renaming a property.
-PROPERTY_KEYS = {
-    'loglevel': 'log_level',
-    'workingDir': 'working_dir',
-    'sessionDir': 'session_dir',
-    'backupDir': 'backup_dir',
-    'logFiles': 'log_files',
-    'dryRun': 'dry_run',
-    'handler': 'handler',
+from trello_backup.cmd_handler import MainCommandHandler
+
+
+# TODO ASAP implement dryRun feature (offline?)
+# TODO ASAP Check usage for all properties
+#   use loglevel property
+#   use logFiles property
+# Define a structure for each property's configuration
+@dataclass(frozen=True) # frozen=True makes the instances immutable
+class ContextProperty:
+    """Defines the structure for a property in the Click Context."""
+    obj_key: str              # The key used internally in self.obj (e.g., 'loglevel')
+    attr_name: str            # The name used as the class attribute (e.g., 'log_level')
+    attr_type: Type[Any]      # The type hint for the attribute (e.g., int, str, logging.Logger)
+
+# --- SINGLE SOURCE OF TRUTH (Now with Types) ---
+# Use a dictionary where the keys are the internal obj_key for easy lookup/iteration
+PROPERTY_CONFIG: Dict[str, ContextProperty] = {
+    'loglevel': ContextProperty(
+        obj_key='loglevel',
+        attr_name='log_level',
+        attr_type=int # Example Type
+    ),
+    'logFiles': ContextProperty(
+        obj_key='logFiles',
+        attr_name='log_files',
+        attr_type=List[str]
+    ),
+    'workingDir': ContextProperty(
+        obj_key='workingDir',
+        attr_name='working_dir',
+        attr_type=str # Example Type
+    ),
+    'sessionDir': ContextProperty(
+        obj_key='sessionDir',
+        attr_name='session_dir',
+        attr_type=str
+    ),
+    'backupDir': ContextProperty(
+        obj_key='backupDir',
+        attr_name='backup_dir',
+        attr_type=str
+    ),
+    'dryRun': ContextProperty(
+        obj_key='dryRun',
+        attr_name='dry_run',
+        attr_type=str
+    ),
+    'handler': ContextProperty(
+        obj_key='handler',
+        attr_name='handler',
+        attr_type=MainCommandHandler
+    ),
 }
 # -----------------------------
 
-def _create_context_property(key_constant: str) -> property:
-    """Creates a property object (getter/setter) for a given key_constant."""
+def _create_context_property(prop_config: ContextProperty) -> property:
+    """Creates a property object (getter/setter) from the config."""
 
     def getter(self):
-        return self.obj[key_constant]
+        # Access using the internal obj_key
+        return self.obj[prop_config.obj_key]
 
     def setter(self, v):
-        # TODO ASAP do I need this or can I store to wrapper directly?
-        self.obj[key_constant] = v
+        self.obj[prop_config.obj_key] = v
 
     return property(getter, setter)
-
 
 
 class ClickContextWrapper(click.Context):
@@ -40,22 +80,20 @@ class ClickContextWrapper(click.Context):
 # --- Dynamic Injection Phase ---
 
 # 1. Dynamically update __annotations__ for IDE/Linter type hints
-# We iterate over the desired property names and tell Python/IDEs that
-# these attributes exist and have a type of 'Any'.
-for property_name in PROPERTY_KEYS.values():
-    ClickContextWrapper.__annotations__[property_name] = Any
+for config in PROPERTY_CONFIG.values():
+    # Use the specific type hint from the configuration
+    ClickContextWrapper.__annotations__[config.attr_name] = config.attr_type
 
 # 2. Dynamically attach the *actual* properties (getters/setters)
-for key_constant, property_name in PROPERTY_KEYS.items():
+for config in PROPERTY_CONFIG.values():
     # This sets ClickContextWrapper.log_level = property(...)
-    setattr(ClickContextWrapper, property_name, _create_context_property(key_constant))
-
-    # The IDE/Linter now has the type information, and the runtime has the properties.
+    setattr(ClickContextWrapper, config.attr_name, _create_context_property(config))
 
 
 
 class TrelloGroup(click.Group):
     def __init__(self, **kwargs: Any):
+        # TODO ASAP logging remove or move to DEBUG log
         print("***created TrelloGroup")
         super().__init__(**kwargs)
 
@@ -66,6 +104,7 @@ class TrelloGroup(click.Group):
 
 class TrelloCommand(click.Command):
     def __init__(self, **kwargs: Any):
+        # TODO ASAP logging remove or move to DEBUG log
         print("***created TrelloCommand")
         super().__init__(**kwargs)
 
