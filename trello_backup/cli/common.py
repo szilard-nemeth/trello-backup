@@ -2,10 +2,9 @@ import logging
 from dataclasses import dataclass
 from typing import Iterable
 
-
 from trello_backup.config_parser.config import ConfigLoader, ConfigReader, TrelloConfig, TrelloCfg
 from trello_backup.config_parser.config_validation import ConfigValidator, ValidationContext, ConfigSource
-from trello_backup.constants import CTX_DRY_RUN, CTX_LOG_FILES, FilePath, CTX_BACKUP_DIR
+from trello_backup.constants import FilePath
 from trello_backup.display.output import OutputHandlerFactory, MarkdownFormatter, TrelloDataConverter
 from trello_backup.exception import TrelloConfigException
 from trello_backup.http_server import HttpServer, HTTP_SERVER_PORT
@@ -26,7 +25,7 @@ class CliCommon:
         config_reader = ConfigReader(validator)
         conf_loader = ConfigLoader(config_reader, validator)
         conf: TrelloConfig = conf_loader.load(ctx)
-        context = TrelloContext.create_from_config(ctx, conf, dry_run=ctx.obj[CTX_DRY_RUN])
+        context = TrelloContext.create_from_config(ctx, conf, dry_run=ctx.dry_run)
 
         # Initialize WebpageTitleCache so 'board.get_checklist_url_titles' can use it
         cache = WebpageTitleCache()
@@ -45,7 +44,7 @@ class CliCommon:
 
 class TrelloContext:
     def __init__(self, config, backup_dir, dry_run, log_files):
-        LOG.info("Creating context")
+        LOG.info(f"Creating {TrelloContext.__name__}")
         self.raise_exc_if_empty = False
 
         self.config: 'TrelloConfig' = config
@@ -65,12 +64,10 @@ class TrelloContext:
         else:
             LOG.info("Using normal mode for initializing context")
 
-        log_files = ctx.obj[CTX_LOG_FILES]
-        backup_dir = ctx.obj[CTX_BACKUP_DIR]
         ctx = TrelloContext(conf,
-                            backup_dir,
+                            ctx.backup_dir,
                             dry_run=dry_run,
-                            log_files=log_files)
+                            log_files=ctx.log_files)
         api_key = conf.get_secret(TrelloCfg.TRELLO_API_KEY)
         token = conf.get_secret(TrelloCfg.TRELLO_TOKEN)
         TrelloApi.init(api_key, token)

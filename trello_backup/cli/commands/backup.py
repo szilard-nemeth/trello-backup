@@ -5,7 +5,7 @@ import click
 from click import BadOptionUsage
 
 from trello_backup.cli.common import CliCommon
-from trello_backup.constants import CTX_HANDLER
+from trello_backup.cli.context import TrelloCommand
 
 LOG = logging.getLogger(__name__)
 
@@ -16,11 +16,11 @@ def backup():
 
 def get_handler_and_setup_ctx(ctx):
     handler = CliCommon.init_main_cmd_handler(ctx)
-    ctx.obj[CTX_HANDLER] = handler
+    ctx.handler = handler
     return handler
 
 
-@backup.command()
+@backup.command(cls=TrelloCommand)
 @click.pass_context
 @click.argument("board_name")
 def board(ctx, board_name: str):
@@ -28,7 +28,7 @@ def board(ctx, board_name: str):
     handler.backup_board(board_name)
 
 
-@backup.command()
+@backup.command(cls=TrelloCommand)
 @click.pass_context
 def boards(ctx):
     handler = get_handler_and_setup_ctx(ctx)
@@ -36,7 +36,7 @@ def boards(ctx):
 
 
 # TODO ASAP This should be a separate CLI command: 'print board'
-@backup.command()
+@backup.command(cls=TrelloCommand)
 @click.option('-b', '--board', required=True, help='Trello board name')
 @click.option('-l', '--list', "list_names",  multiple=True, required=True, help='Trello list name')
 # @click.option('-l', '--list', "list_names",  multiple=True, required=True, help='Trello list names to print cards from. Accepts "*" to print cards from all lists.')

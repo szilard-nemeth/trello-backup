@@ -3,8 +3,6 @@ from typing import Iterable
 
 from rich.prompt import Confirm, Prompt
 
-from trello_backup.constants import CTX_DRY_RUN
-
 
 class PromptFormat:
     def __init__(self, ctx):
@@ -24,7 +22,7 @@ class PromptFormat:
         return ""
 
     def is_dry_run(self):
-        if self._ctx and self._ctx.obj[CTX_DRY_RUN]:
+        if self._ctx and self._ctx.dry_run:
             return True
         return False
 
@@ -138,6 +136,6 @@ class TrelloPrompt:
 
     @classmethod
     def _is_dry_run(cls):
-        if cls._ctx and cls._ctx.obj[CTX_DRY_RUN]:
+        if cls._ctx and cls._ctx.dry_run:
             return True
         return False

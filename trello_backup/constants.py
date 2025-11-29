@@ -105,12 +105,3 @@ class FilePath:
         os.makedirs(d)
         LOG.debug("Session child dir for '{}': %s", dir_name, d)
         return d
-
-# TODO ASAP Add property getter/setter for all to TrelloContext
-CTX_LOG_LEVEL = 'loglevel'  # TODO ASAP use this constant
-CTX_WORKING_DIR = 'workingDir'
-CTX_SESSION_DIR = 'sessionDir'
-CTX_BACKUP_DIR = "backupDir"
-CTX_LOG_FILES = "logFiles"  # TODO ASAP use this constant
-CTX_DRY_RUN = 'dryRun'  # TODO ASAP use this constant
-CTX_HANDLER = 'handler'

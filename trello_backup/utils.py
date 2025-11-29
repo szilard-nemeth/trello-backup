@@ -11,7 +11,7 @@ from pythoncommons.logging_setup import SimpleLoggingSetupConfig, SimpleLoggingS
 from pythoncommons.project_utils import ProjectUtils, ProjectRootDeterminationStrategy
 
 from trello_backup.display.console import CliLogger
-from trello_backup.constants import PROJECT_NAME, CTX_DRY_RUN, CTX_LOG_FILES
+from trello_backup.constants import PROJECT_NAME
 
 import logging
 LOG = logging.getLogger(__name__)
@@ -53,7 +53,7 @@ class LoggingUtils:
         handlers.append(file_handler)
 
         fmt = '%(asctime)s - %(name)s - %(levelname)s - %(message)s'
-        if ctx.obj[CTX_DRY_RUN]:
+        if ctx.dry_run:
             fmt = f"[DRY-RUN] {fmt}"
         logging.basicConfig(force=True, format=fmt, level=level, handlers=handlers)
 
@@ -74,7 +74,7 @@ class LoggingUtils:
         _ = ProjectUtils.get_output_basedir(PROJECT_NAME, basedir=expanduser("~"))
 
         fmt = DEFAULT_FORMAT
-        if ctx.obj[CTX_DRY_RUN]:
+        if ctx.dry_run:
             fmt = f"[DRY-RUN] {fmt}"
         logging_config: SimpleLoggingSetupConfig = SimpleLoggingSetup.init_logger(
             project_name=PROJECT_NAME,
@@ -88,7 +88,7 @@ class LoggingUtils:
             sanity_check_number_of_handlers=sanity_check_handlers
         )
         CLI_LOG.info("Logging to files: %s", logging_config.log_file_paths)
-        ctx.obj[CTX_LOG_FILES] = list(logging_config.log_file_paths.values())
+        ctx.log_files = list(logging_config.log_file_paths.values())
 
     @staticmethod
     def remove_console_handler(logger):
