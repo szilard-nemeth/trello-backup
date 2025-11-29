@@ -11,68 +11,63 @@ from trello_backup.cmd_handler import MainCommandHandler
 #   use loglevel property
 #   use logFiles property
 # Define a structure for each property's configuration
-@dataclass(frozen=True) # frozen=True makes the instances immutable
+@dataclass(frozen=True)
 class ContextProperty:
     """Defines the structure for a property in the Click Context."""
-    obj_key: str              # The key used internally in self.obj (e.g., 'loglevel')
-    attr_name: str            # The name used as the class attribute (e.g., 'log_level')
-    attr_type: Type[Any]      # The type hint for the attribute (e.g., int, str, logging.Logger)
+    # This single 'name' field is used for both the self.obj key and the external attribute name.
+    name: str
+    attr_type: Type[Any]      # The type hint for the attribute
 
-# --- SINGLE SOURCE OF TRUTH (Now with Types) ---
-# Use a dictionary where the keys are the internal obj_key for easy lookup/iteration
+# --- SINGLE SOURCE OF TRUTH (List with Unified Naming) ---
 PROPERTY_CONFIG: List[ContextProperty] = [
     ContextProperty(
-        obj_key='loglevel',
-        attr_name='log_level',
-        attr_type=int # Example Type
+        name='log_level',
+        attr_type=str  # Assuming log level is a string like 'INFO', 'DEBUG', etc.
     ),
     ContextProperty(
-        obj_key='logFiles',
-        attr_name='log_files',
-        attr_type=List[str]
+        name='log_files',
+        attr_type=List[str] # Assuming this is a list of file paths
     ),
     ContextProperty(
-        obj_key='workingDir',
-        attr_name='working_dir',
-        attr_type=str # Example Type
-    ),
-    ContextProperty(
-        obj_key='sessionDir',
-        attr_name='session_dir',
+        name='working_dir',
         attr_type=str
     ),
     ContextProperty(
-        obj_key='backupDir',
-        attr_name='backup_dir',
+        name='session_dir',
         attr_type=str
     ),
     ContextProperty(
-        obj_key='dryRun',
-        attr_name='dry_run',
+        name='backup_dir',
         attr_type=str
     ),
     ContextProperty(
-        obj_key='handler',
-        attr_name='handler',
+        name='dry_run',
+        attr_type=bool
+    ),
+    ContextProperty(
+        name='handler',
         attr_type=MainCommandHandler
-    )
+    ),
 ]
-# -----------------------------
+# -------------------------------------
 
 def _create_context_property(prop_config: ContextProperty) -> property:
-    """Creates a property object (getter/setter) from the config."""
+    """
+    Creates a property object (getter/setter) for self.obj access.
+    This function generates the repetitive code.
+    """
 
     def getter(self):
-        # Access using the internal obj_key
-        return self.obj[prop_config.obj_key]
+        return self.obj[prop_config.name]
 
     def setter(self, v):
-        self.obj[prop_config.obj_key] = v
+        self.obj[prop_config.name] = v
 
     return property(getter, setter)
 
-
 class ClickContextWrapper(click.Context):
+    # Note: We no longer need to manually define CTX_ constants here,
+    # as the property names are now defined in PROPERTY_CONFIG.
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -80,14 +75,14 @@ class ClickContextWrapper(click.Context):
 # --- Dynamic Injection Phase ---
 
 # 1. Dynamically update __annotations__ for IDE/Linter type hints
+# This allows autocompletion and type checking on attributes like ctx.log_level
 for config in PROPERTY_CONFIG:
-    # Use the specific type hint from the configuration
-    ClickContextWrapper.__annotations__[config.attr_name] = config.attr_type
+    ClickContextWrapper.__annotations__[config.name] = config.attr_type
 
 # 2. Dynamically attach the *actual* properties (getters/setters)
 for config in PROPERTY_CONFIG:
     # This sets ClickContextWrapper.log_level = property(...)
-    setattr(ClickContextWrapper, config.attr_name, _create_context_property(config))
+    setattr(ClickContextWrapper, config.name, _create_context_property(config))
 
 
 
