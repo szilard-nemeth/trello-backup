@@ -2,75 +2,57 @@ from typing import Any
 
 import click
 
+# TODO ASAP use loglevel
+# TODO ASAP use logFiles
+# TODO ASAP use dryRun
+# --- SINGLE SOURCE OF TRUTH ---
+# 1. Update this dictionary ONLY when adding, removing, or renaming a property.
+PROPERTY_KEYS = {
+    'loglevel': 'log_level',
+    'workingDir': 'working_dir',
+    'sessionDir': 'session_dir',
+    'backupDir': 'backup_dir',
+    'logFiles': 'log_files',
+    'dryRun': 'dry_run',
+    'handler': 'handler',
+}
+# -----------------------------
+
+def _create_context_property(key_constant: str) -> property:
+    """Creates a property object (getter/setter) for a given key_constant."""
+
+    def getter(self):
+        return self.obj[key_constant]
+
+    def setter(self, v):
+        # TODO ASAP do I need this or can I store to wrapper directly?
+        self.obj[key_constant] = v
+
+    return property(getter, setter)
+
+
 
 class ClickContextWrapper(click.Context):
-    CTX_LOG_LEVEL = 'loglevel'  # TODO ASAP use this constant
-    CTX_WORKING_DIR = 'workingDir'
-    CTX_SESSION_DIR = 'sessionDir'
-    CTX_BACKUP_DIR = "backupDir"
-    CTX_LOG_FILES = "logFiles"  # TODO ASAP use this constant
-    CTX_DRY_RUN = 'dryRun'  # TODO ASAP use this constant
-    CTX_HANDLER = 'handler'
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
-    # TODO do I need this or can I store to wrapper directly?
-    @property
-    def handler(self):
-        return self.obj[self.CTX_HANDLER]
+# --- Dynamic Injection Phase ---
 
-    @handler.setter
-    def handler(self, v):
-        self.obj[self.CTX_HANDLER] = v
+# 1. Dynamically update __annotations__ for IDE/Linter type hints
+# We iterate over the desired property names and tell Python/IDEs that
+# these attributes exist and have a type of 'Any'.
+for property_name in PROPERTY_KEYS.values():
+    ClickContextWrapper.__annotations__[property_name] = Any
 
-    @property
-    def dry_run(self):
-        return self.obj[self.CTX_DRY_RUN]
+# 2. Dynamically attach the *actual* properties (getters/setters)
+for key_constant, property_name in PROPERTY_KEYS.items():
+    # This sets ClickContextWrapper.log_level = property(...)
+    setattr(ClickContextWrapper, property_name, _create_context_property(key_constant))
 
-    @dry_run.setter
-    def dry_run(self, v):
-        self.obj[self.CTX_DRY_RUN] = v
+    # The IDE/Linter now has the type information, and the runtime has the properties.
 
-    @property
-    def log_level(self):
-        return self.obj[self.CTX_LOG_LEVEL]
 
-    @log_level.setter
-    def log_level(self, v):
-        self.obj[self.CTX_LOG_LEVEL] = v
-
-    @property
-    def log_files(self):
-        return self.obj[self.CTX_LOG_FILES]
-
-    @log_files.setter
-    def log_files(self, v):
-        self.obj[self.CTX_LOG_FILES] = v
-
-    @property
-    def session_dir(self):
-        return self.obj[self.CTX_SESSION_DIR]
-
-    @session_dir.setter
-    def session_dir(self, v):
-        self.obj[self.CTX_SESSION_DIR] = v
-
-    @property
-    def backup_dir(self):
-        return self.obj[self.CTX_BACKUP_DIR]
-
-    @backup_dir.setter
-    def backup_dir(self, v):
-        self.obj[self.CTX_BACKUP_DIR] = v
-
-    @property
-    def working_dir(self):
-        return self.obj[self.CTX_WORKING_DIR]
-
-    @working_dir.setter
-    def working_dir(self, v):
-        self.obj[self.CTX_WORKING_DIR] = v
 
 class TrelloGroup(click.Group):
     def __init__(self, **kwargs: Any):
