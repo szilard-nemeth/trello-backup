@@ -52,7 +52,7 @@ class LoggingUtils:
         LOG.info("Logging to file: %s", file_handler.baseFilename)
         handlers.append(file_handler)
 
-        fmt = '%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+        fmt = DEFAULT_FORMAT
         if ctx.dry_run:
             fmt = f"[DRY-RUN] {fmt}"
         logging.basicConfig(force=True, format=fmt, level=level, handlers=handlers)

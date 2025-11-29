@@ -36,6 +36,8 @@ def boards(ctx):
 
 
 # TODO ASAP This should be a separate CLI command: 'print board'
+# TODO ASAP print all lists by default
+# TODO ASAP Add new command: Delete cards with confirmation (one by one or by lists)
 @backup.command(cls=TrelloCommand)
 @click.option('-b', '--board', required=True, help='Trello board name')
 @click.option('-l', '--list', "list_names",  multiple=True, required=True, help='Trello list name')

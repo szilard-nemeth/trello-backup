@@ -2,6 +2,7 @@ import time
 
 import click
 from pythoncommons.constants import ExecutionMode
+from pythoncommons.logging_setup import DEFAULT_FORMAT
 from rich import print as rich_print, box
 
 from trello_backup.cli.commands.backup import backup
@@ -41,7 +42,7 @@ def cli(ctx: ClickContextWrapper, debug: bool, dry_run: bool = False, session_di
         return
 
     level = logging.DEBUG if debug else logging.INFO
-    fmt = '%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+    fmt = DEFAULT_FORMAT
     if dry_run:
         fmt = f"[DRY-RUN] {fmt}"
     logging.basicConfig(format=fmt, level=level)
