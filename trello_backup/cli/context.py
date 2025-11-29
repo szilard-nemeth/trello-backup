@@ -20,43 +20,43 @@ class ContextProperty:
 
 # --- SINGLE SOURCE OF TRUTH (Now with Types) ---
 # Use a dictionary where the keys are the internal obj_key for easy lookup/iteration
-PROPERTY_CONFIG: Dict[str, ContextProperty] = {
-    'loglevel': ContextProperty(
+PROPERTY_CONFIG: List[ContextProperty] = [
+    ContextProperty(
         obj_key='loglevel',
         attr_name='log_level',
         attr_type=int # Example Type
     ),
-    'logFiles': ContextProperty(
+    ContextProperty(
         obj_key='logFiles',
         attr_name='log_files',
         attr_type=List[str]
     ),
-    'workingDir': ContextProperty(
+    ContextProperty(
         obj_key='workingDir',
         attr_name='working_dir',
         attr_type=str # Example Type
     ),
-    'sessionDir': ContextProperty(
+    ContextProperty(
         obj_key='sessionDir',
         attr_name='session_dir',
         attr_type=str
     ),
-    'backupDir': ContextProperty(
+    ContextProperty(
         obj_key='backupDir',
         attr_name='backup_dir',
         attr_type=str
     ),
-    'dryRun': ContextProperty(
+    ContextProperty(
         obj_key='dryRun',
         attr_name='dry_run',
         attr_type=str
     ),
-    'handler': ContextProperty(
+    ContextProperty(
         obj_key='handler',
         attr_name='handler',
         attr_type=MainCommandHandler
-    ),
-}
+    )
+]
 # -----------------------------
 
 def _create_context_property(prop_config: ContextProperty) -> property:
@@ -80,12 +80,12 @@ class ClickContextWrapper(click.Context):
 # --- Dynamic Injection Phase ---
 
 # 1. Dynamically update __annotations__ for IDE/Linter type hints
-for config in PROPERTY_CONFIG.values():
+for config in PROPERTY_CONFIG:
     # Use the specific type hint from the configuration
     ClickContextWrapper.__annotations__[config.attr_name] = config.attr_type
 
 # 2. Dynamically attach the *actual* properties (getters/setters)
-for config in PROPERTY_CONFIG.values():
+for config in PROPERTY_CONFIG:
     # This sets ClickContextWrapper.log_level = property(...)
     setattr(ClickContextWrapper, config.attr_name, _create_context_property(config))
 
