@@ -1,1 +1,1 @@
-# TODO ASAP Add tests based on json board export files: /Users/snemeth/trello-backup-output/session-20251128_1546057013/
+# TODO ASAP testing: Add integration tests based on json board export files: /Users/snemeth/development/my-repos/project-data/input-data/trello-backup/board_backups

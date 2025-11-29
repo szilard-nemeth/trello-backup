@@ -80,7 +80,6 @@ class TrelloTableRenderSettings:
 
 
 class TrelloTable:
-    # TODO Borrow type-safe and order-safe solution from trello-backup project
     def __init__(self, cols: List[str], render_settings: TrelloTableRenderSettings, title=""):
         self._render_settings: TrelloTableRenderSettings = render_settings
         self._cols = cols

@@ -62,8 +62,8 @@ class TrelloApi:
             if b_name and b_id:
                 result_dict[b_name] = b_id
 
-        # TODO ASAP debug log instead of print
-        # TODO ASAP Replace all print with logging: CLI_LOG
+        # TODO ASAP logging: debug log instead of print
+        # TODO ASAP logging: Replace all print with logging: CLI_LOG
         #print(json.dumps(parsed_json, sort_keys=True, indent=4, separators=(",", ": ")))
         return result_dict
 

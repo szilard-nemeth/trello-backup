@@ -162,7 +162,7 @@ class TrelloCard:
         return not self.closed
 
     def get_extracted_data(self, card_filters: CardFilters, md_formatter: 'MarkdownFormatter'):
-        # TODO ASAP Extract this to service object?
+        # TODO ASAP refactor: Extract this to service object?
         # Sanity check
         # has_checklists = self.has_checklist
         # has_attachments = self.has_attachments

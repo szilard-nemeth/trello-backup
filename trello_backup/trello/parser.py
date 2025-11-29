@@ -26,7 +26,7 @@ class TrelloObjectParser:
         for idx, card in enumerate(cards_json):
             print("Processing card: {} / {}".format(idx + 1, len(cards_json)))
             comments = []
-            # TODO ASAP Decouple fetching API from parser logic - Here we fetch the comments, this does not belong here
+            # TODO ASAP refactor: Decouple fetching API from parser logic - Here we fetch the comments, this does not belong here
             if download_comments:
                 comments: List[TrelloComment] = TrelloObjectParser.query_comments_for_card(card)
 
@@ -102,7 +102,7 @@ class TrelloObjectParser:
                 trello_checklist_item = TrelloChecklistItem(checkitem["id"], checkitem["name"], checkitem["state"] == "complete")
                 trello_checklist_items.append(trello_checklist_item)
 
-            # TODO ASAP Add checklist object to card object
+            # TODO ASAP refactor: Add checklist object to card object
             trello_checklist = TrelloChecklist(checklist["id"], checklist["name"], checklist["idBoard"], checklist["idCard"], trello_checklist_items)
             trello_checklists.append(trello_checklist)
         return trello_checklists
