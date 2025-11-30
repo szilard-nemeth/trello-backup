@@ -35,8 +35,38 @@ class DateUtils:
 
 
 class LoggingUtils:
+    INITIALIZED = False
+
+    @classmethod
+    def init_with_basic_config(cls,
+                               debug: bool = False,
+                               dry_run: bool = False,
+                               temporary_init: bool = False) -> int:
+        # If already initialized, return root logger's log level
+        if cls.INITIALIZED:
+            return logging.getLogger().level
+        # If temporary init, do not save as INITIALIZED
+        if temporary_init:
+            return cls._init_with_basic_config(debug=debug, dry_run=dry_run)
+
+        # Otherwise init and save as INITIALIZED
+        level = cls._init_with_basic_config(debug=debug, dry_run=dry_run)
+        cls.INITIALIZED = True
+        return level
+
+    @classmethod
+    def _init_with_basic_config(cls,
+                                debug: bool = False,
+                                dry_run: bool = False):
+        level = logging.DEBUG if debug else logging.INFO
+        fmt = DEFAULT_FORMAT
+        if dry_run:
+            fmt = f"[DRY-RUN] {fmt}"
+        logging.basicConfig(format=fmt, level=level)
+        return level
+
     @staticmethod
-    def create_file_handler(log_file_dir, level: int, fname: str):
+    def _create_file_handler(log_file_dir, level: int, fname: str):
         log_file_path = os.path.join(log_file_dir, f"{fname}.log")
         fh = TimedRotatingFileHandler(log_file_path, when="midnight")
         fh.suffix = "%Y_%m_%d.log"
@@ -47,7 +77,7 @@ class LoggingUtils:
     def configure_file_logging(ctx, level, session_dir):
         root_logger = logging.getLogger()
         handlers = copy(root_logger.handlers)
-        file_handler = LoggingUtils.create_file_handler(session_dir, level, fname="trello-session")
+        file_handler = LoggingUtils._create_file_handler(session_dir, level, fname="trello-session")
         file_handler.formatter = None
         LOG.info("Logging to file: %s", file_handler.baseFilename)
         handlers.append(file_handler)

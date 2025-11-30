@@ -41,11 +41,7 @@ def cli(ctx: ClickContextWrapper, debug: bool, dry_run: bool = False, session_di
     if ctx.invoked_subcommand == "usage":
         return
 
-    level = logging.DEBUG if debug else logging.INFO
-    fmt = DEFAULT_FORMAT
-    if dry_run:
-        fmt = f"[DRY-RUN] {fmt}"
-    logging.basicConfig(format=fmt, level=level)
+    level = LoggingUtils.init_with_basic_config(debug=debug, dry_run=dry_run)
     ctx.ensure_object(dict)
     ctx.log_level = level
     ctx.dry_run = dry_run

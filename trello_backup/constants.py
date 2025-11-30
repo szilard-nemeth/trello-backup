@@ -103,5 +103,5 @@ class FilePath:
             cls.SESSION_DIR = cls.get_session_dir()
         d = os.path.join(cls._get_output_dir(), cls.SESSION_DIR, dir_name)
         os.makedirs(d)
-        LOG.debug("Session child dir for '{}': %s", dir_name, d)
+        LOG.debug("Session child dir for '%s': %s", dir_name, d)
         return d

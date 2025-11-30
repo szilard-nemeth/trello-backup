@@ -4,7 +4,9 @@ from typing import Any, Type, Dict, List
 import click
 
 from trello_backup.cmd_handler import MainCommandHandler
+import logging
 
+from trello_backup.utils import LoggingUtils
 
 # TODO ASAP implement dryRun feature (offline?)
 # TODO ASAP Check usage for all properties
@@ -85,25 +87,33 @@ for config in PROPERTY_CONFIG:
     setattr(ClickContextWrapper, config.name, _create_context_property(config))
 
 
+def log_trello_command_cls_details(cl, kwargs):
+    # The 'callback' keyword argument holds the decorated function object!
+    decorated_function = kwargs.get('callback')
+    LoggingUtils.init_with_basic_config(debug=True, temporary_init=True)
+    log = logging.getLogger()
+    if decorated_function:
+        module_name = decorated_function.__module__
+        function_name = decorated_function.__name__
+        log.debug("Created %s. Loaded from module: %s, annotated function name: %s",cl.__name__, module_name, function_name)
+    else:
+        log.debug("Created %s - Could not find decorated function.", cl.__name__)
+
 
 class TrelloGroup(click.Group):
-    def __init__(self, **kwargs: Any):
-        # TODO ASAP logging remove or move to DEBUG log
-        print("***created TrelloGroup")
-        super().__init__(**kwargs)
-
     """A custom Group class that ensures all its contexts are of type ClickContextWrapper."""
+    def __init__(self, **kwargs: Any):
+        log_trello_command_cls_details(TrelloGroup, kwargs)
+        super().__init__(**kwargs)
 
     # 🎯 This is the key line, exactly as shown in the Click source test!
     context_class = ClickContextWrapper
 
 class TrelloCommand(click.Command):
-    def __init__(self, **kwargs: Any):
-        # TODO ASAP logging remove or move to DEBUG log
-        print("***created TrelloCommand")
-        super().__init__(**kwargs)
-
     """A custom Command class that ensures all its contexts are of type ClickContextWrapper."""
+    def __init__(self, **kwargs: Any):
+        log_trello_command_cls_details(TrelloCommand, kwargs)
+        super().__init__(**kwargs)
 
     # 🎯 This is the key line, exactly as shown in the Click source test!
     context_class = ClickContextWrapper
