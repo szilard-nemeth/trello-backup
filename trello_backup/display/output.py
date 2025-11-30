@@ -17,7 +17,8 @@ from rich.text import Text
 from trello_backup.display.console import ConsoleUtils, CliLogger
 from trello_backup.display.table import TrelloTable, TrelloTableRenderSettings, TrelloTableColumnStyles
 from trello_backup.exception import TrelloException
-from trello_backup.trello.filter import CardFilterer, CardFilters
+from trello_backup.http_server import HTTP_SERVER_PORT
+from trello_backup.trello.filter import CardFilterer, CardFilters, CardPropertyFilter
 from trello_backup.trello.model import TrelloComment, TrelloChecklist, TrelloBoard, ExtractedCardData, \
     TrelloLists
 
@@ -213,7 +214,7 @@ class TrelloDataConverter:
         for list in board.lists:
             cards = CardFilterer.filter_cards(list, card_filters)
             for card in cards:
-                items: List[ExtractedCardData] = card.get_extracted_data(card_filters, md_formatter)
+                items: List[ExtractedCardData] = self._extract_card_data(card, card_filters, md_formatter)
                 for item in items:
                     row = []
                     for col in self._header.cols_list():
@@ -223,6 +224,58 @@ class TrelloDataConverter:
                         raise ValueError("Mismatch in number of columns in row({}) vs. number of header columns ({})".format(len(row), self._header))
                     rows.append(row)
         return rows, self._header.as_string_headers()
+
+    def _extract_card_data(self, card, card_filters, md_formatter):
+        # TODO ASAP refactor: Extract this to service object?
+        # Sanity check
+        # has_checklists = self.has_checklist
+        # has_attachments = self.has_attachments
+        # has_description = self.has_description
+        # if has_checklists and CardFilter.WITH_CHECKLIST not in card_filter_flags:
+        #     raise ValueError("Card has checklists but card filters are not enabling checklists! Current filter: {}".format(card_filter_flags))
+        # if has_description and CardFilter.WITH_DESCRIPTION not in card_filter_flags:
+        #     raise ValueError("Card has description but card filters are not enabling description! Current filter: {}".format(card_filter_flags))
+        # if has_attachments and CardFilter.WITH_ATTACHMENT not in card_filter_flags:
+        #     raise ValueError("Card has attachments but card filters are not enabling attachments! Current filter: {}".format(card_filter_flags))
+
+        # 1. Always add description to each row
+        plain_text_description = md_formatter.to_plain_text(card.description)
+        result = []
+
+        card_prop_flags = card_filters.value
+        if len(card_prop_flags) == 1 and CardPropertyFilter.WITH_DESCRIPTION in card_prop_flags:
+            result.append(ExtractedCardData(plain_text_description, "", "", "", "", "", "", ""))
+            return result
+
+        # 2. Add attachments to separate row from checklist items
+        if CardPropertyFilter.WITH_ATTACHMENT in card_prop_flags:
+            for attachment in card.attachments:
+                attachment_file_path = "" if not attachment.downloaded_file_path else attachment.downloaded_file_path
+
+                local_server_path = ""
+                if attachment.downloaded_file_path:
+                    # TODO ASAP refactor Separation of concerns
+                    local_server_path = "http://localhost:{}/{}".format(HTTP_SERVER_PORT, attachment.downloaded_file_path.split("/")[-1])
+                result.append(ExtractedCardData(plain_text_description, attachment.name, attachment.url, attachment_file_path, local_server_path, "", "", ""))
+
+        # 3. Add checklist items to separate row from attachments
+        if CardPropertyFilter.WITH_CHECKLIST in card_prop_flags:
+            for cl in card.checklists:
+                for item in cl.items:
+                    cl_item_name = ""
+                    cl_item_url_title = ""
+                    cl_item_url = ""
+                    if item.url:
+                        cl_item_url_title = item.url_title
+                        cl_item_url = item.url
+                    else:
+                        cl_item_name = item.value
+                    result.append(ExtractedCardData(plain_text_description, "", "", "", "", cl_item_name, cl_item_url_title, cl_item_url))
+
+        # If no append happened, append default ExtractedCardData
+        if not result and CardPropertyFilter.WITH_DESCRIPTION in card_prop_flags:
+            result.append(ExtractedCardData(plain_text_description, "", "", "", "", "", "", ""))
+        return result
 
 
 

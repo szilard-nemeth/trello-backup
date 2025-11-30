@@ -52,7 +52,7 @@ class TrelloOperations:
         # Parse JSON to objects
         trello_lists = TrelloLists(board_json)
         if list_names:
-            # TODO Add '*' list filter?
+            # TODO Add ASAP '*' list filter?
             trello_lists = trello_lists.filter(list_names)
 
         trello_checklists = TrelloChecklists(board_json)
