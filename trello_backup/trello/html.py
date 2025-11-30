@@ -1,6 +1,8 @@
 from bs4 import BeautifulSoup
 import requests
 
+import logging
+LOG = logging.getLogger(__name__)
 DEFAULT_TIMEOUT_SECONDS = 5
 BS4_HTML_PARSER = "html.parser"
 
@@ -14,19 +16,19 @@ class HtmlParser:
         :param url:
         :return:
         """
-        print("Getting webpage title for URL: {}".format(url))
+        LOG.debug("Getting webpage title for URL: {}".format(url))
         try:
             soup = HtmlParser._create_bs_from_url(url)
         except requests.exceptions.ConnectionError as e:
-            print("Failed to get page title from URL: " + url)
+            LOG.error("Failed to get page title from URL: " + url)
             return url
         except requests.exceptions.Timeout as e:
-            print("Failed to get page title from URL (timeout): " + url)
+            LOG.error("Failed to get page title from URL (timeout): " + url)
             return url
         if soup.title is None:
             return url
         title = soup.title.string
-        print("Found webpage title: {}".format(title))
+        LOG.debug("Found webpage title: {}".format(title))
         return str(title)
 
     @staticmethod

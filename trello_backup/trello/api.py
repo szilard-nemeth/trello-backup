@@ -1,12 +1,17 @@
 import json
+import logging
 import os
 from typing import Dict
 
 import requests
 
 from trello_backup.constants import FilePath
+from trello_backup.display.console import CliLogger
 
+# TODO ASAP need to move to config file
 ORGANIZATION_ID = "60b31169ff7e174519a40577"
+LOG = logging.getLogger(__name__)
+CLI_LOG = CliLogger(LOG)
 
 
 class TrelloApi:
@@ -62,9 +67,6 @@ class TrelloApi:
             if b_name and b_id:
                 result_dict[b_name] = b_id
 
-        # TODO ASAP logging: debug log instead of print
-        # TODO ASAP logging: Replace all print with logging: CLI_LOG
-        #print(json.dumps(parsed_json, sort_keys=True, indent=4, separators=(",", ": ")))
         return result_dict
 
     @classmethod
@@ -130,8 +132,6 @@ class TrelloApi:
             params=TrelloApi.auth_query_params
         )
 
-        print(json.dumps(json.loads(response.text), sort_keys=True, indent=4, separators=(",", ": ")))
-
     @classmethod
     def get_attachment_of_card(cls, card_id: str):
         url = "https://api.trello.com/1/cards/{id}/actions".format(id=card_id)
@@ -147,7 +147,6 @@ class TrelloApi:
             params=TrelloApi.auth_query_params
         )
 
-        # print(json.dumps(json.loads(response.text), sort_keys=True, indent=4, separators=(",", ": ")))
         parsed_json = json.loads(response.text)
         return parsed_json
 
@@ -168,8 +167,6 @@ class TrelloApi:
             params=query
         )
 
-        print(json.dumps(json.loads(response.text), sort_keys=True, indent=4, separators=(",", ": ")))
-
     @classmethod
     def get_actions_for_card(cls, card_id: str):
         url = "https://api.trello.com/1/cards/{id}/actions".format(id=card_id)
@@ -181,17 +178,14 @@ class TrelloApi:
             params=TrelloApi.auth_query_params
         )
 
-        #print(json.dumps(json.loads(response.text), sort_keys=True, indent=4, separators=(",", ": ")))
         parsed_json = json.loads(response.text)
         return parsed_json
 
     @classmethod
     def get_board_id(cls, board_name: str):
-        # board_resp = get_board()
-        # print(json.dumps(json.loads(board_resp.text), sort_keys=True, indent=4, separators=(",", ": ")))
         boards: Dict[str, str] = cls.list_boards()
         available_board_names = list(boards.keys())
-        print(f"Available boards: {available_board_names}")
+        CLI_LOG.info(f"Available boards: {available_board_names}")
         if board_name not in boards:
             raise KeyError(f"Cannot find board with name: {board_name}")
 

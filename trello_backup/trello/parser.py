@@ -4,6 +4,8 @@ from trello_backup.trello.api import TrelloApi
 from trello_backup.trello.model import TrelloList, TrelloLists, TrelloChecklists, TrelloComment, TrelloAttachment, \
     TrelloCard, TrelloChecklistItem, TrelloChecklist
 
+import logging
+LOG = logging.getLogger(__name__)
 
 class TrelloObjectParser:
     @staticmethod
@@ -24,7 +26,8 @@ class TrelloObjectParser:
         cards_json = board_json["cards"]
         cards = []
         for idx, card in enumerate(cards_json):
-            print("Processing card: {} / {}".format(idx + 1, len(cards_json)))
+            # TODO ASAP Add progress bar for cards
+            LOG.debug("Processing card: {} / {}".format(idx + 1, len(cards_json)))
             comments = []
             # TODO ASAP refactor: Decouple fetching API from parser logic - Here we fetch the comments, this does not belong here
             if download_comments:

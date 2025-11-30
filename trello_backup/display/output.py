@@ -1,4 +1,5 @@
 import json
+import logging
 import os
 from dataclasses import dataclass
 from enum import Enum
@@ -13,13 +14,16 @@ from rich.style import Style
 from rich.table import Table
 from rich.text import Text
 
-from trello_backup.constants import FilePath
-from trello_backup.display.console import ConsoleUtils
+from trello_backup.display.console import ConsoleUtils, CliLogger
 from trello_backup.display.table import TrelloTable, TrelloTableRenderSettings, TrelloTableColumnStyles
 from trello_backup.exception import TrelloException
 from trello_backup.trello.filter import CardFilterer, CardFilters
 from trello_backup.trello.model import TrelloComment, TrelloChecklist, TrelloBoard, ExtractedCardData, \
     TrelloLists
+
+LOG = logging.getLogger(__name__)
+CLI_LOG = CliLogger(LOG)
+
 
 INDENT = "&nbsp;&nbsp;&nbsp;&nbsp;"
 
@@ -242,13 +246,9 @@ class TrelloBoardHtmlFileGenerator:
 
     @staticmethod
     def format_plain_text_description(card):
-        # TODO ASAP logging: is this print required?
-        # print("Original description: {}".format(card.description))
         if not card.description:
             return ""
         desc = card.description
-        # desc = indent + desc.replace(/<br\s*\/?>/gi, "<br>" + indent)
-        # print("Modified description: {}".format(desc))
         return f"<div class=\"inner\">{desc}</div><br>"
 
     @staticmethod
@@ -322,8 +322,7 @@ class TrelloBoardHtmlFileGenerator:
 
     def write_file(self, file):
         FileUtils.write_to_file(file, self.html)
-        print("Generated HTML file output to: " + file)
-
+        CLI_LOG.info("Generated HTML file output to: " + file)
 
 
 class OutputHandler:
@@ -376,13 +375,14 @@ class OutputHandler:
         if os.path.exists(self.csv_file_path):
             FileUtils.remove_file(self.csv_file_path)
         CsvFileUtils.append_rows_to_csv_file(self.csv_file_path, rows, header=header)
-        print("Generated CSV file: " + self.csv_file_path)
+        CLI_LOG.info("Generated CSV file: " + self.csv_file_path)
 
     def _write_board_json(self):
+        # Uncomment this for other JSON printout
+        # print(json.dumps(parsed_json, sort_keys=True, indent=4, separators=(",", ": ")))
         with open(self.json_file_path, "w") as f:
             json.dump(self.board.json, f, indent=4)
-        print("Saved board JSON to file: " + self.json_file_path)
-
+        CLI_LOG.info("Saved board JSON to file: " + self.json_file_path)
 
 
 class OutputHandlerFactory:
@@ -426,7 +426,7 @@ class TrelloBoardRichTableGenerator:
 
     def write_file(self, file):
         self._console.save_html(file)
-        print("Generated rich table to: " + file)
+        CLI_LOG.info("Generated rich table to: " + file)
 
 class TrelloListAndCardsPrinter:
     @staticmethod
@@ -448,8 +448,7 @@ class TrelloListAndCardsPrinter:
             console.rule(Text(f" Trello List: {list_name} ", style=list_style))
 
             if not list_obj["cards"]:
-                console.print("[i]No cards found in this list.[/i]")
-                print("\n")
+                console.print("[i]No cards found in this list.[/i]\n")
                 continue
 
             for card in list_obj["cards"]:
@@ -498,39 +497,39 @@ class TrelloListAndCardsPrinter:
 
                 console.print("-" * 60) # Separator for cards
 
-        print("\n")
+        console.print("\n")
 
     @staticmethod
     def print_plain_text(trello_data: List[Dict[str, Any]], print_placeholders=False, only_open=False):
         # TODO ASAP Apply CardFilters
         for list_obj in trello_data:
             #for name, list in trello_lists.by_name.items():
-            print(f"List: {list_obj['name']}")
+            CLI_LOG.info(f"List: {list_obj['name']}")
             for card in list_obj["cards"]:
                 if only_open and card["closed"]:
                     continue
-                print(f"CARD: {card['name']}")
-                print("DESCRIPTION:")
+                CLI_LOG.info(f"CARD: {card['name']}")
+                CLI_LOG.info("DESCRIPTION:")
                 if card['description']:
-                    print(f"{card['description']}")
+                    CLI_LOG.info(f"{card['description']}")
                 else:
                     if print_placeholders:
-                        print("<EMPTY>")
+                        CLI_LOG.info("<EMPTY>")
 
                 if print_placeholders and not card["checklists"]:
-                    print("<NO CHECKLISTS>")
-                print()
+                    CLI_LOG.info("<NO CHECKLISTS>")
+                CLI_LOG.info()
                 for checklist in card["checklists"]:
-                    print(f"{checklist['name']} ({len(checklist['items'])}): ")
+                    CLI_LOG.info(f"{checklist['name']} ({len(checklist['items'])}): ")
                     for item in checklist['items']:
                         # sanity check
                         if item['url'] and not item['url_title']:
                             raise ValueError(f"CLI should have URL title if URL is parsed. CLI details: {item}")
                         if item['url']:
-                            print(f"[{'x' if item['checked'] else ''}] {item['url_title']}: {item['url']}")
+                            CLI_LOG.info(f"[{'x' if item['checked'] else ''}] {item['url_title']}: {item['url']}")
                         else:
-                            print(f"[{'x' if item['checked'] else ''}] {item['value']}")
-                print("=" * 60) # Separator for cards
+                            CLI_LOG.info(f"[{'x' if item['checked'] else ''}] {item['value']}")
+                CLI_LOG.info("=" * 60) # Separator for cards
 
 
 
@@ -557,5 +556,5 @@ class TrelloBoardHtmlTableGenerator:
     def write_file(self, file):
         for fmt, table in self._tables.items():
             FileUtils.save_to_file(file, table)
-            print(f"Generated HTML table to file: {file}")
+            CLI_LOG.info(f"Generated HTML table to file: {file}")
 

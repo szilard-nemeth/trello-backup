@@ -1,7 +1,12 @@
 import atexit
+import logging
+
+from trello_backup.display.console import CliLogger
 
 HTTP_SERVER_PORT = 8000
 
+LOG = logging.getLogger(__name__)
+CLI_LOG = CliLogger(LOG)
 
 class HttpServer:
     def __init__(self, dir):
@@ -22,7 +27,7 @@ class HttpServer:
 
         with socketserver.TCPServer(("", HTTP_SERVER_PORT), Handler) as httpd:
             self._httpd = httpd
-            print("serving at port", HTTP_SERVER_PORT)
+            CLI_LOG.info("Serving at port", HTTP_SERVER_PORT)
             httpd.serve_forever()
             httpd.shutdown()
 

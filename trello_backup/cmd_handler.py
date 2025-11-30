@@ -7,8 +7,6 @@ from trello_backup.display.output import TrelloCardHtmlGeneratorMode, TrelloList
 from trello_backup.trello.filter import CardFilters
 from trello_backup.trello.service import TrelloOperations
 
-LOG = logging.getLogger(__name__)
-CLI_LOG = CliLogger(LOG)
 
 # TODO IDEA: HTML output file per list,
 #  only include: card name (bold), description (plain text), Checklists with check items

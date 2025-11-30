@@ -1,9 +1,10 @@
+import logging
 from enum import Enum, Flag, auto
 from typing import List, Callable, Any, Dict
-
 from trello_backup.exception import TrelloException
 
 
+LOG = logging.getLogger(__name__)
 
 class CardPropertyFilter(Flag):
     NONE = 0
@@ -65,6 +66,6 @@ class CardFilterer:
             if any(check(card) for check in required_checks.values()):
                 filtered_cards.append(card)
             else:
-                print(f"Not keeping card: {card.name}, filters: {card_prop_flags}")
+                LOG.debug(f"Discarding card: {card.name}, filters: {card_prop_flags}")
 
         return filtered_cards

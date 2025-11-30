@@ -67,7 +67,6 @@ class CliLogger(logging.Logger):
         self._file_handler: logging.FileHandler = filtered_handlers[0]
 
     def __getattribute__(self, item):
-        # print("getattr: " + item)
         if item == "handlers":
             return self._logger.handlers
         return object.__getattribute__(self, item)

@@ -352,7 +352,6 @@ class ConfigLoader:
         try:
             result = func(validator, **kwargs) if kwargs is not None else func(validator)
         except KeyError as e:
-            # print(traceback.format_exc())
             configs_str = ", ".join([str(e) for e in e.args])
             LOG.exception(e)
             raise TrelloConfigException(f"Missing config(s): {configs_str} in config file: {src_conf_file}")
