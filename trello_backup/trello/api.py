@@ -8,6 +8,13 @@ import requests
 from trello_backup.constants import FilePath
 from trello_backup.display.console import CliLogger
 
+TRELLO_API_ROOT = "https://api.trello.com/1/"
+CREATE_CARDS_API = "https://api.trello.com/1/cards"
+LIST_BOARDS_API = "https://api.trello.com/1/members/me/boards"
+GET_BOARD_DETAILS_API_TMPL = "https://api.trello.com/1/boards/{id}/"
+GET_BOARD_LISTS_API_TMPL = "https://api.trello.com/1/boards/{id}/lists"
+GET_CARD_ACTIONS_API_TMPL = "https://api.trello.com/1/cards/{id}/actions"
+
 # TODO ASAP need to move to config file
 ORGANIZATION_ID = "60b31169ff7e174519a40577"
 LOG = logging.getLogger(__name__)
@@ -40,7 +47,6 @@ class TrelloApi:
         Gets all boards associated with the API token's user.
         https://developer.atlassian.com/cloud/trello/rest/api-group-members/#api-members-id-boards-get
         """
-        url = "https://api.trello.com/1/members/me/boards"
         params = {
             "filter": "all",  # Return all board types (open, closed, pinned, etc.)
             "fields": "id,name"  # Only request the ID and name fields for efficiency
@@ -51,7 +57,7 @@ class TrelloApi:
 
         response = requests.request(
             "GET",
-            url,
+            LIST_BOARDS_API,
             headers=TrelloApi.headers_accept_json,
             params=query
         )
@@ -89,12 +95,11 @@ class TrelloApi:
             "organization": "false",
         }
 
-        url = "https://api.trello.com/1/boards/{board_id}/".format(board_id=board_id)
         query = dict(TrelloApi.auth_query_params)
         query.update(params)
         response = requests.request(
             "GET",
-            url,
+            GET_BOARD_DETAILS_API_TMPL.format(id=board_id),
             headers=TrelloApi.headers_accept_json,
             params=query
         )
@@ -118,31 +123,27 @@ class TrelloApi:
         return response
 
     @classmethod
-    def get_lists_of_board(cls):
-        url = "https://api.trello.com/1/boards/{id}/lists"
-
+    def get_lists_of_board(cls, board_id: str):
         headers = {
             "Accept": "application/json"
         }
 
         response = requests.request(
             "GET",
-            url,
+            GET_BOARD_LISTS_API_TMPL.format(id=board_id),
             headers=headers,
             params=TrelloApi.auth_query_params
         )
 
     @classmethod
     def get_attachment_of_card(cls, card_id: str):
-        url = "https://api.trello.com/1/cards/{id}/actions".format(id=card_id)
-
         headers = {
             "Accept": "application/json"
         }
 
         response = requests.request(
             "GET",
-            url,
+            GET_CARD_ACTIONS_API_TMPL.format(id=card_id),
             headers=headers,
             params=TrelloApi.auth_query_params
         )
@@ -152,8 +153,6 @@ class TrelloApi:
 
     @classmethod
     def create_card(cls, list_id):
-        url = "https://api.trello.com/1/cards"
-
         headers = {
             "Accept": "application/json"
         }
@@ -162,18 +161,16 @@ class TrelloApi:
         query = TrelloApi.auth_query_params.update({'idList': list_id})
         response = requests.request(
             "POST",
-            url,
+            CREATE_CARDS_API,
             headers=headers,
             params=query
         )
 
     @classmethod
     def get_actions_for_card(cls, card_id: str):
-        url = "https://api.trello.com/1/cards/{id}/actions".format(id=card_id)
-
         response = requests.request(
             "GET",
-            url,
+            GET_CARD_ACTIONS_API_TMPL.format(id=card_id),
             headers=TrelloApi.headers_accept_json,
             params=TrelloApi.auth_query_params
         )
@@ -192,6 +189,7 @@ class TrelloApi:
         board_id = boards[board_name]
         return board_id
 
+    # TODO ASAP Refactor this does not belong here
     @classmethod
     def download_attachments(cls, board):
         for list in board.lists:
@@ -200,6 +198,7 @@ class TrelloApi:
                     if attachment.is_upload:
                         attachment.downloaded_file_path = "file://" + TrelloApi.download_and_save_attachment(attachment)
 
+    # TODO ASAP Refactor this does not belong here
     @classmethod
     def download_and_save_attachment(cls, attachment):
         """
