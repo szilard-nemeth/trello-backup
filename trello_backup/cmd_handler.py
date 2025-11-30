@@ -36,6 +36,7 @@ class MainCommandHandler:
         # TODO ASAP Consider removing this factory?
         out = self.output_factory.create_for_board(self._data_converter, self.ctx.backup_dir, board, html_gen_config.value, card_filters)
         out.write_outputs(report.file_write_callback)
+        return report
 
     def backup_all_boards(self,
                           report: BackupReport,
@@ -43,6 +44,7 @@ class MainCommandHandler:
         boards: Dict[str, str] = self._trello_ops.get_board_names_and_ids()
         for name in boards.keys():
             self.backup_board(name, report, html_gen_config=html_gen_config)
+        return report
 
     def print_cards(self, board: str, lists: List[str]):
         card_filters = CardFilters.OPEN

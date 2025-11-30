@@ -82,6 +82,7 @@ class TrelloAttachment:
     id: str
     date: str
     name: str
+    # TODO ASAP What's the difference between url and api_url?
     url: str
     api_url: str
     is_upload: bool

@@ -9,7 +9,7 @@ from trello_backup.constants import FilePath
 from trello_backup.display.console import CliLogger
 
 TRELLO_API_ROOT = "https://api.trello.com/1/"
-CREATE_CARDS_API = "https://api.trello.com/1/cards"
+CARDS_API = "https://api.trello.com/1/cards"
 LIST_BOARDS_API = "https://api.trello.com/1/members/me/boards"
 GET_BOARD_DETAILS_API_TMPL = "https://api.trello.com/1/boards/{id}/"
 GET_BOARD_LISTS_API_TMPL = "https://api.trello.com/1/boards/{id}/lists"
@@ -161,7 +161,7 @@ class TrelloApi:
         query = TrelloApi.auth_query_params.update({'idList': list_id})
         response = requests.request(
             "POST",
-            CREATE_CARDS_API,
+            CARDS_API,
             headers=headers,
             params=query
         )
@@ -196,7 +196,8 @@ class TrelloApi:
             for card in list.cards:
                 for attachment in card.attachments:
                     if attachment.is_upload:
-                        attachment.downloaded_file_path = "file://" + TrelloApi.download_and_save_attachment(attachment)
+                        fpath = TrelloApi.download_and_save_attachment(attachment)
+                        attachment.downloaded_file_path = "file://" + fpath
 
     # TODO ASAP Refactor this does not belong here
     @classmethod
@@ -254,3 +255,12 @@ class TrelloApi:
             for chunk in response.iter_content(chunk_size=1024 * 1024): # 1MB chunks
                 if chunk:  # filter out keep-alive chunks
                     yield chunk
+
+    @staticmethod
+    def reformat_attachment_url(card_id, attachment_id, attachment_filename):
+        # Convert URLs as Trello attachments cannot be downloaded from trello.com URL anymore..
+        # See details here: https://community.developer.atlassian.com/t/update-authenticated-access-to-s3/43681
+        # Example URL: https://api.trello.com/1/cards/{idCard}/attachments/{idAttachment}/download/{attachmentFileName}
+        # Source: https://trello.com/1/cards/60d8951d65e3c9345794d20a/attachments/631332fc6b78cf0135be0a37/download/image.png
+        # Target: https://api.trello.com/1/cards/60d8951d65e3c9345794d20a/attachments/631332fc6b78cf0135be0a37/download/image.png
+        return f"{CARDS_API}/{card_id}/attachments/{attachment_id}/download/{attachment_filename}"

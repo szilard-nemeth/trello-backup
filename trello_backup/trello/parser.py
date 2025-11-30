@@ -40,7 +40,7 @@ class TrelloObjectParser:
                     is_upload = attachment_json["isUpload"]
                     attachment_api_url = None
                     if is_upload:
-                        attachment_api_url = TrelloObjectParser.reformat_attachment_url(card["id"], attachment_json["id"], attachment_json["fileName"])
+                        attachment_api_url = TrelloApi.reformat_attachment_url(card["id"], attachment_json["id"], attachment_json["fileName"])
 
                     trello_attachment = TrelloAttachment(attachment_json["id"],
                                                          attachment_json["date"],
@@ -64,15 +64,6 @@ class TrelloObjectParser:
             cards.append(trello_card)
             trello_list.cards.append(trello_card)
         return cards
-
-    @staticmethod
-    def reformat_attachment_url(card_id, attachment_id, attachment_filename):
-        # Convert URLs as Trello attachments cannot be downloaded from trello.com URL anymore..
-        # See details here: https://community.developer.atlassian.com/t/update-authenticated-access-to-s3/43681
-        # Example URL: https://api.trello.com/1/cards/{idCard}/attachments/{idAttachment}/download/{attachmentFileName}
-        # Source: https://trello.com/1/cards/60d8951d65e3c9345794d20a/attachments/631332fc6b78cf0135be0a37/download/image.png
-        # Target: https://api.trello.com/1/cards/60d8951d65e3c9345794d20a/attachments/631332fc6b78cf0135be0a37/download/image.png
-        return "https://api.trello.com/1/cards/{c_id}/attachments/{a_id}/download/{a_fname}".format(c_id=card_id, a_id=attachment_id, a_fname=attachment_filename)
 
     @staticmethod
     def query_comments_for_card(card) -> List[TrelloComment]:

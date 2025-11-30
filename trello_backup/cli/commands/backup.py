@@ -27,7 +27,7 @@ def get_handler_and_setup_ctx(ctx):
 def board(ctx, board_name: str):
     handler = get_handler_and_setup_ctx(ctx)
     report = BackupReport()
-    handler.backup_board(board_name, report)
+    return handler.backup_board(board_name, report)
 
 
 @backup.command(cls=TrelloCommand)
@@ -35,7 +35,7 @@ def board(ctx, board_name: str):
 def boards(ctx):
     handler = get_handler_and_setup_ctx(ctx)
     report = BackupReport()
-    handler.backup_all_boards(report)
+    return handler.backup_all_boards(report)
 
 
 # TODO ASAP This should be a separate CLI command: 'print board'

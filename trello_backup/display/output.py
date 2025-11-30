@@ -641,3 +641,6 @@ class BackupReport:
         # if file_type in self._generated_files:
         #     raise ValueError(f"File type {file_type} is already generated as {self._generated_files[file_type]}. Preventing overwrites!")
         self._generated_files[file_type].append(file_path)
+
+    def get_files(self, type: OutputType) -> Iterable[str]:
+        return self._generated_files[type]
