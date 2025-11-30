@@ -1,10 +1,6 @@
 from dataclasses import dataclass, field
 from typing import List, Dict, Optional
 
-from trello_backup.http_server import HTTP_SERVER_PORT
-from trello_backup.trello.filter import CardPropertyFilter, CardFilters
-
-
 # TODO ASAP: Revisit this class?
 @dataclass
 class ExtractedCardData:
@@ -34,7 +30,6 @@ class TrelloList:
     name: str
     board_id: str
     cards: List['TrelloCard'] = field(default_factory=list)
-
 
 class TrelloLists:
     def __init__(self, board_json, trello_lists_param: Optional[List[TrelloList]] = None):
@@ -106,6 +101,7 @@ class TrelloChecklistItem:
     url: str = None
     url_title: str = None
 
+    # TODO ASAP Refactor, this does not belong here
     def get_html(self):
         if self.url:
             return f"<a href={self.url}>{self.url_title}</a>"
@@ -163,7 +159,7 @@ class TrelloCard:
         return not self.closed
 
     def get_labels_as_str(self):
-        return ",".join(self.labels)
+        return ", ".join(self.labels)
 
 
 class TrelloCards:

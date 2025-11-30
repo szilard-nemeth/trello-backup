@@ -1,12 +1,13 @@
 from typing import List
 
-from trello_backup.display.output import CLI_LOG
+from trello_backup.display.console import CliLogger
 from trello_backup.trello.api import TrelloApi
 from trello_backup.trello.model import TrelloList, TrelloLists, TrelloChecklists, TrelloComment, TrelloAttachment, \
     TrelloCard, TrelloChecklistItem, TrelloChecklist
 
 import logging
 LOG = logging.getLogger(__name__)
+CLI_LOG = CliLogger(LOG)
 
 class TrelloObjectParser:
     @staticmethod
@@ -24,6 +25,7 @@ class TrelloObjectParser:
                            trello_lists: TrelloLists,
                            trello_checklists: TrelloChecklists,
                            download_comments: bool = False):
+        # TODO ASAP testing write unit tests for this
         cards_json = board_json["cards"]
         cards = []
         for idx, card in enumerate(cards_json):

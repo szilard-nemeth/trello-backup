@@ -228,7 +228,6 @@ class TrelloDataConverter:
         return rows, self._header.as_string_headers()
 
     def _extract_card_data(self, card, card_filters, md_formatter):
-        # TODO ASAP refactor: Extract this to service object?
         # Sanity check
         # has_checklists = self.has_checklist
         # has_attachments = self.has_attachments
@@ -574,7 +573,7 @@ class TrelloListAndCardsPrinter:
 
     @staticmethod
     def print_plain_text(trello_data: List[Dict[str, Any]], print_placeholders=False, only_open=False):
-        # TODO ASAP Apply CardFilters
+        # TODO ASAP filtering Apply CardFilters
         for list_obj in trello_data:
             #for name, list in trello_lists.by_name.items():
             CLI_LOG.info(f"List: {list_obj['name']}")
@@ -582,6 +581,7 @@ class TrelloListAndCardsPrinter:
                 if only_open and card["closed"]:
                     continue
                 CLI_LOG.info(f"CARD: {card['name']}")
+                # TODO ASAP cli Add card labels
                 CLI_LOG.info("DESCRIPTION:")
                 if card['description']:
                     CLI_LOG.info(f"{card['description']}")
@@ -591,7 +591,7 @@ class TrelloListAndCardsPrinter:
 
                 if print_placeholders and not card["checklists"]:
                     CLI_LOG.info("<NO CHECKLISTS>")
-                CLI_LOG.info()
+                CLI_LOG.info("\n")
                 for checklist in card["checklists"]:
                     CLI_LOG.info(f"{checklist['name']} ({len(checklist['items'])}): ")
                     for item in checklist['items']:
