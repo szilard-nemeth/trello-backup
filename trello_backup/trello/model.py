@@ -72,12 +72,17 @@ class TrelloLists:
 
         return TrelloLists(self._board_json, trello_lists_param=found)
 
+
 @dataclass
 class TrelloAttachment:
+    # TODO ASAP Write testcase and try with test board to see if attachments can be downloaded with url only. If yes, remove api_url parameter
+    """
+    url (coming directly from attachment JSON): https://trello.com/1/cards/691d029180f5bbd70deb69dc/attachments/691d02d39c6578426ad5fe31/download/Screenshot_2025-11-18_at_6.34.09_PM.png
+    api_url (constructed manually): https://api.trello.com/1/cards/691d029180f5bbd70deb69dc/attachments/691d02d39c6578426ad5fe31/download/Screenshot_2025-11-18_at_6.34.09_PM.png
+    """
     id: str
     date: str
     name: str
-    # TODO ASAP What's the difference between url and api_url?
     url: str
     api_url: str
     is_upload: bool
