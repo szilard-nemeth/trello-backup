@@ -1,5 +1,6 @@
 from typing import List
 
+from trello_backup.display.output import CLI_LOG
 from trello_backup.trello.api import TrelloApi
 from trello_backup.trello.model import TrelloList, TrelloLists, TrelloChecklists, TrelloComment, TrelloAttachment, \
     TrelloCard, TrelloChecklistItem, TrelloChecklist
@@ -26,8 +27,8 @@ class TrelloObjectParser:
         cards_json = board_json["cards"]
         cards = []
         for idx, card in enumerate(cards_json):
-            # TODO ASAP Add progress bar for cards
-            LOG.debug("Processing card: {} / {}".format(idx + 1, len(cards_json)))
+            # TODO Add progress bar for cards
+            CLI_LOG.info("Processing card: {} / {}".format(idx + 1, len(cards_json)))
             comments = []
             # TODO ASAP refactor: Decouple fetching API from parser logic - Here we fetch the comments, this does not belong here
             if download_comments:
@@ -83,11 +84,11 @@ class TrelloObjectParser:
             author = member_creator["username"]
 
             if 'data' not in action:
-                # TODO warning log
+                LOG.warning("Failed to parse comment for card: %s, No 'data' key found in action. Details: %s", card["name"], action)
                 continue
             data = action['data']
             if 'text' not in data:
-                # TODO warning log
+                LOG.warning("Failed to parse comment for card: %s, No 'text' key found in data. Details: %s", card["name"], data)
                 continue
             trello_comment = TrelloComment(action["id"], author, action["date"], data['text'])
             comments.append(trello_comment)
