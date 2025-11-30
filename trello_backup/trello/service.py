@@ -19,7 +19,7 @@ class TrelloOperations:
                  data_converter: TrelloDataConverter):
         self._board_name_to_board_id: Dict[str, str] = {}
         self._board_id_to_board_json: Dict[str, Any] = {}
-        self.cache = cache
+        self._cache = cache
         self._webpage_title_service = title_service
         self._data_converter = data_converter
 
@@ -67,7 +67,7 @@ class TrelloOperations:
 
         # Call to fill webpage title and URL
         self._webpage_title_service.process_board_checklist_titles(board)
-        self.cache.save()
+        self._cache.save()
 
         return board, trello_lists
 

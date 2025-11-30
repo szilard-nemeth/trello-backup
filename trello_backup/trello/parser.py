@@ -25,7 +25,6 @@ class TrelloObjectParser:
                            trello_lists: TrelloLists,
                            trello_checklists: TrelloChecklists,
                            download_comments: bool = False):
-        # TODO ASAP testing write unit tests for this
         cards_json = board_json["cards"]
         cards = []
         for idx, card in enumerate(cards_json):
@@ -62,7 +61,17 @@ class TrelloObjectParser:
             label_names = [l["name"] for l in card["labels"]]
             checklist_ids = card["idChecklists"]
             checklists = [trello_checklists.by_id[cid] for cid in checklist_ids]
-            trello_card = TrelloCard(card["id"], card["name"], trello_list, card["desc"], attachments, checklists, label_names, card["closed"], comments, card["due"], [])
+            trello_card = TrelloCard(card["id"],
+                                     card["name"],
+                                     trello_list,
+                                     card["desc"],
+                                     attachments,
+                                     checklists,
+                                     label_names,
+                                     card["closed"],
+                                     comments,
+                                     card["due"],
+                                     [])
             cards.append(trello_card)
             trello_list.cards.append(trello_card)
         return cards
