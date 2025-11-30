@@ -61,8 +61,8 @@ class TrelloOperations:
 
         board = TrelloBoard(board_id, board_json, name, trello_lists.open)
         for list in board.lists:
-            # Overwrite list.cards
             filtered_cards = CardFilterer.filter_cards(list, card_filters)
+            # Overwrite list.cards
             list.cards = filtered_cards
 
         # Call to fill webpage title and URL
@@ -125,6 +125,8 @@ class TrelloTitleService:
                     # Fetch title of URL
                     url_title = HtmlParser.get_title_from_url(url)
                     url_title = re.sub(r'[\n\t\r]+', ' ', url_title)
+                    # Replace only two or more consecutive spaces with a single space
+                    url_title = re.sub(r' {2,}', ' ', url_title)
 
                     if url_title:
                         # Put title into cache

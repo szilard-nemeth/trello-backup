@@ -31,7 +31,7 @@ class TrelloObjectParser:
             # TODO Add progress bar for cards
             CLI_LOG.info("Processing card: {} / {}".format(idx + 1, len(cards_json)))
             comments = []
-            # TODO ASAP refactor: Decouple fetching API from parser logic - Here we fetch the comments, this does not belong here
+            # TODO ASAP refactor: this does not belong here, Decouple fetching API from parser logic - Here we fetch the comments
             if download_comments:
                 comments: List[TrelloComment] = TrelloObjectParser.query_comments_for_card(card)
 
