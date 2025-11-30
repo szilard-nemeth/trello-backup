@@ -1,0 +1,40 @@
+import logging
+from typing import List, Tuple, Dict
+
+import click
+from click import BadOptionUsage
+
+from trello_backup.cli.common import CliCommon
+from trello_backup.cli.context import TrelloCommand
+from trello_backup.display.output import BackupReport
+
+LOG = logging.getLogger(__name__)
+
+
+@click.group()
+def print():
+    pass
+
+def get_handler_and_setup_ctx(ctx):
+    handler = CliCommon.init_main_cmd_handler(ctx)
+    ctx.handler = handler
+    return handler
+
+
+
+
+# TODO ASAP cli Add new command: Delete cards with confirmation (one by one or by lists)
+# TODO ASAP filtering print all lists by default
+@print.command(cls=TrelloCommand)
+@click.option('-b', '--board', required=True, help='Trello board name')
+@click.option('-l', '--list', "list_names",  multiple=True, required=True, help='Trello list name')
+# @click.option('-l', '--list', "list_names",  multiple=True, required=True, help='Trello list names to print cards from. Accepts "*" to print cards from all lists.')
+@click.pass_context
+@click.argument("board_name")
+def board(ctx, board_name: str, list_names: Tuple[str]):
+    if not list_names:
+        raise BadOptionUsage("list_names", "At least one list need to be specified!")
+
+    list_names = list(list_names)
+    handler = get_handler_and_setup_ctx(ctx)
+    handler.print_cards(board_name, list_names)

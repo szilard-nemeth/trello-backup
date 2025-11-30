@@ -228,6 +228,7 @@ class TrelloDataConverter:
         return rows, self._header.as_string_headers()
 
     def _extract_card_data(self, card, card_filters, md_formatter):
+        # TODO ASAP cleanup
         # Sanity check
         # has_checklists = self.has_checklist
         # has_attachments = self.has_attachments

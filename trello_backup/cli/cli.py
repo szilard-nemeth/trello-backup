@@ -6,6 +6,7 @@ from pythoncommons.logging_setup import DEFAULT_FORMAT
 from rich import print as rich_print, box
 
 from trello_backup.cli.commands.backup import backup
+from trello_backup.cli.commands.print import print
 from rich.table import Table
 
 from trello_backup.cli.context import ClickContextWrapper, TrelloGroup
@@ -91,6 +92,7 @@ if __name__ == "__main__":
     start_time = time.time()
     try:
         cli.add_command(backup)
+        cli.add_command(print)
         cli()
         end_time = time.time()
         LOG.info("Trello CLI execution finished after %d seconds", int(end_time - start_time))

@@ -36,20 +36,3 @@ def boards(ctx):
     handler = get_handler_and_setup_ctx(ctx)
     report = BackupReport()
     return handler.backup_all_boards(report)
-
-
-# TODO ASAP cli This should be a separate CLI command: 'print board'
-# TODO ASAP cli Add new command: Delete cards with confirmation (one by one or by lists)
-# TODO ASAP filtering print all lists by default
-@backup.command(cls=TrelloCommand)
-@click.option('-b', '--board', required=True, help='Trello board name')
-@click.option('-l', '--list', "list_names",  multiple=True, required=True, help='Trello list name')
-# @click.option('-l', '--list', "list_names",  multiple=True, required=True, help='Trello list names to print cards from. Accepts "*" to print cards from all lists.')
-@click.pass_context
-def cards(ctx, board: str, list_names: Tuple[str]):
-    if not list_names:
-        raise BadOptionUsage("list_names", "At least one list need to be specified!")
-
-    list_names = list(list_names)
-    handler = get_handler_and_setup_ctx(ctx)
-    handler.print_cards(board, list_names)
