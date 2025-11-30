@@ -46,9 +46,9 @@ class MainCommandHandler:
             self.backup_board(name, report, html_gen_config=html_gen_config)
         return report
 
-    def print_cards(self, board: str, lists: List[str]):
+    def print_cards(self, board: str, filter_lists: List[str]):
         card_filters = CardFilters.OPEN
-        board, trello_lists = self._trello_ops.get_lists_and_cards(board, lists, card_filters)
+        board, trello_lists = self._trello_ops.get_lists_and_cards(board, filter_lists, card_filters)
         trello_data = self._data_converter.convert_to_output_data(trello_lists)
         TrelloListAndCardsPrinter.print_plain_text(trello_data, card_filters, only_open=True)
         # TrelloListAndCardsPrinter.print_rich(trello_data)

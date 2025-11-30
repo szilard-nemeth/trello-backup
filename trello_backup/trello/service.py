@@ -36,14 +36,14 @@ class TrelloOperations:
         TrelloApi.download_attachments(board)
         return board, None
 
-    def get_lists_and_cards(self, board_name: str, list_names: List[str], card_filters: CardFilters) -> Tuple[TrelloBoard, TrelloLists]:
-        board, trello_lists = self._get_trello_board_and_lists(board_name, list_names, card_filters)
+    def get_lists_and_cards(self, board_name: str, filter_lists: List[str], card_filters: CardFilters) -> Tuple[TrelloBoard, TrelloLists]:
+        board, trello_lists = self._get_trello_board_and_lists(board_name, filter_lists, card_filters)
         return board, trello_lists
 
 
     def _get_trello_board_and_lists(self,
                                     name: str,
-                                    list_names: List[str] = None,
+                                    filter_lists: List[str] = None,
                                     card_filters: CardFilters = CardFilters.ALL,
                                     download_comments: bool = False) -> Tuple[TrelloBoard, TrelloLists]:
         board_id = self._get_board_id(name)
@@ -51,9 +51,8 @@ class TrelloOperations:
 
         # Parse JSON to objects
         trello_lists = TrelloLists(board_json)
-        if list_names:
-            # TODO ASAP filtering, add '*' list filter?
-            trello_lists = trello_lists.filter(list_names)
+        if filter_lists:
+            trello_lists = trello_lists.filter(filter_lists)
 
         trello_checklists = TrelloChecklists(board_json)
         # After this call, TrelloList will contain every card belonging to each list
