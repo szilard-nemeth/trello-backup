@@ -3,7 +3,7 @@ from typing import List, Dict, Any
 from trello_backup.cli.common import TrelloContext
 from trello_backup.display.console import CliLogger
 from trello_backup.display.output import TrelloCardHtmlGeneratorMode, TrelloListAndCardsPrinter, \
-    OutputHandlerFactory, TrelloDataConverter
+    OutputHandlerFactory, TrelloDataConverter, BackupReport
 from trello_backup.trello.filter import CardFilters
 from trello_backup.trello.service import TrelloOperations
 
@@ -25,19 +25,24 @@ class MainCommandHandler:
         self._data_converter = data_converter
         self.output_factory = output_factory
 
-    def backup_board(self, board_name: str,
+    def backup_board(self,
+                     board_name: str,
+                     report: BackupReport,
                      html_gen_config: TrelloCardHtmlGeneratorMode = TrelloCardHtmlGeneratorMode.BASIC):
         card_filters = CardFilters.ALL
         board, _ = self._trello_ops.get_board(board_name, card_filters=card_filters, download_comments=html_gen_config.value.include_comments)
         # TODO ASAP Make output formats configurable: txt, html, rich, json, ...
+        # TODO ASAP Use OutputType as much as I can
+        # TODO ASAP Consider removing this factory?
         out = self.output_factory.create_for_board(self._data_converter, self.ctx.backup_dir, board, html_gen_config.value, card_filters)
-        out.write_outputs()
+        out.write_outputs(report.file_write_callback)
 
     def backup_all_boards(self,
+                          report: BackupReport,
                           html_gen_config: TrelloCardHtmlGeneratorMode = TrelloCardHtmlGeneratorMode.FULL):
         boards: Dict[str, str] = self._trello_ops.get_board_names_and_ids()
         for name in boards.keys():
-            self.backup_board(name, html_gen_config=html_gen_config)
+            self.backup_board(name, report, html_gen_config=html_gen_config)
 
     def print_cards(self, board: str, lists: List[str]):
         card_filters = CardFilters.OPEN

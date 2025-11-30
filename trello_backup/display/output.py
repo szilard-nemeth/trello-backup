@@ -1,10 +1,12 @@
+import enum
 import json
 import logging
 import os
+from collections import defaultdict
 from dataclasses import dataclass
 from enum import Enum
 from io import StringIO
-from typing import List, Dict, Any, Tuple
+from typing import List, Dict, Any, Tuple, Callable, Iterable
 
 from markdown import Markdown
 from pythoncommons.file_utils import FileUtils, CsvFileUtils
@@ -377,12 +379,22 @@ class TrelloBoardHtmlFileGenerator:
         FileUtils.write_to_file(file, self.html)
         CLI_LOG.info("Generated HTML file output to: " + file)
 
+class OutputType(enum.Enum):
+    HTML_FILE = "html_file"
+    RICH_HTML_TABLE = "rich_html_table"
+    CUSTOM_HTML_TABLE = "custom_html_table"
+    CSV = "csv"
+    BOARD_JSON = "board_json"
+
 
 class OutputHandler:
     def __init__(self,
                  data_converter: TrelloDataConverter,
                  output_dir: str,
-                 board: TrelloBoard, html_gen_config, card_filters: CardFilters):
+                 board: TrelloBoard,
+                 html_gen_config,
+                 card_filters: CardFilters):
+        self._callback_gen_files = Callable[[str, str], None]
         self._data_converter = data_converter
         self._output_dir = output_dir
         self.board = board
@@ -393,49 +405,57 @@ class OutputHandler:
 
     def _set_file_paths(self):
         fname_prefix = f"board-{self.board.simple_name}"
-        self.html_result_file_path = os.path.join(self._output_dir, f"{fname_prefix}.html")
-        self.rich_table_file_path = os.path.join(self._output_dir, f"{fname_prefix}-rich-table.html")
-        self.html_table_file_path = os.path.join(self._output_dir, f"{fname_prefix}-custom-table.html")
-        self.csv_file_path = os.path.join(self._output_dir, f"{fname_prefix}.csv")
-        self.json_file_path = os.path.join(self._output_dir, f"{fname_prefix}.json")
+        self._output_file_paths = {
+            OutputType.HTML_FILE: os.path.join(self._output_dir, f"{fname_prefix}.html"),
+            OutputType.RICH_HTML_TABLE: os.path.join(self._output_dir, f"{fname_prefix}-rich-table.html"),
+            OutputType.CUSTOM_HTML_TABLE: os.path.join(self._output_dir, f"{fname_prefix}-custom-table.html"),
+            OutputType.CSV: os.path.join(self._output_dir, f"{fname_prefix}.csv"),
+            OutputType.BOARD_JSON: os.path.join(self._output_dir, f"{fname_prefix}.json"),
+        }
 
     def _set_generators(self, board, html_gen_config):
-        self.html_file_gen = TrelloBoardHtmlFileGenerator(board, html_gen_config)
-        self.html_table_gen = TrelloBoardHtmlTableGenerator(board)
-        self.rich_table_gen = TrelloBoardRichTableGenerator(board, print_to_console=False)
+        self._generators: Dict[OutputType, Any] = {
+            OutputType.HTML_FILE: TrelloBoardHtmlFileGenerator(board, html_gen_config),
+            OutputType.CUSTOM_HTML_TABLE: TrelloBoardHtmlTableGenerator(board),
+            OutputType.RICH_HTML_TABLE: TrelloBoardRichTableGenerator(board, print_to_console=False),
+        }
 
-        self._generators = [
-            (self.html_file_gen, self.html_result_file_path),
-            (self.html_table_gen, self.html_table_file_path),
-            (self.rich_table_gen, self.rich_table_file_path),
-        ]
+    def write_outputs(self, callback: Callable[[OutputType, str], None]):
+        self._callback_gen_files = callback
 
-    def write_outputs(self):
         header: List[str]
         rows, header = self._data_converter.convert_to_table_rows(self.board, self._card_filters, self._md_formatter)
 
         # Outputs: HTML file, HTML table, Rich table
-        for generator, path in self._generators:
+        for type, generator in self._generators.items():
+            file_path = self._output_file_paths[type]
             # Assuming all generators have a compatible render signature
             generator.render(rows, header)
-            generator.write_file(path)
+            generator.write_file(file_path)
+            self._callback_gen_files(type, file_path)
 
         # Handle these output types separately due to unique logic (removal, printing)
         self._generate_csv_file(header, rows)
         self._write_board_json()
 
+    # TODO ASAP Consider migrating these to generator classes
     def _generate_csv_file(self, header: list[str | Any], rows: list[Any]):
-        if os.path.exists(self.csv_file_path):
-            FileUtils.remove_file(self.csv_file_path)
-        CsvFileUtils.append_rows_to_csv_file(self.csv_file_path, rows, header=header)
-        CLI_LOG.info("Generated CSV file: " + self.csv_file_path)
+        file_path = self._output_file_paths[OutputType.CSV]
+        if os.path.exists(file_path):
+            FileUtils.remove_file(file_path)
+        CsvFileUtils.append_rows_to_csv_file(file_path, rows, header=header)
+        CLI_LOG.info("Generated CSV file: %s", file_path)
+        self._callback_gen_files(OutputType.CSV, file_path)
 
     def _write_board_json(self):
         # Uncomment this for other JSON printout
         # print(json.dumps(parsed_json, sort_keys=True, indent=4, separators=(",", ": ")))
-        with open(self.json_file_path, "w") as f:
+
+        file_path = self._output_file_paths[OutputType.BOARD_JSON]
+        with open(file_path, "w") as f:
             json.dump(self.board.json, f, indent=4)
-        CLI_LOG.info("Saved board JSON to file: " + self.json_file_path)
+        CLI_LOG.info("Saved board JSON to file: %s", file_path)
+        self._callback_gen_files(OutputType.BOARD_JSON, file_path)
 
 
 class OutputHandlerFactory:
@@ -611,3 +631,13 @@ class TrelloBoardHtmlTableGenerator:
             FileUtils.save_to_file(file, table)
             CLI_LOG.info(f"Generated HTML table to file: {file}")
 
+
+
+class BackupReport:
+    def __init__(self):
+        self._generated_files: Dict[OutputType, List[str]] = defaultdict(list)
+
+    def file_write_callback(self, file_type: OutputType, file_path: str):
+        # if file_type in self._generated_files:
+        #     raise ValueError(f"File type {file_type} is already generated as {self._generated_files[file_type]}. Preventing overwrites!")
+        self._generated_files[file_type].append(file_path)

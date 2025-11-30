@@ -6,6 +6,7 @@ from click import BadOptionUsage
 
 from trello_backup.cli.common import CliCommon
 from trello_backup.cli.context import TrelloCommand
+from trello_backup.display.output import BackupReport
 
 LOG = logging.getLogger(__name__)
 
@@ -25,14 +26,16 @@ def get_handler_and_setup_ctx(ctx):
 @click.argument("board_name")
 def board(ctx, board_name: str):
     handler = get_handler_and_setup_ctx(ctx)
-    handler.backup_board(board_name)
+    report = BackupReport()
+    handler.backup_board(board_name, report)
 
 
 @backup.command(cls=TrelloCommand)
 @click.pass_context
 def boards(ctx):
     handler = get_handler_and_setup_ctx(ctx)
-    handler.backup_all_boards()
+    report = BackupReport()
+    handler.backup_all_boards(report)
 
 
 # TODO ASAP This should be a separate CLI command: 'print board'
