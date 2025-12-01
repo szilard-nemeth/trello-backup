@@ -5,7 +5,7 @@ from pythoncommons.url_utils import UrlUtils
 
 from trello_backup.display.output import MarkdownFormatter, TrelloDataConverter
 from trello_backup.http_server import HTTP_SERVER_PORT
-from trello_backup.trello.api import TrelloApi
+from trello_backup.trello.api import TrelloApi, AbstractTrelloApi, TrelloRepository
 from trello_backup.trello.cache import WebpageTitleCache
 from trello_backup.trello.filter import CardFilters, CardFilterer
 from trello_backup.trello.html import HtmlParser
@@ -14,9 +14,11 @@ from trello_backup.trello.model import TrelloChecklist, TrelloBoard, TrelloLists
 
 class TrelloOperations:
     def __init__(self,
+                 trello_repository: TrelloRepository,
                  cache: WebpageTitleCache,
                  title_service: 'TrelloTitleService',
                  data_converter: TrelloDataConverter):
+        self._api: AbstractTrelloApi = trello_repository.get_api()
         self._board_name_to_board_id: Dict[str, str] = {}
         self._board_id_to_board_json: Dict[str, Any] = {}
         self._cache = cache
@@ -24,7 +26,7 @@ class TrelloOperations:
         self._data_converter = data_converter
 
     def get_board_names_and_ids(self):
-        d = TrelloApi.list_boards()
+        d = self._api.list_boards()
         for board_name, board_id in d.items():
             self._board_name_to_board_id[board_name] = board_id
         return d
@@ -33,7 +35,7 @@ class TrelloOperations:
                   card_filters: CardFilters = CardFilters.ALL,
                   download_comments: bool = False) -> Tuple[TrelloBoard, Optional[TrelloLists]]:
         board, _ = self._get_trello_board_and_lists(name, card_filters=card_filters, download_comments=download_comments)
-        TrelloApi.download_attachments(board)
+        self._api.download_attachments(board)
         return board, None
 
     def get_lists_and_cards(self, board_name: str, filter_lists: List[str], card_filters: CardFilters) -> Tuple[TrelloBoard, TrelloLists]:
@@ -73,14 +75,14 @@ class TrelloOperations:
     def _get_board_id(self, name):
         board_id = self._board_name_to_board_id.get(name)
         if board_id is None:
-            board_id = TrelloApi.get_board_id(name)
+            board_id = self._api.get_board_id(name)
             self._board_name_to_board_id[name] = board_id
         return board_id
 
     def _get_board_json(self, board_id):
         board_json = self._board_id_to_board_json.get(board_id)
         if board_json is None:
-            board_json = TrelloApi.get_board_details(board_id)
+            board_json = self._api.get_board_details(board_id)
             self._board_id_to_board_json[board_id] = board_json
         return board_json
 

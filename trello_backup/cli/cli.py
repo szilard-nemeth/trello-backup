@@ -36,9 +36,14 @@ def setup_dirs(ctx: ClickContextWrapper, use_session_dir: bool, add_console_hand
 @click.group(cls=TrelloGroup)
 @click.option('--debug/--no-debug', default=False)
 @click.option('--dry-run', is_flag=True, default=False)
+@click.option('--offline', is_flag=True, default=False)
 @click.option('-s', '--session-dir', is_flag=True, default=True, help='Whether to use session dir to save output files.')
 @click.pass_context
-def cli(ctx: ClickContextWrapper, debug: bool, dry_run: bool = False, session_dir: bool = True):
+def cli(ctx: ClickContextWrapper,
+        debug: bool,
+        dry_run: bool = False,
+        offline: bool = False,
+        session_dir: bool = True):
     if ctx.invoked_subcommand == "usage":
         return
 
@@ -46,6 +51,7 @@ def cli(ctx: ClickContextWrapper, debug: bool, dry_run: bool = False, session_di
     ctx.ensure_object(dict)
     ctx.log_level = level
     ctx.dry_run = dry_run
+    ctx.offline = offline
 
     LOG.info("Invoked command %s", ctx.invoked_subcommand)
     setup_dirs(ctx, session_dir)

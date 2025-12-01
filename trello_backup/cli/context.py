@@ -8,7 +8,7 @@ import logging
 
 from trello_backup.utils import LoggingUtils
 
-# TODO ASAP implement dryRun feature (offline?)
+# TODO ASAP implement dryRun feature
 # Define a structure for each property's configuration
 @dataclass(frozen=True)
 class ContextProperty:
@@ -41,6 +41,10 @@ PROPERTY_CONFIG: List[ContextProperty] = [
     ),
     ContextProperty(
         name='dry_run',
+        attr_type=bool
+    ),
+    ContextProperty(
+        name='offline',
         attr_type=bool
     ),
     ContextProperty(

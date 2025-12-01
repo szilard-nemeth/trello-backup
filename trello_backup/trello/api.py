@@ -1,12 +1,15 @@
 import json
 import logging
 import os
+from pathlib import Path
 from typing import Dict
 
 import requests
 
 from trello_backup.constants import FilePath
 from trello_backup.display.console import CliLogger
+from trello_backup.display.output import OutputHandler
+from trello_backup.trello.model import TrelloBoard
 
 TRELLO_API_ROOT = "https://api.trello.com/1/"
 CARDS_API = "https://api.trello.com/1/cards"
@@ -21,7 +24,31 @@ LOG = logging.getLogger(__name__)
 CLI_LOG = CliLogger(LOG)
 
 
-class TrelloApi:
+from abc import ABC, abstractmethod
+from typing import Dict, Any
+
+class AbstractTrelloApi(ABC):
+    @abstractmethod
+    def list_boards(self) -> Dict[str, str]:
+        """Returns board name to board ID mapping."""
+        pass
+
+    @abstractmethod
+    def get_board_id(self, name: str) -> str:
+        """Returns the ID for a given board name."""
+        pass
+
+    @abstractmethod
+    def get_board_details(self, board_id: str) -> Dict[str, Any]:
+        """Returns the raw JSON data for a specific board."""
+        pass
+
+    @abstractmethod
+    def download_attachments(self, board):
+        pass
+
+
+class TrelloApi(AbstractTrelloApi):
     auth_query_params = None
     authorization_headers = None
     headers_accept_json = {
@@ -264,3 +291,95 @@ class TrelloApi:
         # Source: https://trello.com/1/cards/60d8951d65e3c9345794d20a/attachments/631332fc6b78cf0135be0a37/download/image.png
         # Target: https://api.trello.com/1/cards/60d8951d65e3c9345794d20a/attachments/631332fc6b78cf0135be0a37/download/image.png
         return f"{CARDS_API}/{card_id}/attachments/{attachment_id}/download/{attachment_filename}"
+
+
+class OfflineTrelloApi(AbstractTrelloApi):
+    API_ENDPOINT_TO_FILE = {LIST_BOARDS_API: "list_boards.json",
+                            GET_BOARD_DETAILS_API_TMPL: "board-cloudera.json"}
+    TESTS_DIR = FilePath.get_dir_from_root("tests", parent_dir=FilePath.REPO_ROOT_DIRNAME)
+    RESOURCES_DIR = FilePath.get_dir_from_root("resources", parent_dir=TESTS_DIR)
+
+    @staticmethod
+    def _load_resource_file(filename) -> str:
+        file_path = os.path.join(OfflineTrelloApi.RESOURCES_DIR, filename)
+        contents = Path(file_path).read_text()
+        return contents
+
+    def __init__(self):
+        pass
+
+    def list_boards(self) -> Dict[str, str]:
+        """
+        Returns board mappings.
+        Key: Board name
+        Value: Board id
+        :return:
+        """
+        boards_list = self._load_boards_json()
+        return self._get_boards_by_name(boards_list)
+
+    def get_board_id(self, name: str) -> str:
+        boards_list = self._load_boards_json()
+        boards_by_name = self._get_boards_by_name(boards_list)
+        return boards_by_name.get(name)
+
+    def get_board_details(self, board_id: str) -> Dict[str, Any]:
+        boards_list = self._load_boards_json()
+        boards_by_id = self._get_boards_by_id(boards_list)
+        board_name = boards_by_id[board_id]
+
+        # Create TrelloBoard object to get short filename
+        tmp_board_obj = TrelloBoard("dummy_id", "no_json", board_name, [])
+        board_file_name = OutputHandler.get_board_filename_by_board(tmp_board_obj)
+
+        # Read raw board JSON from a local file based on board_id
+        board_json = OfflineTrelloApi._load_resource_file(board_file_name)
+        return json.loads(board_json)
+
+    @staticmethod
+    def _load_boards_json() -> Any:
+        list_boards_json = json.loads(OfflineTrelloApi._load_resource_file("list_boards.json"))
+        return json.loads(list_boards_json)
+
+    @staticmethod
+    def _get_boards_by_name(boards_list):
+        d = {}
+        for b in boards_list:
+            d[b["name"]] = b["id"]
+        return d
+
+    @staticmethod
+    def _get_boards_by_id(boards_list):
+        d = {}
+        for b in boards_list:
+            d[b["id"]] = b["name"]
+        return d
+
+    def download_attachments(self, board):
+        # intentionally empty
+        pass
+
+
+class NetworkStatusService:
+    def __init__(self, ctx):
+        self._online = not ctx.offline
+
+    def is_online(self):
+        return self._online
+
+
+class TrelloRepository:
+    def __init__(self,
+                 online_api: TrelloApi,
+                 offline_api: OfflineTrelloApi,
+                 network_service: NetworkStatusService):
+        self._online = online_api
+        self._offline = offline_api
+        self._network = network_service
+
+    def get_api(self) -> AbstractTrelloApi:
+        # Simple selection logic
+        if self._network.is_online():
+            return self._online
+        else:
+            return self._offline

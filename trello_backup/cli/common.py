@@ -8,11 +8,16 @@ from trello_backup.constants import FilePath
 from trello_backup.display.output import OutputHandlerFactory, MarkdownFormatter, TrelloDataConverter
 from trello_backup.exception import TrelloConfigException
 from trello_backup.http_server import HttpServer, HTTP_SERVER_PORT
-from trello_backup.trello.api import TrelloApi
+from trello_backup.trello.api import TrelloApi, TrelloRepository, OfflineTrelloApi, NetworkStatusService
 from trello_backup.trello.cache import WebpageTitleCache
 from trello_backup.trello.service import TrelloOperations, TrelloTitleService
 
 LOG = logging.getLogger(__name__)
+
+def get_handler_and_setup_ctx(ctx):
+    handler = CliCommon.init_main_cmd_handler(ctx)
+    ctx.handler = handler
+    return handler
 
 
 class CliCommon:
@@ -32,12 +37,15 @@ class CliCommon:
         webpage_title_service = TrelloTitleService(cache)
         md_formatter = MarkdownFormatter()
         data_converter = TrelloDataConverter(md_formatter, HTTP_SERVER_PORT)
-        trello_ops = TrelloOperations(cache, webpage_title_service, data_converter)
 
         # Serve attachment files with http server
         if context.config.get(TrelloCfg.SERVE_ATTACHMENTS):
             http_server = HttpServer(FilePath.OUTPUT_DIR_ATTACHMENTS)
             http_server.launch()
+
+        network_status_service = NetworkStatusService(ctx)
+        trello_repository = TrelloRepository(TrelloApi(), OfflineTrelloApi(), network_status_service)
+        trello_ops = TrelloOperations(trello_repository, cache, webpage_title_service, data_converter)
         handler = MainCommandHandler(context, trello_ops, data_converter, OutputHandlerFactory)
         return handler
 

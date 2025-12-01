@@ -1,46 +1,48 @@
 import unittest
 from unittest.mock import Mock, patch, call
-from typing import Dict, Any, List, Tuple, Optional
-
+from trello_backup.trello.api import NetworkStatusService, TrelloRepository, TrelloApi, OfflineTrelloApi
 from trello_backup.trello.filter import CardFilters
 from trello_backup.trello.model import TrelloChecklist, TrelloBoard, TrelloList
-# Assuming the provided code is in a file named trello_logic.py
-# Importing placeholder or actual types used in the class for type hinting
-
 from trello_backup.trello.service import TrelloOperations, TrelloTitleService
-
-# --- Setup Mock Data and Mock Classes (Optional but helpful for clarity) ---
 
 MOCK_BOARD_ID = "board123"
 MOCK_BOARD_NAME = "Test Board"
 MOCK_LIST_NAMES = ["List A", "List B"]
 MOCK_BOARD_JSON = {"id": MOCK_BOARD_ID, "name": MOCK_BOARD_NAME, "data": "..."}
 
-# --- TrelloOperations Tests ---
+class Object(object):
+    pass
+
 
 class TestTrelloOperations(unittest.TestCase):
-    def setUp(self):
+    @patch('trello_backup.trello.service.TrelloApi')
+    def setUp(self, mock_trello_api):
+        self.mock_trello_api = mock_trello_api
         # Initialize Mocks for dependencies
         self.mock_cache = Mock()
         self.mock_title_service = Mock()
         self.mock_data_converter = Mock()
 
         # Initialize the class under test
+        ctx = Object()
+        ctx.offline = False
+        network_status_service = NetworkStatusService(ctx)
+        trello_repository = TrelloRepository(mock_trello_api, OfflineTrelloApi(), network_status_service)
         self._trello_ops = TrelloOperations(
+            trello_repository,
             cache=self.mock_cache,
             title_service=self.mock_title_service,
             data_converter=self.mock_data_converter
         )
 
-    @patch('trello_backup.trello.service.TrelloApi')
-    def test_get_board_names_and_ids(self, MockTrelloApi):
+    def test_get_board_names_and_ids(self):
         """Tests that get_board_names_and_ids fetches and stores board info."""
         mock_api_response = {"My Board 1": "id1", "My Board 2": "id2"}
-        MockTrelloApi.list_boards.return_value = mock_api_response
+        self.mock_trello_api.list_boards.return_value = mock_api_response
 
         result = self._trello_ops.get_board_names_and_ids()
 
-        MockTrelloApi.list_boards.assert_called_once()
+        self.mock_trello_api.list_boards.assert_called_once()
         self.assertEqual(result, mock_api_response)
         # Check internal state update
         self.assertEqual(self._trello_ops._board_name_to_board_id, mock_api_response)
@@ -74,7 +76,7 @@ class TestTrelloOperations(unittest.TestCase):
         # Call the private method
         board, trello_lists = self._trello_ops._get_trello_board_and_lists(
             name=MOCK_BOARD_NAME,
-            list_names=MOCK_LIST_NAMES,
+            filter_lists=MOCK_LIST_NAMES,
             card_filters=CardFilters.ALL
         )
 
@@ -108,15 +110,14 @@ class TestTrelloOperations(unittest.TestCase):
         self.assertEqual(result, cached_board_id)
         MockTrelloApi.get_board_id.assert_not_called()
 
-    @patch('trello_backup.trello.service.TrelloApi')
-    def test_get_board_id_fetch_and_cache(self, MockTrelloApi):
+    def test_get_board_id_fetch_and_cache(self):
         """Tests getting board ID when it needs to be fetched and then cached."""
-        MockTrelloApi.get_board_id.return_value = MOCK_BOARD_ID
+        self.mock_trello_api.get_board_id.return_value = MOCK_BOARD_ID
 
         result = self._trello_ops._get_board_id(MOCK_BOARD_NAME)
 
         self.assertEqual(result, MOCK_BOARD_ID)
-        MockTrelloApi.get_board_id.assert_called_once_with(MOCK_BOARD_NAME)
+        self.mock_trello_api.get_board_id.assert_called_once_with(MOCK_BOARD_NAME)
         # Check internal cache update
         self.assertEqual(self._trello_ops._board_name_to_board_id.get(MOCK_BOARD_NAME), MOCK_BOARD_ID)
 
@@ -130,15 +131,14 @@ class TestTrelloOperations(unittest.TestCase):
         self.assertEqual(result, MOCK_BOARD_JSON)
         MockTrelloApi.get_board_details.assert_not_called()
 
-    @patch('trello_backup.trello.service.TrelloApi')
-    def test_get_board_json_fetch_and_cache(self, MockTrelloApi):
+    def test_get_board_json_fetch_and_cache(self):
         """Tests getting board JSON when it needs to be fetched and then cached."""
-        MockTrelloApi.get_board_details.return_value = MOCK_BOARD_JSON
+        self.mock_trello_api.get_board_details.return_value = MOCK_BOARD_JSON
 
         result = self._trello_ops._get_board_json(MOCK_BOARD_ID)
 
         self.assertEqual(result, MOCK_BOARD_JSON)
-        MockTrelloApi.get_board_details.assert_called_once_with(MOCK_BOARD_ID)
+        self.mock_trello_api.get_board_details.assert_called_once_with(MOCK_BOARD_ID)
         # Check internal cache update
         self.assertEqual(self._trello_ops._board_id_to_board_json.get(MOCK_BOARD_ID), MOCK_BOARD_JSON)
 

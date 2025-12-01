@@ -156,7 +156,7 @@ class TestTrelloApiIntegration(unittest.TestCase):
         return contents
 
     @staticmethod
-    def _create_context_obj():
+    def _create_context_obj(offline=False):
         # Hack to set context_class on click.Group
         CLI_ENTRY_POINT_BACKUP.context_class = ClickContextWrapper
 
@@ -164,6 +164,7 @@ class TestTrelloApiIntegration(unittest.TestCase):
         tmp_ctx.ensure_object(dict)
         tmp_ctx.log_level = logging.DEBUG
         tmp_ctx.dry_run = False
+        tmp_ctx.offline = offline
         setup_dirs(tmp_ctx, use_session_dir=True, add_console_handler=True)
         return tmp_ctx.obj
 
@@ -179,10 +180,32 @@ class TestTrelloApiIntegration(unittest.TestCase):
         result = self.runner.invoke(
             CLI_ENTRY_POINT_BACKUP, f"{SUBCOMMAND_BOARD} Cloudera".split(),
             standalone_mode=False, obj=obj)
-        self.assertEqual(0, result.exit_code, result.output)
         if result.exc_info:
             LOG.exception("Error while invoking command", exc_info=result.exc_info)
             self.fail()
+        self.assertEqual(0, result.exit_code, result.output)
+
+        report = result.return_value
+        self.assertIsNotNone(report)
+        expected_result_types = [OutputType.HTML_FILE, OutputType.CUSTOM_HTML_TABLE, OutputType.RICH_HTML_TABLE, OutputType.BOARD_JSON, OutputType.CSV]
+        for rt in expected_result_types:
+            files = report.get_files(rt)
+            self.assertTrue(len(files) > 0)
+            for f in files:
+                self.assertTrue(os.path.exists(f), f"File does not exist: {f}")
+                size_bytes = os.path.getsize(f)
+                self.assertTrue(size_bytes > MIN_FILE_SIZE_BYTES, f"File '{f}' is less than {MIN_FILE_SIZE_KB} KBs")
+
+    def test_backup_board_cloudera_offline(self):
+        obj = self._create_context_obj(offline=True)
+
+        result = self.runner.invoke(
+            CLI_ENTRY_POINT_BACKUP, f"{SUBCOMMAND_BOARD} Cloudera".split(),
+            standalone_mode=False, obj=obj)
+        if result.exc_info:
+            LOG.exception("Error while invoking command", exc_info=result.exc_info)
+            self.fail()
+        self.assertEqual(0, result.exit_code, result.output)
 
         report = result.return_value
         self.assertIsNotNone(report)

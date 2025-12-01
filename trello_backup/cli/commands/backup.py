@@ -4,7 +4,7 @@ from typing import List, Tuple, Dict
 import click
 from click import BadOptionUsage
 
-from trello_backup.cli.common import CliCommon
+from trello_backup.cli.common import CliCommon, get_handler_and_setup_ctx
 from trello_backup.cli.context import TrelloCommand
 from trello_backup.display.output import BackupReport
 
@@ -14,11 +14,6 @@ LOG = logging.getLogger(__name__)
 @click.group()
 def backup():
     pass
-
-def get_handler_and_setup_ctx(ctx):
-    handler = CliCommon.init_main_cmd_handler(ctx)
-    ctx.handler = handler
-    return handler
 
 
 @backup.command(cls=TrelloCommand)

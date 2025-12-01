@@ -420,6 +420,10 @@ class OutputHandler:
             OutputType.RICH_HTML_TABLE: TrelloBoardRichTableGenerator(board, print_to_console=False),
         }
 
+    @staticmethod
+    def get_board_filename_by_board(board):
+        return f"board-{board.simple_name}.json"
+
     def write_outputs(self, callback: Callable[[OutputType, str], None]):
         self._callback_gen_files = callback
 
