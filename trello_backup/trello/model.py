@@ -1,6 +1,9 @@
 from dataclasses import dataclass, field
 from typing import List, Dict, Optional
 
+from trello_backup.trello.filter import ListFilter
+
+
 # TODO ASAP: Revisit this class?
 @dataclass
 class ExtractedCardData:
@@ -40,15 +43,20 @@ class TrelloLists:
         trello_lists: List[TrelloList] = TrelloObjectParser.parse_trello_lists(board_json)
 
         if trello_lists_param:
+            if len(trello_lists_param) < len(trello_lists):
+                self._filtered = True
             trello_lists = trello_lists_param
-            self._filtered = True
 
         self.by_id: Dict[str, TrelloList] = {l.id: l for l in trello_lists}
         self.by_name: Dict[str, TrelloList] = {l.name: l for l in trello_lists}
         # Filter open trello lists
         self.open: List[TrelloList] = list(filter(lambda tl: not tl.closed, trello_lists))
 
-    def filter(self, list_names: List[str]) -> 'TrelloLists':
+    def get(self) -> List[TrelloList]:
+        return list(self.by_name.values())
+
+    # TODO ASAP Move methods to new class: ListFilterer
+    def filter_by_list_names(self, list_names: List[str]) -> 'TrelloLists':
         """
         Retrieves TrelloList objects corresponding to the provided list names.
         Creates a new TrelloLists to only contain the filtered items.
@@ -71,6 +79,13 @@ class TrelloLists:
             )
 
         return TrelloLists(self._board_json, trello_lists_param=found)
+
+    # TODO ASAP Move methods to new class: ListFilterer
+    def filter_by_list_filter(self, list_filter: ListFilter):
+        if list_filter == ListFilter.ALL:
+            return TrelloLists(self._board_json, trello_lists_param=list(self.by_name.values()))
+        elif list_filter == ListFilter.OPEN:
+            return TrelloLists(self._board_json, trello_lists_param=list(self.open))
 
 
 @dataclass

@@ -578,7 +578,7 @@ class TrelloListAndCardsPrinter:
 
     @staticmethod
     def print_plain_text(trello_data: List[Dict[str, Any]], print_placeholders=False, only_open=False):
-        # TODO ASAP filtering Apply CardFilters
+        # TODO ASAP filtering Apply CardFilters elsewhere!
         for list_obj in trello_data:
             #for name, list in trello_lists.by_name.items():
             CLI_LOG.info(f"List: {list_obj['name']}")

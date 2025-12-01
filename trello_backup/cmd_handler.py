@@ -4,7 +4,7 @@ from trello_backup.cli.common import TrelloContext
 from trello_backup.display.console import CliLogger
 from trello_backup.display.output import TrelloCardHtmlGeneratorMode, TrelloListAndCardsPrinter, \
     OutputHandlerFactory, TrelloDataConverter, BackupReport
-from trello_backup.trello.filter import CardFilters
+from trello_backup.trello.filter import CardFilters, ListFilter
 from trello_backup.trello.service import TrelloOperations
 
 
@@ -28,7 +28,7 @@ class MainCommandHandler:
     def backup_board(self,
                      board_name: str,
                      report: BackupReport,
-                     html_gen_config: TrelloCardHtmlGeneratorMode = TrelloCardHtmlGeneratorMode.BASIC):
+                     html_gen_config: TrelloCardHtmlGeneratorMode = TrelloCardHtmlGeneratorMode.FULL):
         card_filters = CardFilters.ALL
         board, _ = self._trello_ops.get_board(board_name, card_filters=card_filters, download_comments=html_gen_config.value.include_comments)
         # TODO ASAP Make output formats configurable: txt, html, rich, json, ...
@@ -48,8 +48,8 @@ class MainCommandHandler:
 
     def print_cards(self, board: str, filter_lists: List[str]):
         card_filters = CardFilters.OPEN
-        board, trello_lists = self._trello_ops.get_lists_and_cards(board, filter_lists, card_filters)
+        board, trello_lists = self._trello_ops.get_lists_and_cards(board, filter_lists, card_filters, ListFilter.OPEN)
         trello_data = self._data_converter.convert_to_output_data(trello_lists)
-        TrelloListAndCardsPrinter.print_plain_text(trello_data, card_filters, only_open=True)
+        TrelloListAndCardsPrinter.print_plain_text(trello_data, print_placeholders=False, only_open=True)
         # TrelloListAndCardsPrinter.print_rich(trello_data)
 

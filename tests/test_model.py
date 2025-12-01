@@ -144,7 +144,7 @@ class TestTrelloLists(unittest.TestCase):
         mock_parser_cls.parse_trello_lists.return_value = self.all_lists
 
         filter_names = ['To Do', 'Done (Closed)']
-        filtered_lists = self.trello_lists.filter(filter_names)
+        filtered_lists = self.trello_lists.filter_by_list_names(filter_names)
 
         self.assertIsInstance(filtered_lists, TrelloLists)
         # Check that the new instance only has the two lists
@@ -159,7 +159,7 @@ class TestTrelloLists(unittest.TestCase):
 
         # Expect a ValueError to be raised
         with self.assertRaisesRegex(ValueError, "The following lists were not found on the board: 'Non-Existent List', 'Another Missing'"):
-            self.trello_lists.filter(filter_names)
+            self.trello_lists.filter_by_list_names(filter_names)
 
 class TestTrelloChecklistItem(unittest.TestCase):
     """Tests for the TrelloChecklistItem get_html method."""

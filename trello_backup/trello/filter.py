@@ -30,6 +30,11 @@ class CardFilters(Enum):
     ONLY_DESCRIPTION = CardPropertyFilter.WITH_DESCRIPTION
 
 
+class ListFilter(Enum):
+    ALL = "all"
+    OPEN = "open"
+
+
 
 class CardFilterer:
     from trello_backup.trello.model import TrelloList, TrelloCard

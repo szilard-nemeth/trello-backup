@@ -4,6 +4,7 @@ import re
 import unittest
 import urllib
 from pathlib import Path
+from string import Template
 from typing import Dict
 
 import pytest
@@ -16,7 +17,7 @@ from trello_backup.cli.commands.backup import backup
 from trello_backup.cli.context import ClickContextWrapper
 from trello_backup.constants import FilePath
 from trello_backup.display.output import OutputType
-from trello_backup.trello.api import LIST_BOARDS_API, GET_BOARD_DETAILS_API_TMPL, CARDS_API
+from trello_backup.trello.api import LIST_BOARDS_API, GET_BOARD_DETAILS_API_TMPL, CARDS_API, GET_CARD_ACTIONS_API_TMPL
 
 LOG = logging.getLogger(__name__)
 
@@ -26,9 +27,37 @@ COMMAND_BACKUP = "backup"
 SUBCOMMAND_BOARD = "board"
 BOARD_ID_CLOUDERA = "616ec99dc34d9d608dc5502b"
 API_ENDPOINT_TO_FILE = {LIST_BOARDS_API: "list_boards.json",
-                        GET_BOARD_DETAILS_API_TMPL: "board-cloudera.json"}
+                        GET_BOARD_DETAILS_API_TMPL: "board-cloudera.json",
+                        }
 MOCKED_ATTACHMENT_URLS = ["https://api.trello.com/1/cards/691d029180f5bbd70deb69dc/attachments/691d02d39c6578426ad5fe31/download/Screenshot_2025-11-18_at_6.34.09_PM.png",
 ]
+
+CARD_ACTION_RESPONSE_TEMPLATE = Template("""
+[ {
+  "id" : "64516323ab2a3046a47ff39b",
+  "idMemberCreator" : "57213e43028b63d18cd5b9f2",
+  "data" : {
+    "card" : {
+      "idList" : "$list_id",
+      "id" : "$card_id",
+      "name" : "DEX filter for open tasks assigned to me",
+      "idShort" : 1201,
+      "shortLink" : "arsWJv53"
+    },
+    "board" : {
+      "id" : "616ec99dc34d9d608dc5502b",
+      "name" : "CLOUDERA: Weekly Plan",
+      "shortLink" : "AZCBY076"
+    }
+  },
+  "type" : "updateCard",
+  "date" : "2023-05-02T19:23:15.431Z",
+  "memberCreator" : {
+    "id" : "<omitted>",
+    "fullName" : "nemethszyszy",
+    "username" : "szilard_nemeth"
+  }
+} ]""")
 
 # Define the minimum size in bytes (10 KB = 10 * 1024 bytes)
 MIN_FILE_SIZE_KB = 10
@@ -113,6 +142,9 @@ class TestTrelloApiIntegration(unittest.TestCase):
 
         # final_url = rf"{url}.*"
         final_url = UrlUtils.sanitize_url(url)
+
+        if ".*" in final_url:
+            final_url = re.compile(final_url)
         LOG.info("Mocked URL: %s", final_url)
         httpretty.register_uri(
             httpretty.GET,
@@ -171,6 +203,10 @@ class TestTrelloApiIntegration(unittest.TestCase):
     def test_backup_board_cloudera(self):
         _ = self._mock_api_endpoint(LIST_BOARDS_API, {})
         _ = self._mock_api_endpoint(GET_BOARD_DETAILS_API_TMPL, {"id": BOARD_ID_CLOUDERA})
+        # TODO ASAP Do not return for all cards, only Nth card: https://gemini.google.com/app/211f0036bb2c99a2
+        _ = self._mock_api_endpoint(GET_CARD_ACTIONS_API_TMPL, {"id": ".*"},
+                                    override_json=CARD_ACTION_RESPONSE_TEMPLATE.substitute(list_id="1", card_id="2"))
+
         for url in MOCKED_ATTACHMENT_URLS:
             d = UrlHelper.extract_trello_attachment_info_regex(url)
             self._mock_api_endpoint_for_card_attachment(d["card_id"], d["attachment_id"], d["file_name"])
