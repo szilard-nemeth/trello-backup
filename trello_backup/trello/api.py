@@ -338,7 +338,7 @@ class OfflineTrelloApi(AbstractTrelloApi):
 
     @staticmethod
     def _load_boards_json() -> Any:
-        list_boards_json = json.loads(OfflineTrelloApi._load_resource_file("list_boards.json"))
+        list_boards_json = OfflineTrelloApi._load_resource_file("list_boards.json")
         return json.loads(list_boards_json)
 
     @staticmethod
