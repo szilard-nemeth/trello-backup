@@ -5,11 +5,13 @@ from pythoncommons.url_utils import UrlUtils
 
 from trello_backup.display.output import MarkdownFormatter, TrelloDataConverter
 from trello_backup.http_server import HTTP_SERVER_PORT
-from trello_backup.trello.api import TrelloApi, AbstractTrelloApi, TrelloRepository
+from trello_backup.trello.api import TrelloApi, TrelloApiAbs, TrelloRepository
 from trello_backup.trello.cache import WebpageTitleCache
 from trello_backup.trello.filter import CardFilters, CardFilterer, ListFilter
 from trello_backup.trello.html import HtmlParser
-from trello_backup.trello.model import TrelloChecklist, TrelloBoard, TrelloLists, TrelloChecklists, TrelloCards
+from trello_backup.trello.model import TrelloChecklist, TrelloBoard, TrelloLists, TrelloChecklists, TrelloCards, \
+    TrelloComment
+from trello_backup.trello.parser import TrelloObjectParser
 
 
 class TrelloOperations:
@@ -18,7 +20,7 @@ class TrelloOperations:
                  cache: WebpageTitleCache,
                  title_service: 'TrelloTitleService',
                  data_converter: TrelloDataConverter):
-        self._api: AbstractTrelloApi = trello_repository.get_api()
+        self._api: TrelloApiAbs = trello_repository.get_api()
         self._board_name_to_board_id: Dict[str, str] = {}
         self._board_id_to_board_json: Dict[str, Any] = {}
         self._cache = cache
@@ -62,6 +64,7 @@ class TrelloOperations:
 
         # Parse JSON to objects
         trello_lists = TrelloLists(board_json)
+        # TODO ASAP Filtering: Create new class to group all filters
         # TODO ASAP Filtering: This should be more transparently filtered
         if filter_by_list_names:
             trello_lists = trello_lists.filter_by_list_names(filter_by_list_names)
@@ -70,7 +73,10 @@ class TrelloOperations:
 
         trello_checklists = TrelloChecklists(board_json)
         # After this call, TrelloList will contain every card belonging to each list
-        trello_cards = TrelloCards(board_json, trello_lists, trello_checklists, download_comments=download_comments)
+
+        trello_cards = TrelloCards(board_json, trello_lists, trello_checklists)
+        if download_comments:
+            self._fetch_comments_for_cards(download_comments, trello_cards)
 
         board = TrelloBoard(board_id, board_json, name, trello_lists.get())
         for list in board.lists:
@@ -83,6 +89,13 @@ class TrelloOperations:
         self._cache.save()
 
         return board, trello_lists
+
+    def _fetch_comments_for_cards(self, download_comments: bool, trello_cards: TrelloCards):
+        for card in trello_cards.all:
+            if download_comments:
+                actions_resp_parsed = self._api.get_actions_for_card(card.id)
+                comments: List[TrelloComment] = TrelloObjectParser.parse_comments_for_card(card, actions_resp_parsed)
+                card.comments = comments
 
     def _get_board_id(self, name):
         board_id = self._board_name_to_board_id.get(name)

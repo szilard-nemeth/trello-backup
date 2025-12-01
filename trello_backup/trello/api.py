@@ -27,7 +27,7 @@ CLI_LOG = CliLogger(LOG)
 from abc import ABC, abstractmethod
 from typing import Dict, Any
 
-class AbstractTrelloApi(ABC):
+class TrelloApiAbs(ABC):
     @abstractmethod
     def list_boards(self) -> Dict[str, str]:
         """Returns board name to board ID mapping."""
@@ -47,8 +47,12 @@ class AbstractTrelloApi(ABC):
     def download_attachments(self, board):
         pass
 
+    @abstractmethod
+    def get_actions_for_card(self, card_id: str):
+        pass
 
-class TrelloApi(AbstractTrelloApi):
+
+class TrelloApi(TrelloApiAbs):
     auth_query_params = None
     authorization_headers = None
     headers_accept_json = {
@@ -293,7 +297,7 @@ class TrelloApi(AbstractTrelloApi):
         return f"{CARDS_API}/{card_id}/attachments/{attachment_id}/download/{attachment_filename}"
 
 
-class OfflineTrelloApi(AbstractTrelloApi):
+class OfflineTrelloApi(TrelloApiAbs):
     API_ENDPOINT_TO_FILE = {LIST_BOARDS_API: "list_boards.json",
                             GET_BOARD_DETAILS_API_TMPL: "board-cloudera.json"}
     TESTS_DIR = FilePath.get_dir_from_root("tests", parent_dir=FilePath.REPO_ROOT_DIRNAME)
@@ -336,6 +340,10 @@ class OfflineTrelloApi(AbstractTrelloApi):
         board_json = OfflineTrelloApi._load_resource_file(board_file_name)
         return json.loads(board_json)
 
+    def get_actions_for_card(self, card_id: str):
+        return []
+
+
     @staticmethod
     def _load_boards_json() -> Any:
         list_boards_json = OfflineTrelloApi._load_resource_file("list_boards.json")
@@ -377,7 +385,7 @@ class TrelloRepository:
         self._offline = offline_api
         self._network = network_service
 
-    def get_api(self) -> AbstractTrelloApi:
+    def get_api(self) -> TrelloApiAbs:
         # Simple selection logic
         if self._network.is_online():
             return self._online

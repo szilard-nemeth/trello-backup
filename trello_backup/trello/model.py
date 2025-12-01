@@ -183,9 +183,9 @@ class TrelloCard:
 
 
 class TrelloCards:
-    def __init__(self, board_json, trello_lists: TrelloLists, trello_checklists: TrelloChecklists, download_comments=False):
+    def __init__(self, board_json, trello_lists: TrelloLists, trello_checklists: TrelloChecklists):
         from trello_backup.trello.parser import TrelloObjectParser
-        self.all: List[TrelloCard] = TrelloObjectParser.parse_trello_cards(board_json, trello_lists, trello_checklists, download_comments)
+        self.all: List[TrelloCard] = TrelloObjectParser.parse_trello_cards(board_json, trello_lists, trello_checklists)
         self.open: List[TrelloCard] = list(filter(lambda c: not c.closed, self.all))
 
 

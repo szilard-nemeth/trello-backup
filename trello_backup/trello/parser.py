@@ -23,18 +23,12 @@ class TrelloObjectParser:
     @staticmethod
     def parse_trello_cards(board_json,
                            trello_lists: TrelloLists,
-                           trello_checklists: TrelloChecklists,
-                           download_comments: bool = False):
+                           trello_checklists: TrelloChecklists):
         cards_json = board_json["cards"]
         cards = []
         for idx, card in enumerate(cards_json):
             # TODO Add progress bar for cards
             CLI_LOG.info("Processing card: {} / {}".format(idx + 1, len(cards_json)))
-            comments = []
-            # TODO ASAP refactor: this does not belong here, Decouple fetching API from parser logic - Here we fetch the comments
-            if download_comments:
-                comments: List[TrelloComment] = TrelloObjectParser.query_comments_for_card(card)
-
             attachments = []
             if "attachments" in card and len(card["attachments"]) > 0:
                 for attachment_json in card["attachments"]:
@@ -69,7 +63,7 @@ class TrelloObjectParser:
                                      checklists,
                                      label_names,
                                      card["closed"],
-                                     comments,
+                                     [],
                                      card["due"],
                                      [])
             cards.append(trello_card)
@@ -77,20 +71,19 @@ class TrelloObjectParser:
         return cards
 
     @staticmethod
-    def query_comments_for_card(card) -> List[TrelloComment]:
-        actions = TrelloApi.get_actions_for_card(card["id"])
-        comment_actions_json = list(filter(lambda a: a['type'] == "commentCard", actions))
+    def parse_comments_for_card(card, actions_resp_parsed) -> List[TrelloComment]:
+        comment_actions = list(filter(lambda a: a['type'] == "commentCard", actions_resp_parsed))
         comments = []
-        for action in comment_actions_json:
+        for action in comment_actions:
             member_creator = action['memberCreator']
             author = member_creator["username"]
 
             if 'data' not in action:
-                LOG.warning("Failed to parse comment for card: %s, No 'data' key found in action. Details: %s", card["name"], action)
+                LOG.warning("Failed to parse comment for card: %s, No 'data' key found in action. Details: %s", card.name, action)
                 continue
             data = action['data']
             if 'text' not in data:
-                LOG.warning("Failed to parse comment for card: %s, No 'text' key found in data. Details: %s", card["name"], data)
+                LOG.warning("Failed to parse comment for card: %s, No 'text' key found in data. Details: %s", card.name, data)
                 continue
             trello_comment = TrelloComment(action["id"], author, action["date"], data['text'])
             comments.append(trello_comment)

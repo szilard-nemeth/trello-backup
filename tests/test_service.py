@@ -1,8 +1,14 @@
+import json
 import unittest
-from unittest.mock import Mock, patch, call
-from trello_backup.trello.api import NetworkStatusService, TrelloRepository, TrelloApi, OfflineTrelloApi
+from string import Template
+from typing import Dict
+from unittest import mock
+from unittest.mock import Mock, patch, call, MagicMock
+
+from trello_backup.trello.api import NetworkStatusService, TrelloRepository, OfflineTrelloApi
 from trello_backup.trello.filter import CardFilters, ListFilter
-from trello_backup.trello.model import TrelloChecklist, TrelloBoard, TrelloList
+from trello_backup.trello.model import TrelloChecklist, TrelloBoard, TrelloList, TrelloComment, TrelloLists, \
+    TrelloCards, TrelloCard
 from trello_backup.trello.service import TrelloOperations, TrelloTitleService
 
 MOCK_BOARD_ID = "board123"
@@ -10,11 +16,48 @@ MOCK_BOARD_NAME = "Test Board"
 MOCK_LIST_NAMES = ["List A", "List B"]
 MOCK_BOARD_JSON = {"id": MOCK_BOARD_ID, "name": MOCK_BOARD_NAME, "data": "..."}
 
+
+class MockTrelloLists:
+    def __init__(self, lists, is_filtered=False):
+        self.by_id = {l.id: l for l in lists}
+        self._filtered = is_filtered
+
+
 class Object(object):
     pass
 
 
 class TestTrelloOperations(unittest.TestCase):
+
+    CARD_ACTION_RESPONSE_TEMPLATE = Template("""
+[ {
+  "id" : "dummy_id",
+  "idMemberCreator" : "57213e43028b63d18cd5b9f2",
+  "data" : {
+    "card" : {
+      "idList" : "$list_id",
+      "id" : "$card_id",
+      "name" : "DEX filter for open tasks assigned to me",
+      "idShort" : 1201,
+      "shortLink" : "arsWJv53"
+    },
+    "board" : {
+      "id" : "616ec99dc34d9d608dc5502b",
+      "name" : "CLOUDERA: Weekly Plan",
+      "shortLink" : "AZCBY076"
+    },
+    "text": "$comment"
+  },
+  "type" : "commentCard",
+  "date" : "2023-05-02T19:23:15.431Z",
+  "memberCreator" : {
+    "id" : "<omitted>",
+    "fullName" : "nemethszyszy",
+    "username" : "szilard_nemeth"
+  }
+} ]""")
+
+
     @patch('trello_backup.trello.service.TrelloApi')
     def setUp(self, mock_trello_api):
         self.mock_trello_api = mock_trello_api
@@ -74,7 +117,7 @@ class TestTrelloOperations(unittest.TestCase):
         mock_filtered_cards = [Mock()]
         MockCardFilterer.filter_cards.return_value = mock_filtered_cards
 
-        # Call the private method
+        # Call the method under test
         board, trello_lists = self._trello_ops._get_trello_board_and_lists(
             name=MOCK_BOARD_NAME,
             filter_by_list_names=MOCK_LIST_NAMES,
@@ -101,6 +144,67 @@ class TestTrelloOperations(unittest.TestCase):
         # Assert title service and cache calls
         self.mock_title_service.process_board_checklist_titles.assert_called_once_with(mock_trello_board)
         self.mock_cache.save.assert_called_once()
+
+    @patch('trello_backup.trello.service.CardFilterer')
+    @patch('trello_backup.trello.service.TrelloCards')
+    @patch('trello_backup.trello.service.TrelloChecklists')
+    @patch('trello_backup.trello.service.TrelloLists')
+    @patch('trello_backup.trello.service.TrelloBoard')
+    def test_parse_trello_cards_with_comment_download(self, MockTrelloBoard, MockTrelloLists, MockTrelloChecklists, MockTrelloCards, MockCardFilterer):
+        """Tests that comment downloading is triggered when requested."""
+        # Setup mock lists and checklists containers
+        mock_api_response = {"My Board 1": "id1", "My Board 2": "id2"}
+        self.mock_trello_api.list_boards.return_value = mock_api_response
+
+        list_id = "list_id_1"
+        def get_actions_for_card_side_effect(card_id):
+            json_resp = TestTrelloOperations.CARD_ACTION_RESPONSE_TEMPLATE.substitute(list_id=list_id,
+                                                                                      card_id=card_id,
+                                                                                      comment=f"Comment for {card_id}")
+            return json.loads(json_resp)
+        self.mock_trello_api.get_actions_for_card.side_effect = get_actions_for_card_side_effect
+
+        # Mock trello lists / list
+        mock_trello_list = MagicMock(spec=TrelloList, id=list_id)
+        mock_trello_list.name = "test 1"
+        trello_lists = [mock_trello_list]
+
+        mock_trello_lists_instance = mock.MagicMock(spec=TrelloLists)
+        mock_trello_lists_instance.by_id: Dict[str, TrelloList] = {l.id: l for l in trello_lists}
+        mock_trello_lists_instance.by_name: Dict[str, TrelloList] = {l.name: l for l in trello_lists}
+        mock_trello_lists_instance.filter_by_list_names.return_value = mock_trello_lists_instance
+        mock_trello_lists_instance.filter_by_list_filter.return_value = mock_trello_lists_instance
+
+        MockTrelloLists.return_value = mock_trello_lists_instance
+
+        # Set up mock TrelloBoard
+        mock_trello_board = Mock(spec=TrelloBoard, lists=trello_lists)
+        MockTrelloBoard.return_value = mock_trello_board
+
+        # Set up mock TrelloCards
+        mock_trello_cards = Mock(spec=TrelloCards, all=[
+            MagicMock(id="cardid1", name="card1"),
+            MagicMock(id="cardid2", name="card2")])
+        MockTrelloCards.return_value = mock_trello_cards
+
+
+        # Call the method under test
+        board, trello_lists = self._trello_ops._get_trello_board_and_lists(
+            name=MOCK_BOARD_NAME,
+            filter_by_list_names=MOCK_LIST_NAMES,
+            card_filters=CardFilters.ALL,
+            list_filter=ListFilter.ALL,
+            download_comments=True
+        )
+
+        for card in mock_trello_cards.all:
+            self.assertEqual(1, len(card.comments))
+            expected_comment = TrelloComment(id='dummy_id',
+                                     author='szilard_nemeth',
+                                     date='2023-05-02T19:23:15.431Z',
+                                     contents='Comment for ' + card.id)
+            self.assertEqual(expected_comment, card.comments[0])
+
 
     @patch('trello_backup.trello.service.TrelloApi')
     def test_get_board_id_from_cache(self, MockTrelloApi):

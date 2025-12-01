@@ -37,16 +37,14 @@ class ListFilter(Enum):
 
 
 class CardFilterer:
-    from trello_backup.trello.model import TrelloList, TrelloCard
-
     @staticmethod
-    def filter_cards(trello_list: TrelloList, card_filters: CardFilters) -> List[TrelloCard]:
+    def filter_cards(trello_list: 'TrelloList', card_filters: CardFilters) -> List['TrelloCard']:
         from trello_backup.trello.model import TrelloCard
         card_prop_flags = card_filters.value
         if CardPropertyFilter.ALL() == card_prop_flags:
             return trello_list.cards
 
-        all_checks: Dict[CardPropertyFilter, Callable[[TrelloCard], Any]] = {
+        all_checks: Dict[CardPropertyFilter, Callable[['TrelloCard'], Any]] = {
             CardPropertyFilter.WITH_ATTACHMENT: lambda card: card.has_attachments,
             CardPropertyFilter.WITH_DESCRIPTION: lambda card: card.has_description,
             CardPropertyFilter.WITH_CHECKLIST: lambda card: card.has_checklist,
@@ -54,7 +52,7 @@ class CardFilterer:
         }
 
 
-        required_checks: Dict[CardPropertyFilter, Callable[[TrelloCard], Any]] = {}
+        required_checks: Dict[CardPropertyFilter, Callable[['TrelloCard'], Any]] = {}
         filters = [CardPropertyFilter.WITH_ATTACHMENT, CardPropertyFilter.WITH_DESCRIPTION, CardPropertyFilter.WITH_CHECKLIST, CardPropertyFilter.OPEN]
         for filter in filters:
             required_checks[filter] = all_checks[filter]

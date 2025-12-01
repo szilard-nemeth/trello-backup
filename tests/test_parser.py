@@ -2,7 +2,6 @@ import unittest
 from unittest.mock import patch, MagicMock
 from typing import List, Dict, Any
 
-from trello_backup.trello.api import TrelloApi
 from trello_backup.trello.model import TrelloList, TrelloChecklist, TrelloAttachment, TrelloComment
 from trello_backup.trello.parser import TrelloObjectParser
 
@@ -19,9 +18,6 @@ class MockTrelloChecklists:
 
 
 class TrelloObjectParserTest(unittest.TestCase):
-
-    def setUp(self):
-        pass
 
     # --- Test Data ---
     MOCK_BOARD_ID = "mock_board_id_1"
@@ -94,7 +90,6 @@ class TrelloObjectParserTest(unittest.TestCase):
         "checklists": MOCK_CHECKLISTS_JSON,
         "id": MOCK_BOARD_ID
     }
-
 
     def test_parse_trello_lists_success(self):
         """Tests successful parsing of multiple lists."""
@@ -184,8 +179,7 @@ class TrelloObjectParserTest(unittest.TestCase):
         cards = TrelloObjectParser.parse_trello_cards(
             board_json,
             mock_trello_lists,
-            mock_trello_checklists,
-            download_comments=False
+            mock_trello_checklists
         )
 
         self.assertEqual(1, len(cards))
@@ -216,8 +210,7 @@ class TrelloObjectParserTest(unittest.TestCase):
         cards = TrelloObjectParser.parse_trello_cards(
             board_json,
             mock_trello_lists,
-            mock_trello_checklists,
-            download_comments=False
+            mock_trello_checklists
         )
 
         self._assert_card1_common(cards, mock_list_1)
@@ -245,37 +238,6 @@ class TrelloObjectParserTest(unittest.TestCase):
         self.assertEqual("card_id_1", cards[0].id)
         self.assertIsNone(cards[0].due_date)
 
-    @patch.object(TrelloObjectParser, 'query_comments_for_card')
-    def test_parse_trello_cards_with_comment_download(self, mock_query_comments):
-        """Tests that comment downloading is triggered when requested."""
-        # Setup mock lists and checklists containers
-        mock_list_1 = MagicMock(spec=TrelloList, id="list_id_1", cards=[])
-        mock_trello_lists = MockTrelloLists(lists=[mock_list_1])
-        mock_checklist_1 = MagicMock(spec=TrelloChecklist, id="checklist_id_1")
-        mock_checklist_2 = MagicMock(spec=TrelloChecklist, id="checklist_id_2")
-        mock_trello_checklists = MockTrelloChecklists(checklists=[mock_checklist_1, mock_checklist_2])
-
-        # Mock the result of query_comments_for_card
-        mock_comment_1 = MagicMock(spec=TrelloComment)
-        mock_comment_1.contents = "comment 1"
-        mock_comment_2 = MagicMock(spec=TrelloComment)
-        mock_comment_2.contents = "comment 2"
-        mock_query_comments.return_value = [mock_comment_1, mock_comment_2]
-
-        board_json = {"cards": self.MOCK_CARDS_JSON[:1]}
-
-        cards = TrelloObjectParser.parse_trello_cards(
-            board_json,
-            mock_trello_lists,
-            mock_trello_checklists,
-            download_comments=True # Important flag
-        )
-
-        self._assert_card1_common(cards, mock_list_1)
-        self.assertEqual(2, len(cards[0].comments))
-        self.assertEqual("comment 1", cards[0].comments[0].contents)
-        self.assertEqual("comment 2", cards[0].comments[1].contents)
-
 
     def test_parse_trello_cards_filtered_skip(self):
         """Tests that cards for non-present lists are skipped when TrelloLists is filtered."""
@@ -289,15 +251,13 @@ class TrelloObjectParserTest(unittest.TestCase):
         cards = TrelloObjectParser.parse_trello_cards(
             board_json,
             mock_trello_lists,
-            mock_trello_checklists,
-            download_comments=False
+            mock_trello_checklists
         )
 
         self.assertEqual(1, len(cards))
         self.assertEqual("card_id_2", cards[0].id)
 
-    @patch.object(TrelloApi, 'get_actions_for_card')
-    def test_query_comments_for_card_success(self, mock_get_actions):
+    def test_query_comments_for_card_success(self):
         """Tests successful parsing of a comment action."""
         mock_actions_json = [
             {"id": "action_id_1", "type": "commentCard", "date": "2025-01-02T10:00:00.000Z",
@@ -307,10 +267,9 @@ class TrelloObjectParserTest(unittest.TestCase):
             {"id": "action_id_3", "type": "commentCard", "date": "2025-02-02T10:00:00.000Z",
              "memberCreator": {"username": "user3"}, "data": {"text": "A test comment 2."}},
         ]
-        mock_get_actions.return_value = mock_actions_json
 
-        mock_card_json = {"id": "card_id_1", "name": "Test Card"}
-        comments = TrelloObjectParser.query_comments_for_card(mock_card_json)
+        card = MagicMock(id="card_id_1", name="Test Card")
+        comments = TrelloObjectParser.parse_comments_for_card(card, mock_actions_json)
 
         self.assertEqual(2, len(comments))
         self.assertEqual("action_id_1", comments[0].id)
@@ -324,19 +283,16 @@ class TrelloObjectParserTest(unittest.TestCase):
         self.assertEqual("A test comment 2.", comments[1].contents)
 
 
-    @patch.object(TrelloApi, 'get_actions_for_card')
-    def test_query_comments_for_card_missing_data_keys(self, mock_get_actions):
+    def test_query_comments_for_card_missing_data_keys(self):
         """Tests handling of comment actions missing 'data' or 'text' keys."""
         mock_actions_json = [
             {"id": "a_id_1", "type": "commentCard", "date": "...", "memberCreator": {"username": "u1"}}, # Missing 'data'
             {"id": "a_id_2", "type": "commentCard", "date": "...", "memberCreator": {"username": "u2"}, "data": {}}, # Missing 'text'
             {"id": "a_id_3", "type": "commentCard", "date": "2025-01-02T10:00:00.000Z", "memberCreator": {"username": "user3"}, "data": {"text": "Valid."}},
         ]
-        mock_get_actions.return_value = mock_actions_json
 
-        mock_card_json = {"id": "card_id_1", "name": "Test Card"}
-
-        comments = TrelloObjectParser.query_comments_for_card(mock_card_json)
+        card = MagicMock(id="card_id_1", name="Test Card")
+        comments = TrelloObjectParser.parse_comments_for_card(card, mock_actions_json)
 
         self.assertEqual(1, len(comments))
         self.assertEqual("a_id_3", comments[0].id)
