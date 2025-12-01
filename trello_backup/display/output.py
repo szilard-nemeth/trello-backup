@@ -204,7 +204,8 @@ class TrelloDataConverter:
                                 for cli in cl.items
                             ]
                         } for cl in card.checklists
-                    ]
+                    ],
+                    "labels": card.labels
                 }
                 list_data["cards"].append(card_data)
 
@@ -586,7 +587,8 @@ class TrelloListAndCardsPrinter:
                 if only_open and card["closed"]:
                     continue
                 CLI_LOG.info(f"CARD: {card['name']}")
-                # TODO ASAP cli Add card labels
+                labels_str = ", ".join(card['labels'])
+                CLI_LOG.info(f"Labels: {labels_str}")
                 CLI_LOG.info("DESCRIPTION:")
                 if card['description']:
                     CLI_LOG.info(f"{card['description']}")
