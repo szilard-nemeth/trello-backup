@@ -4,7 +4,7 @@ from typing import List, Dict, Optional
 from trello_backup.trello.filter import ListFilter
 
 
-# TODO ASAP: Revisit this class?
+# TODO Revisit this class?
 @dataclass
 class ExtractedCardData:
     description: str
@@ -55,7 +55,7 @@ class TrelloLists:
     def get(self) -> List[TrelloList]:
         return list(self.by_name.values())
 
-    # TODO ASAP Move methods to new class: ListFilterer
+    # TODO ASAP filtering Move methods to new class: ListFilterer
     def filter_by_list_names(self, list_names: List[str]) -> 'TrelloLists':
         """
         Retrieves TrelloList objects corresponding to the provided list names.
@@ -80,7 +80,7 @@ class TrelloLists:
 
         return TrelloLists(self._board_json, trello_lists_param=found)
 
-    # TODO ASAP Move methods to new class: ListFilterer
+    # TODO ASAP filtering Move methods to new class: ListFilterer
     def filter_by_list_filter(self, list_filter: ListFilter):
         if list_filter == ListFilter.ALL:
             return TrelloLists(self._board_json, trello_lists_param=list(self.by_name.values()))

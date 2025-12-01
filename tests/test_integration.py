@@ -203,7 +203,7 @@ class TestTrelloApiIntegration(unittest.TestCase):
     def test_backup_board_cloudera(self):
         _ = self._mock_api_endpoint(LIST_BOARDS_API, {})
         _ = self._mock_api_endpoint(GET_BOARD_DETAILS_API_TMPL, {"id": BOARD_ID_CLOUDERA})
-        # TODO ASAP Do not return for all cards, only Nth card: https://gemini.google.com/app/211f0036bb2c99a2
+        # TODO Do not return for all cards, only Nth card: https://gemini.google.com/app/211f0036bb2c99a2
         _ = self._mock_api_endpoint(GET_CARD_ACTIONS_API_TMPL, {"id": ".*"},
                                     override_json=CARD_ACTION_RESPONSE_TEMPLATE.substitute(list_id="1", card_id="2"))
 

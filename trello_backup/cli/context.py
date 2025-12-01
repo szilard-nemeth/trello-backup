@@ -8,7 +8,7 @@ import logging
 
 from trello_backup.utils import LoggingUtils
 
-# TODO ASAP implement dryRun feature
+# TODO implement dryRun feature
 # Define a structure for each property's configuration
 @dataclass(frozen=True)
 class ContextProperty:

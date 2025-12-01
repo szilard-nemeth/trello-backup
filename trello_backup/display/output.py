@@ -20,7 +20,7 @@ from trello_backup.display.console import ConsoleUtils, CliLogger
 from trello_backup.display.table import TrelloTable, TrelloTableRenderSettings, TrelloTableColumnStyles
 from trello_backup.exception import TrelloException
 from trello_backup.http_server import HTTP_SERVER_PORT
-from trello_backup.trello.filter import CardFilterer, CardFilters, CardPropertyFilter
+from trello_backup.trello.filter import CardFilterer, CardFilters, CardPropertyFilter, TrelloFilters
 from trello_backup.trello.model import TrelloComment, TrelloChecklist, TrelloBoard, ExtractedCardData, \
     TrelloLists
 
@@ -212,12 +212,12 @@ class TrelloDataConverter:
             output_data.append(list_data)
         return output_data
 
-    def convert_to_table_rows(self, board: TrelloBoard, card_filters: CardFilters, md_formatter) -> Tuple[List[List[str]], List[str]]:
+    def convert_to_table_rows(self, board: TrelloBoard, filters: TrelloFilters, md_formatter) -> Tuple[List[List[str]], List[str]]:
         rows = []
         for list in board.lists:
-            cards = CardFilterer.filter_cards(list, card_filters)
+            cards = CardFilterer.filter_cards(list, filters.card_filters)
             for card in cards:
-                items: List[ExtractedCardData] = self._extract_card_data(card, card_filters, md_formatter)
+                items: List[ExtractedCardData] = self._extract_card_data(card, filters.card_filters, md_formatter)
                 for item in items:
                     row = []
                     for col in self._header.cols_list():
@@ -229,7 +229,8 @@ class TrelloDataConverter:
         return rows, self._header.as_string_headers()
 
     def _extract_card_data(self, card, card_filters, md_formatter):
-        # TODO ASAP cleanup
+        # TODO ASAP Filtering cleanup
+        # TODO ASAP code cleanup
         # Sanity check
         # has_checklists = self.has_checklist
         # has_attachments = self.has_attachments
@@ -394,7 +395,7 @@ class OutputHandler:
                  output_dir: str,
                  board: TrelloBoard,
                  html_gen_config,
-                 card_filters: CardFilters):
+                 filters: TrelloFilters):
         self._callback_gen_files = Callable[[str, str], None]
         self._data_converter = data_converter
         self._output_dir = output_dir
@@ -402,7 +403,7 @@ class OutputHandler:
         self._set_file_paths()
         self._set_generators(board, html_gen_config)
         self._md_formatter = MarkdownFormatter()
-        self._card_filters = card_filters
+        self._filters: TrelloFilters = filters
 
     def _set_file_paths(self):
         fname_prefix = f"board-{self.board.simple_name}"
@@ -429,7 +430,7 @@ class OutputHandler:
         self._callback_gen_files = callback
 
         header: List[str]
-        rows, header = self._data_converter.convert_to_table_rows(self.board, self._card_filters, self._md_formatter)
+        rows, header = self._data_converter.convert_to_table_rows(self.board, self._filters, self._md_formatter)
 
         # Outputs: HTML file, HTML table, Rich table
         for type, generator in self._generators.items():
@@ -469,8 +470,8 @@ class OutputHandlerFactory:
                          backup_dir: str,
                          board: TrelloBoard,
                          html_gen_config: TrelloCardHtmlGeneratorMode,
-                         card_filters: CardFilters) -> OutputHandler:
-        return OutputHandler(data_converter, backup_dir, board, html_gen_config, card_filters)
+                         filters: TrelloFilters) -> OutputHandler:
+        return OutputHandler(data_converter, backup_dir, board, html_gen_config, filters)
 
 
 

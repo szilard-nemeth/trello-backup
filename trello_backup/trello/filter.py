@@ -72,3 +72,14 @@ class CardFilterer:
                 LOG.debug(f"Discarding card: {card.name}, filters: {card_prop_flags}")
 
         return filtered_cards
+
+
+class TrelloFilters:
+    def __init__(self, filter_list_names: List[str], list_filter: ListFilter, card_filters: CardFilters):
+        self.filter_list_names: List[str] = filter_list_names
+        self.list_filter: ListFilter = list_filter
+        self.card_filters: CardFilters = card_filters
+
+    @staticmethod
+    def create_default():
+        return TrelloFilters([], ListFilter.ALL, CardFilters.ALL)

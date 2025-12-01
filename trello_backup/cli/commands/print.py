@@ -18,7 +18,6 @@ def print():
 
 
 # TODO ASAP cli Add new command: Delete cards with confirmation (one by one or by lists)
-# TODO ASAP filtering print all lists by default
 @print.command(cls=TrelloCommand)
 @click.option('-l', '--filter-list', "filter_list",  multiple=True, required=False, help='Only print the specified lists')
 @click.pass_context

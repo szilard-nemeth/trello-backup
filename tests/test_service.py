@@ -6,7 +6,7 @@ from unittest import mock
 from unittest.mock import Mock, patch, call, MagicMock
 
 from trello_backup.trello.api import NetworkStatusService, TrelloRepository, OfflineTrelloApi
-from trello_backup.trello.filter import CardFilters, ListFilter
+from trello_backup.trello.filter import CardFilters, ListFilter, TrelloFilters
 from trello_backup.trello.model import TrelloChecklist, TrelloBoard, TrelloList, TrelloComment, TrelloLists, \
     TrelloCards, TrelloCard
 from trello_backup.trello.service import TrelloOperations, TrelloTitleService
@@ -120,9 +120,7 @@ class TestTrelloOperations(unittest.TestCase):
         # Call the method under test
         board, trello_lists = self._trello_ops._get_trello_board_and_lists(
             name=MOCK_BOARD_NAME,
-            filter_by_list_names=MOCK_LIST_NAMES,
-            card_filters=CardFilters.ALL,
-            list_filter=ListFilter.ALL
+            filters=TrelloFilters(MOCK_LIST_NAMES, ListFilter.ALL, CardFilters.ALL)
         )
 
         # Assertions
@@ -191,9 +189,7 @@ class TestTrelloOperations(unittest.TestCase):
         # Call the method under test
         board, trello_lists = self._trello_ops._get_trello_board_and_lists(
             name=MOCK_BOARD_NAME,
-            filter_by_list_names=MOCK_LIST_NAMES,
-            card_filters=CardFilters.ALL,
-            list_filter=ListFilter.ALL,
+            filters=TrelloFilters(MOCK_LIST_NAMES, ListFilter.ALL, CardFilters.ALL),
             download_comments=True
         )
 

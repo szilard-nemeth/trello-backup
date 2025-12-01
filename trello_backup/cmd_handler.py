@@ -1,10 +1,9 @@
 import logging
 from typing import List, Dict, Any
 from trello_backup.cli.common import TrelloContext
-from trello_backup.display.console import CliLogger
 from trello_backup.display.output import TrelloCardHtmlGeneratorMode, TrelloListAndCardsPrinter, \
     OutputHandlerFactory, TrelloDataConverter, BackupReport
-from trello_backup.trello.filter import CardFilters, ListFilter
+from trello_backup.trello.filter import CardFilters, ListFilter, TrelloFilters
 from trello_backup.trello.service import TrelloOperations
 
 
@@ -29,12 +28,12 @@ class MainCommandHandler:
                      board_name: str,
                      report: BackupReport,
                      html_gen_config: TrelloCardHtmlGeneratorMode = TrelloCardHtmlGeneratorMode.FULL):
-        card_filters = CardFilters.ALL
-        board, _ = self._trello_ops.get_board(board_name, card_filters=card_filters, download_comments=html_gen_config.value.include_comments)
+        filters = TrelloFilters.create_default()
+        board, _ = self._trello_ops.get_board(board_name, filters=filters, download_comments=html_gen_config.value.include_comments)
         # TODO ASAP Make output formats configurable: txt, html, rich, json, ...
         # TODO ASAP Use OutputType as much as I can
         # TODO ASAP Consider removing this factory?
-        out = self.output_factory.create_for_board(self._data_converter, self.ctx.backup_dir, board, html_gen_config.value, card_filters)
+        out = self.output_factory.create_for_board(self._data_converter, self.ctx.backup_dir, board, html_gen_config.value, filters=filters)
         out.write_outputs(report.file_write_callback)
         return report
 
@@ -46,9 +45,9 @@ class MainCommandHandler:
             self.backup_board(name, report, html_gen_config=html_gen_config)
         return report
 
-    def print_cards(self, board: str, filter_lists: List[str]):
-        card_filters = CardFilters.OPEN
-        board, trello_lists = self._trello_ops.get_lists_and_cards(board, filter_lists, card_filters, ListFilter.OPEN)
+    def print_cards(self, board: str, filter_list_names: List[str]):
+        filters = TrelloFilters(filter_list_names, ListFilter.OPEN, CardFilters.OPEN)
+        board, trello_lists = self._trello_ops.get_lists_and_cards(board, filters)
         trello_data = self._data_converter.convert_to_output_data(trello_lists)
         TrelloListAndCardsPrinter.print_plain_text(trello_data, print_placeholders=False, only_open=True)
         # TrelloListAndCardsPrinter.print_rich(trello_data)
