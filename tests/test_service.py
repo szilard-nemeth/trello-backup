@@ -1,7 +1,7 @@
 import unittest
 from unittest.mock import Mock, patch, call
 from trello_backup.trello.api import NetworkStatusService, TrelloRepository, TrelloApi, OfflineTrelloApi
-from trello_backup.trello.filter import CardFilters
+from trello_backup.trello.filter import CardFilters, ListFilter
 from trello_backup.trello.model import TrelloChecklist, TrelloBoard, TrelloList
 from trello_backup.trello.service import TrelloOperations, TrelloTitleService
 
@@ -61,7 +61,8 @@ class TestTrelloOperations(unittest.TestCase):
 
         # Setup mock TrelloLists object
         mock_trello_lists = Mock()
-        mock_trello_lists.filter.return_value = mock_trello_lists
+        mock_trello_lists.filter_by_list_names.return_value = mock_trello_lists
+        mock_trello_lists.filter_by_list_filter.return_value = mock_trello_lists
         MockTrelloLists.return_value = mock_trello_lists
 
         # Setup mock TrelloBoard object and its lists
@@ -76,8 +77,9 @@ class TestTrelloOperations(unittest.TestCase):
         # Call the private method
         board, trello_lists = self._trello_ops._get_trello_board_and_lists(
             name=MOCK_BOARD_NAME,
-            filter_lists=MOCK_LIST_NAMES,
-            card_filters=CardFilters.ALL
+            filter_by_list_names=MOCK_LIST_NAMES,
+            card_filters=CardFilters.ALL,
+            list_filter=ListFilter.ALL
         )
 
         # Assertions
@@ -86,7 +88,8 @@ class TestTrelloOperations(unittest.TestCase):
 
         MockTrelloLists.assert_called_once_with(MOCK_BOARD_JSON)
         # Assert filtering was called
-        mock_trello_lists.filter.assert_called_once_with(MOCK_LIST_NAMES)
+        mock_trello_lists.filter_by_list_names.assert_called_once_with(MOCK_LIST_NAMES)
+        mock_trello_lists.filter_by_list_filter.assert_called_once_with(ListFilter.ALL)
 
         MockTrelloCards.assert_called_once()
         MockTrelloBoard.assert_called_once()
