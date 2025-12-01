@@ -22,7 +22,10 @@ def backup():
 def board(ctx, board_name: str):
     handler = get_handler_and_setup_ctx(ctx)
     report = BackupReport()
-    return handler.backup_board(board_name, report)
+    # TODO ASAP Print generated file names in the end from report
+    report = handler.backup_board(board_name, report)
+    report.print()
+    return report
 
 
 @backup.command(cls=TrelloCommand)
@@ -30,4 +33,7 @@ def board(ctx, board_name: str):
 def boards(ctx):
     handler = get_handler_and_setup_ctx(ctx)
     report = BackupReport()
-    return handler.backup_all_boards(report)
+    # TODO ASAP Print generated file names in the end from report
+    report = handler.backup_all_boards(report)
+    report.print()
+    return report

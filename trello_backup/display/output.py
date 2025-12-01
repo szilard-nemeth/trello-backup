@@ -379,14 +379,13 @@ class TrelloBoardHtmlFileGenerator:
 
     def write_file(self, file):
         FileUtils.write_to_file(file, self.html)
-        CLI_LOG.info("Generated HTML file output to: " + file)
 
 class OutputType(enum.Enum):
-    HTML_FILE = "html_file"
-    RICH_HTML_TABLE = "rich_html_table"
-    CUSTOM_HTML_TABLE = "custom_html_table"
+    HTML_FILE = "html file"
+    RICH_HTML_TABLE = "rich html table"
+    CUSTOM_HTML_TABLE = "custom html table"
     CSV = "csv"
-    BOARD_JSON = "board_json"
+    BOARD_JSON = "board json"
 
 
 class OutputHandler:
@@ -450,7 +449,6 @@ class OutputHandler:
         if os.path.exists(file_path):
             FileUtils.remove_file(file_path)
         CsvFileUtils.append_rows_to_csv_file(file_path, rows, header=header)
-        CLI_LOG.info("Generated CSV file: %s", file_path)
         self._callback_gen_files(OutputType.CSV, file_path)
 
     def _write_board_json(self):
@@ -460,7 +458,6 @@ class OutputHandler:
         file_path = self._output_file_paths[OutputType.BOARD_JSON]
         with open(file_path, "w") as f:
             json.dump(self.board.json, f, indent=4)
-        CLI_LOG.info("Saved board JSON to file: %s", file_path)
         self._callback_gen_files(OutputType.BOARD_JSON, file_path)
 
 
@@ -505,7 +502,6 @@ class TrelloBoardRichTableGenerator:
 
     def write_file(self, file):
         self._console.save_html(file)
-        CLI_LOG.info("Generated rich table to: " + file)
 
 class TrelloListAndCardsPrinter:
     @staticmethod
@@ -637,8 +633,6 @@ class TrelloBoardHtmlTableGenerator:
     def write_file(self, file):
         for fmt, table in self._tables.items():
             FileUtils.save_to_file(file, table)
-            CLI_LOG.info(f"Generated HTML table to file: {file}")
-
 
 
 class BackupReport:
@@ -652,3 +646,7 @@ class BackupReport:
 
     def get_files(self, type: OutputType) -> Iterable[str]:
         return self._generated_files[type]
+
+    def print(self):
+        for out_type, filename in self._generated_files.items():
+            CLI_LOG.info("Generated %s to file: %s", out_type.value, filename)
