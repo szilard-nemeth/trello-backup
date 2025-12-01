@@ -395,7 +395,6 @@ class OutputHandler:
                  board: TrelloBoard,
                  html_gen_config,
                  filters: TrelloFilters):
-        self._callback_gen_files = Callable[[str, str], None]
         self._data_converter = data_converter
         self._output_dir = output_dir
         self.board = board
@@ -403,6 +402,7 @@ class OutputHandler:
         self._set_generators(board, html_gen_config)
         self._md_formatter = MarkdownFormatter()
         self._filters: TrelloFilters = filters
+        self._callback_gen_files: Callable[[str, str], None] = None
 
     def _set_file_paths(self):
         fname_prefix = f"board-{self.board.simple_name}"
@@ -425,8 +425,8 @@ class OutputHandler:
     def get_board_filename_by_board(board):
         return f"board-{board.simple_name}.json"
 
-    def write_outputs(self, callback: Callable[[OutputType, str], None]):
-        self._callback_gen_files = callback
+    def write_outputs(self, board_name: str, callback: Callable[[OutputType, str], None]):
+        self._callback_gen_files: Callable[[OutputType, str], None] = callback
 
         header: List[str]
         rows, header = self._data_converter.convert_to_table_rows(self.board, self._filters, self._md_formatter)
@@ -437,28 +437,28 @@ class OutputHandler:
             # Assuming all generators have a compatible render signature
             generator.render(rows, header)
             generator.write_file(file_path)
-            self._callback_gen_files(type, file_path)
+            self._callback_gen_files(board_name, type, file_path)
 
         # Handle these output types separately due to unique logic (removal, printing)
-        self._generate_csv_file(header, rows)
-        self._write_board_json()
+        self._generate_csv_file(board_name, header, rows)
+        self._write_board_json(board_name)
 
     # TODO ASAP Consider migrating these to generator classes
-    def _generate_csv_file(self, header: list[str | Any], rows: list[Any]):
+    def _generate_csv_file(self, board_name, header: list[str | Any], rows: list[Any]):
         file_path = self._output_file_paths[OutputType.CSV]
         if os.path.exists(file_path):
             FileUtils.remove_file(file_path)
         CsvFileUtils.append_rows_to_csv_file(file_path, rows, header=header)
-        self._callback_gen_files(OutputType.CSV, file_path)
+        self._callback_gen_files(board_name, OutputType.CSV, file_path)
 
-    def _write_board_json(self):
+    def _write_board_json(self, board_name):
         # Uncomment this for other JSON printout
         # print(json.dumps(parsed_json, sort_keys=True, indent=4, separators=(",", ": ")))
 
         file_path = self._output_file_paths[OutputType.BOARD_JSON]
         with open(file_path, "w") as f:
             json.dump(self.board.json, f, indent=4)
-        self._callback_gen_files(OutputType.BOARD_JSON, file_path)
+        self._callback_gen_files(board_name, OutputType.BOARD_JSON, file_path)
 
 
 class OutputHandlerFactory:
@@ -637,16 +637,35 @@ class TrelloBoardHtmlTableGenerator:
 
 class BackupReport:
     def __init__(self):
-        self._generated_files: Dict[OutputType, List[str]] = defaultdict(list)
+        self._generated_files: defaultdict[str, defaultdict[OutputType, List[str]]] = \
+            defaultdict(lambda: defaultdict(list))
 
     def file_write_callback(self, file_type: OutputType, file_path: str):
         # if file_type in self._generated_files:
         #     raise ValueError(f"File type {file_type} is already generated as {self._generated_files[file_type]}. Preventing overwrites!")
-        self._generated_files[file_type].append(file_path)
 
-    def get_files(self, type: OutputType) -> Iterable[str]:
-        return self._generated_files[type]
+    def get_files(self, file_type: OutputType) -> Iterable[str]:
+        """
+        Returns an iterable of all file paths across all boards for a given OutputType.
+        """
+        # Use a generator expression for memory efficiency
+        return (
+            file_path
+            for board_files in self._generated_files.values() # Iterate over the inner dicts (value for each board)
+            if file_type in board_files                      # Check if the board has files of this type
+            for file_path in board_files[file_type]           # Yield each file path for that type
+        )
 
     def print(self):
-        for out_type, filename in self._generated_files.items():
-            CLI_LOG.info("Generated %s to file: %s", out_type.value, filename)
+        """
+        Prints all generated files, categorized by board name and output type.
+        """
+        for board_name, board_files in self._generated_files.items():
+            if not board_files:
+                continue # Skip boards with no generated files
+
+            CLI_LOG.info("--- 📂 Report for Board: %s ---", board_name)
+            for out_type, filenames in board_files.items():
+                # Print each filename on a new line for clarity
+                for filename in filenames:
+                    CLI_LOG.info("Generated %s file: %s", out_type.value, filename)
