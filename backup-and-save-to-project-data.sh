@@ -3,6 +3,7 @@
 # --- Configuration ---
 PROJECT_INPUT_DATA_BASEDIR="$HOME/development/my-repos/project-data/input-data/trello-backup"
 TEST_RESOURCES_DIR="$HOME/development/my-repos/trello-backup/tests/resources"
+PROJECT_REPO_ROOT="$HOME/development/my-repos/trello-backup/"
 
 # --- Functions ---
 
@@ -60,18 +61,29 @@ handle_arguments() {
     echo "Target Board Dir: $PROJECT_INPUT_DATA_DIR_BOARD"
 }
 
-# Executes the trello-backup command
 backup_trello() {
     echo "==================================================="
     echo "1. Backing up Trello boards..."
-    trello-backup backup boards
+
+    # 1. Change directory to the project root
+    cd "$PROJECT_REPO_ROOT"
+
+    # 2. Call the command using poetry run
+    poetry run python trello_backup/cli/cli.py backup boards
+
+    # Optional: Change back to original directory if needed (not strictly necessary
+    # as this is a subshell, but good practice if the script was sourced).
+    # cd - > /dev/null
+
     if [[ $? -ne 0 ]]; then
         echo "Error: Trello backup failed." >&2
+        # Use 'exit' here if you want the script to terminate immediately on failure
         return 1
     fi
+
+    echo "Trello backup completed successfully."
     return 0
 }
-
 # Copies board JSON files to the project input data directory
 copy_board_jsons() {
     echo "==================================================="
@@ -90,6 +102,7 @@ copy_board_jsons() {
     # Check if any files were actually copied (optional, but good practice)
     if [[ -z "$(ls -A "$PROJECT_INPUT_DATA_DIR_BOARD"/board-*.json 2>/dev/null)" ]]; then
          echo "Warning: No 'board-*.json' files found or copied from $TRELLO_OUT_DIR_SESSION."
+         return 1
     else
          echo "Successfully copied board JSON files."
     fi
