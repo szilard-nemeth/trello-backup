@@ -171,22 +171,32 @@ print_commit_instructions() {
 # --- Main Script Execution ---
 
 main() {
-    handle_arguments "$1"
+    # 1. Backup Phase: If an argument is provided, use it. Otherwise, we don't need a SESSION_DIR
+    # for the backup, as it will auto-generate the latest one.
+    if [[ -n "$1" ]]; then
+        SESSION_DIR="$1"
+    fi
 
-    # Check for script errors before continuing
+    # We now call backup_trello without pre-setting SESSION_DIR based on 'latest'.
+    # We will let the tool create the latest possible folder name.
+    # We skip argument handling for now, just to get the backup to run.
+    backup_trello || exit 1
+
+    # 2. Variable Recalculation Phase: NOW we look for the latest session dir
+    # that was just created, and set the variables for the copy/link steps.
+
+    # Re-run the argument handler without an argument to force it to find the NEW latest one
+    handle_arguments
+
     if [[ $? -ne 0 ]]; then
         exit 1
     fi
 
-    backup_trello || exit 1 # Exit if backup fails
-    copy_board_jsons || exit 1 # Exit if copy fails
-    update_latest_symlink || exit 1 # Exit if symlink fails
-    update_test_resources || exit 1 # Exit if test resources update fails
-
-    cp -R $TRELLO_OUT_DIR_SESSION "$HOME/Downloads/trello-backup-$SESSION_DIR"
-    echo "Copied files to $HOME/Downloads/"
+    # 3. Copy/Link Phase: Now the variables are correct.
+    copy_board_jsons || exit 1
+    update_latest_symlink || exit 1
+    update_test_resources || exit 1
 
     print_commit_instructions
 }
-
 main "$1"
