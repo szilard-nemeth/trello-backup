@@ -22,7 +22,7 @@ from trello_backup.exception import TrelloException
 from trello_backup.http_server import HTTP_SERVER_PORT
 from trello_backup.trello.filter import CardFilterer, CardFilters, CardPropertyFilter, TrelloFilters
 from trello_backup.trello.model import TrelloComment, TrelloChecklist, TrelloBoard, ExtractedCardData, \
-    TrelloLists
+    TrelloLists, TrelloCard, TrelloList
 
 LOG = logging.getLogger(__name__)
 CLI_LOG = CliLogger(LOG)
@@ -176,41 +176,48 @@ class TrelloDataConverter:
     def convert_to_output_data(self, trello_lists: TrelloLists) -> List[Dict[str, Any]]:
         output_data = []
         for list_name, list_obj in trello_lists.by_name.items():
-            list_data = {
-                "name": list_name,
-                "cards": []
-            }
-
-            for card in list_obj.cards:
-                # Structure the card data, including converting markdown
-                card_data = {
-                    "id": card.id,
-                    "name": card.name,
-                    "closed": card.closed,
-                    "description": self._md_formatter.to_plain_text(card.description),
-                    "attachments": [
-                        {
-                            "name": a.name,
-                            "url": a.url,
-                            "local_path": a.downloaded_file_path,
-                            "local_server_path": f"http://localhost:{self._http_server_port}/{a.downloaded_file_path.split('/')[-1]}" if a.downloaded_file_path else ""
-                        } for a in card.attachments
-                    ],
-                    "checklists": [
-                        {
-                            "name": cl.name,
-                            "items": [
-                                {"value": cli.value, "url": cli.url, "url_title": cli.url_title, "checked": cli.checked}
-                                for cli in cl.items
-                            ]
-                        } for cl in card.checklists
-                    ],
-                    "labels": card.labels
-                }
-                list_data["cards"].append(card_data)
-
+            list_data = self.convert_list_to_output(list_name, list_obj)
             output_data.append(list_data)
         return output_data
+
+    def convert_list_to_output(self, list_name: str, list_obj: TrelloList):
+        list_data = {
+            "name": list_name,
+            "cards": []
+        }
+
+        for card in list_obj.cards:
+            card_data = self.convert_card_to_output(card)
+            list_data["cards"].append(card_data)
+        return list_data
+
+    def convert_card_to_output(self, card: TrelloCard):
+        # Structure the card data, including converting markdown
+        card_data = {
+            "id": card.id,
+            "name": card.name,
+            "closed": card.closed,
+            "description": self._md_formatter.to_plain_text(card.description),
+            "attachments": [
+                {
+                    "name": a.name,
+                    "url": a.url,
+                    "local_path": a.downloaded_file_path,
+                    "local_server_path": f"http://localhost:{self._http_server_port}/{a.downloaded_file_path.split('/')[-1]}" if a.downloaded_file_path else ""
+                } for a in card.attachments
+            ],
+            "checklists": [
+                {
+                    "name": cl.name,
+                    "items": [
+                        {"value": cli.value, "url": cli.url, "url_title": cli.url_title, "checked": cli.checked}
+                        for cli in cl.items
+                    ]
+                } for cl in card.checklists
+            ],
+            "labels": card.labels
+        }
+        return card_data
 
     def convert_to_table_rows(self, board: TrelloBoard, filters: TrelloFilters, md_formatter) -> Tuple[List[List[str]], List[str]]:
         rows = []
@@ -576,38 +583,45 @@ class TrelloListAndCardsPrinter:
 
     @staticmethod
     def print_plain_text(trello_data: List[Dict[str, Any]], print_placeholders=False, only_open=False):
-        # TODO ASAP filtering Apply CardFilters elsewhere!
         for list_obj in trello_data:
-            #for name, list in trello_lists.by_name.items():
-            CLI_LOG.info(f"List: {list_obj['name']}")
-            for card in list_obj["cards"]:
-                if only_open and card["closed"]:
-                    continue
-                CLI_LOG.info(f"CARD: {card['name']}")
-                labels_str = ", ".join(card['labels'])
-                CLI_LOG.info(f"Labels: {labels_str}")
-                CLI_LOG.info("DESCRIPTION:")
-                if card['description']:
-                    CLI_LOG.info(f"{card['description']}")
+            TrelloListAndCardsPrinter.print_list_plain_text(list_obj, only_open, print_placeholders)
+
+    @staticmethod
+    def print_list_plain_text(list_obj: dict[str, Any], only_open: bool, print_placeholders: bool):
+        # for name, list in trello_lists.by_name.items():
+        CLI_LOG.info(f"List: {list_obj['name']}")
+        for card in list_obj["cards"]:
+            # TODO ASAP filtering Apply CardFilters elsewhere!
+            if only_open and card["closed"]:
+                continue
+            TrelloListAndCardsPrinter.print_card_plain_text(card, print_placeholders)
+            
+    @staticmethod
+    def print_card_plain_text(card, print_placeholders: bool):
+        CLI_LOG.info(f"CARD: {card['name']}")
+        labels_str = ", ".join(card['labels'])
+        CLI_LOG.info(f"Labels: {labels_str}")
+        CLI_LOG.info("DESCRIPTION:")
+        if card['description']:
+            CLI_LOG.info(f"{card['description']}")
+        else:
+            if print_placeholders:
+                CLI_LOG.info("<EMPTY>")
+
+        if print_placeholders and not card["checklists"]:
+            CLI_LOG.info("<NO CHECKLISTS>")
+        CLI_LOG.info("\n")
+        for checklist in card["checklists"]:
+            CLI_LOG.info(f"{checklist['name']} ({len(checklist['items'])}): ")
+            for item in checklist['items']:
+                # sanity check
+                if item['url'] and not item['url_title']:
+                    raise ValueError(f"CLI should have URL title if URL is parsed. CLI details: {item}")
+                if item['url']:
+                    CLI_LOG.info(f"[{'x' if item['checked'] else ''}] {item['url_title']}: {item['url']}")
                 else:
-                    if print_placeholders:
-                        CLI_LOG.info("<EMPTY>")
-
-                if print_placeholders and not card["checklists"]:
-                    CLI_LOG.info("<NO CHECKLISTS>")
-                CLI_LOG.info("\n")
-                for checklist in card["checklists"]:
-                    CLI_LOG.info(f"{checklist['name']} ({len(checklist['items'])}): ")
-                    for item in checklist['items']:
-                        # sanity check
-                        if item['url'] and not item['url_title']:
-                            raise ValueError(f"CLI should have URL title if URL is parsed. CLI details: {item}")
-                        if item['url']:
-                            CLI_LOG.info(f"[{'x' if item['checked'] else ''}] {item['url_title']}: {item['url']}")
-                        else:
-                            CLI_LOG.info(f"[{'x' if item['checked'] else ''}] {item['value']}")
-                CLI_LOG.info("=" * 60) # Separator for cards
-
+                    CLI_LOG.info(f"[{'x' if item['checked'] else ''}] {item['value']}")
+        CLI_LOG.info("=" * 60)  # Separator for cards
 
 
 class TrelloBoardHtmlTableGenerator:
