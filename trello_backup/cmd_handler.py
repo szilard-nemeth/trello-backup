@@ -27,19 +27,20 @@ class MainCommandHandler:
     def backup_board(self,
                      board_name: str,
                      report: BackupReport,
-                     html_gen_config: TrelloCardHtmlGeneratorMode = TrelloCardHtmlGeneratorMode.FULL):
+                     html_gen_config: TrelloCardHtmlGeneratorMode = TrelloCardHtmlGeneratorMode.BASIC):
+        # TODO ASAP Filtering: Filter should not be passed to TrelloOperations, as it's only a representational concept
         filters = TrelloFilters.create_default()
         board, _ = self._trello_ops.get_board(board_name, filters=filters, download_comments=html_gen_config.value.include_comments)
         # TODO ASAP Make output formats configurable: txt, html, rich, json, ...
         # TODO ASAP Use OutputType as much as I can
         # TODO ASAP Consider removing this factory?
         out = self.output_factory.create_for_board(self._data_converter, self.ctx.backup_dir, board, html_gen_config.value, filters=filters)
-        out.write_outputs(report.file_write_callback)
+        out.write_outputs(board_name, report.file_write_callback)
         return report
 
     def backup_all_boards(self,
                           report: BackupReport,
-                          html_gen_config: TrelloCardHtmlGeneratorMode = TrelloCardHtmlGeneratorMode.FULL):
+                          html_gen_config: TrelloCardHtmlGeneratorMode = TrelloCardHtmlGeneratorMode.BASIC):
         boards: Dict[str, str] = self._trello_ops.get_board_names_and_ids()
         for name in boards.keys():
             self.backup_board(name, report, html_gen_config=html_gen_config)

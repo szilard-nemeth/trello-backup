@@ -26,8 +26,8 @@ CLI_ENTRY_POINT_BACKUP = backup
 COMMAND_BACKUP = "backup"
 SUBCOMMAND_BOARD = "board"
 BOARD_ID_CLOUDERA = "616ec99dc34d9d608dc5502b"
-API_ENDPOINT_TO_FILE = {LIST_BOARDS_API: "list_boards.json",
-                        GET_BOARD_DETAILS_API_TMPL: "board-cloudera.json",
+API_ENDPOINT_TO_FILE = {LIST_BOARDS_API: "responses/list_boards.json",
+                        GET_BOARD_DETAILS_API_TMPL: "boards/board-cloudera.json",
                         }
 MOCKED_ATTACHMENT_URLS = ["https://api.trello.com/1/cards/691d029180f5bbd70deb69dc/attachments/691d02d39c6578426ad5fe31/download/Screenshot_2025-11-18_at_6.34.09_PM.png",
 ]
@@ -177,8 +177,8 @@ class TestTrelloApiIntegration(unittest.TestCase):
 
     @staticmethod
     def _load_resource_file_for_api_endpoint(endpoint) -> str:
-        filename = API_ENDPOINT_TO_FILE[endpoint]
-        file_path = os.path.join(TestTrelloApiIntegration.RESOURCES_DIR, filename)
+        additional_path = API_ENDPOINT_TO_FILE[endpoint]
+        file_path = os.path.join(TestTrelloApiIntegration.RESOURCES_DIR, additional_path)
         contents = Path(file_path).read_text()
         return contents
 

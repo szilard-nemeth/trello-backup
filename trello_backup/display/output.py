@@ -640,7 +640,8 @@ class BackupReport:
         self._generated_files: defaultdict[str, defaultdict[OutputType, List[str]]] = \
             defaultdict(lambda: defaultdict(list))
 
-    def file_write_callback(self, file_type: OutputType, file_path: str):
+    def file_write_callback(self, board_name: str, file_type: OutputType, file_path: str):
+        self._generated_files[board_name][file_type].append(file_path)
         # if file_type in self._generated_files:
         #     raise ValueError(f"File type {file_type} is already generated as {self._generated_files[file_type]}. Preventing overwrites!")
 
