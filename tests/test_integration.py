@@ -226,7 +226,7 @@ class TestTrelloApiIntegration(unittest.TestCase):
         expected_result_types = [OutputType.HTML_FILE, OutputType.CUSTOM_HTML_TABLE, OutputType.RICH_HTML_TABLE, OutputType.BOARD_JSON, OutputType.CSV]
         for rt in expected_result_types:
             files = report.get_files(rt)
-            self.assertTrue(len(files) > 0)
+            self.assertTrue(len(list(files)) > 0)
             for f in files:
                 self.assertTrue(os.path.exists(f), f"File does not exist: {f}")
                 size_bytes = os.path.getsize(f)
@@ -248,7 +248,7 @@ class TestTrelloApiIntegration(unittest.TestCase):
         expected_result_types = [OutputType.HTML_FILE, OutputType.CUSTOM_HTML_TABLE, OutputType.RICH_HTML_TABLE, OutputType.BOARD_JSON, OutputType.CSV]
         for rt in expected_result_types:
             files = report.get_files(rt)
-            self.assertTrue(len(files) > 0)
+            self.assertTrue(len(list(files)) > 0)
             for f in files:
                 self.assertTrue(os.path.exists(f), f"File does not exist: {f}")
                 size_bytes = os.path.getsize(f)

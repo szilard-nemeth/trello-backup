@@ -299,8 +299,8 @@ class TrelloApi(TrelloApiAbs):
 
 
 class OfflineTrelloApi(TrelloApiAbs):
-    API_ENDPOINT_TO_FILE = {LIST_BOARDS_API: "list_boards.json",
-                            GET_BOARD_DETAILS_API_TMPL: "board-cloudera.json"}
+    API_ENDPOINT_TO_FILE = {LIST_BOARDS_API: "responses/list_boards.json",
+                            GET_BOARD_DETAILS_API_TMPL: "boards/{board_file_name}"}
     TESTS_DIR = FilePath.get_dir_from_root("tests", parent_dir=FilePath.REPO_ROOT_DIRNAME)
     RESOURCES_DIR = FilePath.get_dir_from_root("resources", parent_dir=TESTS_DIR)
 
@@ -338,7 +338,9 @@ class OfflineTrelloApi(TrelloApiAbs):
         board_file_name = OutputHandler.get_board_filename_by_board(tmp_board_obj)
 
         # Read raw board JSON from a local file based on board_id
-        board_json = OfflineTrelloApi._load_resource_file(board_file_name)
+        f_template = OfflineTrelloApi.API_ENDPOINT_TO_FILE[GET_BOARD_DETAILS_API_TMPL]
+        f = f_template.format(board_file_name=board_file_name)
+        board_json = OfflineTrelloApi._load_resource_file(f)
         return json.loads(board_json)
 
     def get_actions_for_card(self, card_id: str):
@@ -347,7 +349,8 @@ class OfflineTrelloApi(TrelloApiAbs):
 
     @staticmethod
     def _load_boards_json() -> Any:
-        list_boards_json = OfflineTrelloApi._load_resource_file("list_boards.json")
+        f = OfflineTrelloApi.API_ENDPOINT_TO_FILE[LIST_BOARDS_API]
+        list_boards_json = OfflineTrelloApi._load_resource_file(f)
         return json.loads(list_boards_json)
 
     @staticmethod
