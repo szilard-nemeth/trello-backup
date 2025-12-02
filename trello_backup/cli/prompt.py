@@ -1,5 +1,5 @@
 from random import random
-from typing import Iterable
+from typing import Iterable, Callable, Any
 
 from rich.prompt import Confirm, Prompt
 
@@ -48,6 +48,10 @@ class PromptHandler:
 
 
 class DefaultPromptHandler(PromptHandler):
+    YES_CHOICE = "y"
+    NO_CHOICE = "n"
+    ABORT_CHOICE = "a"
+
     def __init__(self, format: PromptFormat):
         self._format = format
 
@@ -65,6 +69,40 @@ class DefaultPromptHandler(PromptHandler):
 
     def choices(self, q, choices=Iterable[str]):
         return Prompt.ask(self._format.question_italic(q), choices=choices)
+
+    def yes_no_abort(self,
+                     q: str,
+                     on_yes: Callable[[], Any],
+                     on_no: Callable[[], Any],
+                     on_abort: Callable[[], Any]) -> Any:
+        """
+         Uses rich.prompt.Prompt to get a choice and executes the corresponding callback.
+         """
+
+        # 1. Define the choices and their mapping to display labels
+        choices = [self.YES_CHOICE, self.NO_CHOICE, self.ABORT_CHOICE]
+
+        # 2. Use rich.prompt.Prompt to handle input validation and display
+        # The prompt will show the choices in brackets, e.g., [y/n/a]
+        result = Prompt.ask(
+            q,
+            choices=choices,
+            default=self.NO_CHOICE,
+        )
+
+        # 3. Execute the appropriate callback based on the result
+        if result == self.YES_CHOICE:
+            # print("-> Executing YES action.")
+            return on_yes()
+        elif result == self.NO_CHOICE:
+            # print("-> Executing NO action.")
+            return on_no()
+        elif result == self.ABORT_CHOICE:
+            # print("-> Executing ABORT action.")
+            return on_abort()
+
+        # Fallback (should not happen with rich's choices)
+        return on_no()
 
     def _question_number(self, q, num):
         return f"{self._format.prefix()}{q}. Enter the following number to proceed: [b]{num}[/b]"
@@ -125,6 +163,13 @@ class TrelloPrompt:
     @classmethod
     def choices(cls, q, choices=Iterable[str]):
         return cls._handler.choices(q, choices=choices)
+
+    @classmethod
+    def choices_yes_no_abort(cls, q,
+                             on_yes: Callable[[], Any],
+                             on_no: Callable[[], Any],
+                             on_abort: Callable[[], Any]):
+        return cls._handler.yes_no_abort(q, on_yes, on_no, on_abort)
 
     @classmethod
     def set_context(cls, new_ctx):

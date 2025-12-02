@@ -51,6 +51,10 @@ class TrelloApiAbs(ABC):
     def get_actions_for_card(self, card_id: str):
         pass
 
+    @abstractmethod
+    def delete_card(self, card_id: str):
+        """Permanently deletes a card from Trello."""
+        pass
 
 class TrelloApi(TrelloApiAbs):
     auth_query_params = None
@@ -196,6 +200,37 @@ class TrelloApi(TrelloApiAbs):
             headers=headers,
             params=query
         )
+
+    @classmethod
+    def delete_card(cls, card_id: str):
+        """
+        Permanently deletes a card from Trello.
+
+        API Documentation:
+        https://developer.atlassian.com/cloud/trello/rest/api-group-cards/#api-cards-id-delete
+
+        Args:
+            card_id (str): The ID of the card to be deleted.
+        """
+        headers = {
+            "Accept": "application/json"
+        }
+
+        # The API URL for deleting a card is https://api.trello.com/1/cards/{id}
+        url = CARDS_API + f"/{card_id}"
+
+        response = requests.request(
+            "DELETE",
+            url,
+            headers=headers,
+            params=TrelloApi.auth_query_params
+        )
+
+        # A successful deletion typically returns a 200 OK with an empty response body.
+        # This will raise an exception for 4xx or 5xx errors.
+        response.raise_for_status()
+
+        CLI_LOG.info(f"Successfully deleted card with ID: {card_id}")
 
     @classmethod
     def get_actions_for_card(cls, card_id: str):
@@ -370,6 +405,9 @@ class OfflineTrelloApi(TrelloApiAbs):
     def download_attachments(self, board):
         # intentionally empty
         pass
+
+    def delete_card(self, card_id: str):
+        raise NotImplementedError()
 
 
 class NetworkStatusService:

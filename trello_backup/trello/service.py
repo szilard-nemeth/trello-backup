@@ -1,9 +1,12 @@
+import logging
 import re
 from typing import Dict, Any, List, Tuple, Optional
 
 from pythoncommons.url_utils import UrlUtils
 
-from trello_backup.display.output import MarkdownFormatter, TrelloDataConverter
+from trello_backup.cli.prompt import TrelloPrompt
+from trello_backup.display.console import CliLogger
+from trello_backup.display.output import MarkdownFormatter, TrelloDataConverter, TrelloListAndCardsPrinter
 from trello_backup.http_server import HTTP_SERVER_PORT
 from trello_backup.trello.api import TrelloApi, TrelloApiAbs, TrelloRepository
 from trello_backup.trello.cache import WebpageTitleCache
@@ -12,6 +15,9 @@ from trello_backup.trello.html import HtmlParser
 from trello_backup.trello.model import TrelloChecklist, TrelloBoard, TrelloLists, TrelloChecklists, TrelloCards, \
     TrelloComment
 from trello_backup.trello.parser import TrelloObjectParser
+
+LOG = logging.getLogger(__name__)
+CLI_LOG = CliLogger(LOG)
 
 
 class TrelloOperations:
@@ -107,6 +113,46 @@ class TrelloOperations:
             board_json = self._api.get_board_details(board_id)
             self._board_id_to_board_json[board_id] = board_json
         return board_json
+
+    def cleanup_board(self,
+                      board_name: str,
+                      filters: TrelloFilters):
+        def _yes_handler():
+            CLI_LOG.info(f"Deleting card: {card['name']}")
+            self._api.delete_card(card["id"])
+            return "DELETED"
+        def _no_handler():
+            return "SKIPPED"
+        def _abort_handler():
+            return "ABORTED"
+
+        CLI_LOG.info(f"Starting cleanup for board: {board_name}")
+        board, trello_lists = self.get_lists_and_cards(board_name, filters)
+        trello_data = self._data_converter.convert_to_output_data(trello_lists)
+        num_lists = len(trello_data)
+        for idx, list_obj in enumerate(trello_data):
+            res = TrelloPrompt.prompt_ask(f"Proceed cleanup with list '{list_obj['name']}'", default=True)
+            if not res:
+                CLI_LOG.info("Cleanup aborted by user")
+                return
+            CLI_LOG.info(f"Starting cleanup for list: {list_obj['name']}")
+            l_idx_info = f"[{idx+1}/{num_lists}]"
+            CLI_LOG.info(f"{l_idx_info} Actual list: {list_obj['name']}")
+            num_cards = len(list_obj["cards"])
+
+            for idx, card in enumerate(list_obj["cards"]):
+                c_idx_info = f"[{idx+1}/{num_cards}]"
+                TrelloListAndCardsPrinter.print_card_plain_text(card, print_placeholders=True)
+                card_info = f"Board: {board.name}, List: {list_obj['name']}"
+                CLI_LOG.info(f"{c_idx_info} Actual card: %s (%s)", card['name'], card_info)
+                res = TrelloPrompt.choices_yes_no_abort("OK to remove card?",
+                                                        on_yes=_yes_handler,
+                                                        on_no=_no_handler,
+                                                        on_abort=_abort_handler)
+                if res == "ABORTED":
+                    CLI_LOG.info("Cleanup aborted by user")
+                    return
+
 
 
 class TrelloTitleService:

@@ -588,16 +588,16 @@ class TrelloListAndCardsPrinter:
 
     @staticmethod
     def print_list_plain_text(list_obj: dict[str, Any], only_open: bool, print_placeholders: bool):
-        # for name, list in trello_lists.by_name.items():
         CLI_LOG.info(f"List: {list_obj['name']}")
         for card in list_obj["cards"]:
             # TODO ASAP filtering Apply CardFilters elsewhere!
             if only_open and card["closed"]:
                 continue
             TrelloListAndCardsPrinter.print_card_plain_text(card, print_placeholders)
-            
+
     @staticmethod
     def print_card_plain_text(card, print_placeholders: bool):
+        CLI_LOG.info("=" * 60)  # Separator for cards
         CLI_LOG.info(f"CARD: {card['name']}")
         labels_str = ", ".join(card['labels'])
         CLI_LOG.info(f"Labels: {labels_str}")

@@ -1,4 +1,3 @@
-import logging
 from typing import List, Dict, Any
 from trello_backup.cli.common import TrelloContext
 from trello_backup.display.output import TrelloCardHtmlGeneratorMode, TrelloListAndCardsPrinter, \
@@ -53,4 +52,9 @@ class MainCommandHandler:
         trello_data = self._data_converter.convert_to_output_data(trello_lists)
         TrelloListAndCardsPrinter.print_plain_text(trello_data, print_placeholders=False, only_open=True)
         # TrelloListAndCardsPrinter.print_rich(trello_data)
+
+    def cleanup_board(self, board: str, filter_list_names: List[str]):
+        filters = TrelloFilters(filter_list_names, ListFilter.OPEN, CardFilters.OPEN)
+        self._trello_ops.cleanup_board(board, filters)
+
 

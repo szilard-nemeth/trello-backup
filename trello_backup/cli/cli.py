@@ -7,6 +7,7 @@ from rich import print as rich_print, box
 
 from trello_backup.cli.commands.backup import backup
 from trello_backup.cli.commands.print import print
+from trello_backup.cli.commands.cleanup import cleanup
 from rich.table import Table
 
 from trello_backup.cli.context import ClickContextWrapper, TrelloGroup
@@ -99,6 +100,7 @@ if __name__ == "__main__":
     try:
         cli.add_command(backup)
         cli.add_command(print)
+        cli.add_command(cleanup)
         # TODO ASAP cli Add new command: Delete cards with confirmation (one by one or by lists)
         #   Given board name, list id -> Validate
         #   Remove cards one by one (in same order of the list on frontend) and ask for confirmation + Add tests
