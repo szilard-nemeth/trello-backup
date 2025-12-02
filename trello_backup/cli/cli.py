@@ -99,6 +99,9 @@ if __name__ == "__main__":
     try:
         cli.add_command(backup)
         cli.add_command(print)
+        # TODO ASAP cli Add new command: Delete cards with confirmation (one by one or by lists)
+        #   Given board name, list id -> Validate
+        #   Remove cards one by one (in same order of the list on frontend) and ask for confirmation + Add tests
         cli()
         end_time = time.time()
         LOG.info("Trello CLI execution finished after %d seconds", int(end_time - start_time))

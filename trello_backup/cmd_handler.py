@@ -47,6 +47,7 @@ class MainCommandHandler:
 
     def print_cards(self, board: str, filter_list_names: List[str]):
         filters = TrelloFilters(filter_list_names, ListFilter.OPEN, CardFilters.OPEN)
+        # TODO ASAP Filtering: Filter should not be passed to TrelloOperations, as it's only a representational concept
         board, trello_lists = self._trello_ops.get_lists_and_cards(board, filters)
         trello_data = self._data_converter.convert_to_output_data(trello_lists)
         TrelloListAndCardsPrinter.print_plain_text(trello_data, print_placeholders=False, only_open=True)

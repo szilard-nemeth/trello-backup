@@ -228,6 +228,7 @@ class TrelloApi(TrelloApiAbs):
                 for attachment in card.attachments:
                     if attachment.is_upload:
                         fpath = TrelloApi.download_and_save_attachment(attachment)
+                        # TODO ASAP Migrate these to session dir? Only symlinks to save space
                         attachment.downloaded_file_path = "file://" + fpath
 
     # TODO ASAP Refactor this does not belong here

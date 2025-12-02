@@ -23,6 +23,7 @@ def board(ctx, board_name: str):
     handler = get_handler_and_setup_ctx(ctx)
     report = BackupReport()
     # TODO ASAP Print generated file names in the end from report
+    # TODO Output make OutputTypes configurable via CLI
     report = handler.backup_board(board_name, report)
     report.print()
     return report
@@ -34,6 +35,7 @@ def boards(ctx):
     handler = get_handler_and_setup_ctx(ctx)
     report = BackupReport()
     # TODO ASAP Print generated file names in the end from report
+    # TODO Output make OutputTypes configurable via CLI
     report = handler.backup_all_boards(report)
     report.print()
     return report

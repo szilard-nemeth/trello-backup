@@ -33,6 +33,7 @@ class TrelloOperations:
             self._board_name_to_board_id[board_name] = board_id
         return d
 
+    # TODO ASAP Refactor, unify interface: get_board + get_lists_and_cards
     def get_board(self, name: str,
                   filters: TrelloFilters,
                   download_comments: bool = False) -> Tuple[TrelloBoard, Optional[TrelloLists]]:
@@ -46,6 +47,7 @@ class TrelloOperations:
                             board_name: str,
                             filters: TrelloFilters) -> Tuple[TrelloBoard, TrelloLists]:
         board, trello_lists = self._get_trello_board_and_lists(board_name, filters)
+        # TODO ASAP Refactor, does it make sense to return trello_lists
         return board, trello_lists
 
 
@@ -53,6 +55,7 @@ class TrelloOperations:
                                     name: str,
                                     filters: TrelloFilters,
                                     download_comments: bool = False) -> Tuple[TrelloBoard, TrelloLists]:
+        # TODO ASAP Print processing board, similar to "Processing card...)
         board_id = self._get_board_id(name)
         board_json = self._get_board_json(board_id)
 
@@ -81,6 +84,7 @@ class TrelloOperations:
         self._webpage_title_service.process_board_checklist_titles(board)
         self._cache.save()
 
+        # TODO ASAP Refactor, does it make sense to return trello_lists
         return board, trello_lists
 
     def _fetch_comments_for_cards(self, download_comments: bool, trello_cards: TrelloCards):

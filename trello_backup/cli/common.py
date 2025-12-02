@@ -47,6 +47,8 @@ class CliCommon:
         trello_repository = TrelloRepository(TrelloApi(), OfflineTrelloApi(), network_status_service)
         trello_ops = TrelloOperations(trello_repository, cache, webpage_title_service, data_converter)
         handler = MainCommandHandler(context, trello_ops, data_converter, OutputHandlerFactory)
+
+        # TODO ASAP Print if offline == true, print directory where files are being loaded from (print from OfflineTrelloApi)
         return handler
 
 
