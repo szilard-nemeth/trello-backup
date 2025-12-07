@@ -1,9 +1,10 @@
 from typing import List
 
 from trello_backup.display.console import CliLogger
+from trello_backup.exception import TrelloException
 from trello_backup.trello.api import TrelloApi
 from trello_backup.trello.model import TrelloList, TrelloLists, TrelloChecklists, TrelloComment, TrelloAttachment, \
-    TrelloCard, TrelloChecklistItem, TrelloChecklist
+    TrelloCard, TrelloChecklistItem, TrelloChecklist, TrelloCards
 
 import logging
 LOG = logging.getLogger(__name__)
@@ -51,12 +52,16 @@ class TrelloObjectParser:
                 # Skip this card.
                 # If TrelloLists are filtered (does not contain all the lists), we allow the card to be not present for the lists.
                 continue
-            trello_list = trello_lists.by_id[card["idList"]]
+            list_id = card["idList"]
+            if list_id not in trello_lists.by_id:
+                raise TrelloException(f"Cannot find list with id: {list_id}. All lists: {trello_lists}")
+            trello_list = trello_lists.by_id[list_id]
             label_names = [l["name"] for l in card["labels"]]
             checklist_ids = card["idChecklists"]
             checklists = [trello_checklists.by_id[cid] for cid in checklist_ids]
             trello_card = TrelloCard(card["id"],
                                      card["name"],
+                                     card["shortUrl"],
                                      trello_list,
                                      card["desc"],
                                      attachments,

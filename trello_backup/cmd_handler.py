@@ -41,8 +41,8 @@ class MainCommandHandler:
                           report: BackupReport,
                           html_gen_config: TrelloCardHtmlGeneratorMode = TrelloCardHtmlGeneratorMode.BASIC):
         boards: Dict[str, str] = self._trello_ops.get_board_names_and_ids()
-        for name in boards.keys():
-            self.backup_board(name, report, html_gen_config=html_gen_config)
+        for board_name in boards.keys():
+            self.backup_board(board_name, report, html_gen_config=html_gen_config)
         return report
 
     def print_cards(self, board: str, filter_list_names: List[str]):
@@ -52,6 +52,9 @@ class MainCommandHandler:
         trello_data = self._data_converter.convert_to_output_data(trello_lists)
         TrelloListAndCardsPrinter.print_plain_text(trello_data, print_placeholders=False, only_open=True)
         # TrelloListAndCardsPrinter.print_rich(trello_data)
+
+    def print_cards_by_share_links(self, card_links: List[str]):
+        self._trello_ops.get_cards_by_links(card_links)
 
     def cleanup_board(self, board: str, filter_list_names: List[str]):
         filters = TrelloFilters(filter_list_names, ListFilter.OPEN, CardFilters.OPEN)

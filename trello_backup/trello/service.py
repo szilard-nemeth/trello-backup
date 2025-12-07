@@ -6,11 +6,10 @@ from pythoncommons.url_utils import UrlUtils
 
 from trello_backup.cli.prompt import TrelloPrompt
 from trello_backup.display.console import CliLogger
-from trello_backup.display.output import MarkdownFormatter, TrelloDataConverter, TrelloListAndCardsPrinter
-from trello_backup.http_server import HTTP_SERVER_PORT
-from trello_backup.trello.api import TrelloApi, TrelloApiAbs, TrelloRepository
+from trello_backup.display.output import TrelloDataConverter, TrelloListAndCardsPrinter
+from trello_backup.trello.api import TrelloApiAbs, TrelloRepository
 from trello_backup.trello.cache import WebpageTitleCache
-from trello_backup.trello.filter import CardFilters, CardFilterer, ListFilter, TrelloFilters
+from trello_backup.trello.filter import CardFilterer, TrelloFilters
 from trello_backup.trello.html import HtmlParser
 from trello_backup.trello.model import TrelloChecklist, TrelloBoard, TrelloLists, TrelloChecklists, TrelloCards, \
     TrelloComment
@@ -155,6 +154,40 @@ class TrelloOperations:
                     return
         # TODO ASAP Ask to remove list if all cards have been removed
 
+    def get_cards_by_links(self,
+                           card_links: List[str]):
+        """
+        Here we don't work with the board json response, we only download the specified cards for optimal speed.
+        For each card, the checklist and the list is also fetched.
+        Then we create a board dict object with keys: 'cards', 'lists' and 'checklists'.
+        Parsing logic could belong to TrelloObjectParser, but we also need API calls to fetch data, so we keep the logic here.
+        :param card_links:
+        :return:
+        """
+        lists = []
+        cards = []
+        checklists = []
+        for card_link in card_links:
+            card_json = self._api.download_card_by_share_link(card_link)
+            cards.append(card_json)
+            for checklist_id in card_json["idChecklists"]:
+                checklist_data = self._api.get_checklist_by_id(checklist_id)
+                checklists.append(checklist_data)
+                list_data = self._api.get_list_by_id(card_json["idList"])
+                lists.append(list_data)
+
+        board_dict = {"cards": cards, "lists": lists, "checklists": checklists}
+        trello_lists = TrelloLists(board_dict)
+        trello_checklists = TrelloChecklists(board_dict)
+        _ = TrelloCards(board_dict,
+                        trello_lists,
+                        trello_checklists)
+
+
+        trello_data = self._data_converter.convert_to_output_data(trello_lists)
+        for idx, list_obj in enumerate(trello_data):
+            for idx, card in enumerate(list_obj["cards"]):
+                TrelloListAndCardsPrinter.print_card_plain_text(card, print_placeholders=True)
 
 
 class TrelloTitleService:

@@ -155,6 +155,7 @@ class TrelloChecklists:
 class TrelloCard:
     id: str
     name: str
+    short_url: str
     list: TrelloList
     description: str
     attachments: List[TrelloAttachment]
@@ -190,6 +191,7 @@ class TrelloCards:
         from trello_backup.trello.parser import TrelloObjectParser
         self.all: List[TrelloCard] = TrelloObjectParser.parse_trello_cards(board_json, trello_lists, trello_checklists)
         self.open: List[TrelloCard] = list(filter(lambda c: not c.closed, self.all))
+        self.by_short_url = {c.short_url: c for c in self.all}
 
 
 @dataclass

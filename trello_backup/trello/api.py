@@ -1,8 +1,8 @@
 import json
 import logging
 import os
+import re
 from pathlib import Path
-from typing import Dict
 
 import requests
 
@@ -54,6 +54,18 @@ class TrelloApiAbs(ABC):
     @abstractmethod
     def delete_card(self, card_id: str):
         """Permanently deletes a card from Trello."""
+        pass
+
+    @abstractmethod
+    def download_card_by_share_link(self, share_link: str, download_attachments: bool = True):
+        pass
+
+    @abstractmethod
+    def get_checklist_by_id(self, checklist_id: str) -> dict:
+        pass
+
+    @abstractmethod
+    def get_list_by_id(self, list_id: str) -> dict:
         pass
 
 class TrelloApi(TrelloApiAbs):
@@ -171,6 +183,26 @@ class TrelloApi(TrelloApiAbs):
         )
 
     @classmethod
+    def get_list_by_id(cls, list_id: str) -> dict:
+        """
+        Fetches a Trello list by its ID.
+
+        Args:
+            list_id (str): The ID of the Trello list.
+
+        Returns:
+            dict: JSON data of the list.
+        """
+        url = f"https://api.trello.com/1/lists/{list_id}"
+        response = requests.get(
+            url,
+            headers=cls.headers_accept_json,
+            params=cls.auth_query_params
+        )
+        response.raise_for_status()
+        return response.json()
+
+    @classmethod
     def get_attachment_of_card(cls, card_id: str):
         headers = {
             "Accept": "application/json"
@@ -282,6 +314,71 @@ class TrelloApi(TrelloApiAbs):
             for chunk in cls._get_attachment_chunks(attachment):
                 out_file.write(chunk)
         return file_path
+
+    @classmethod
+    def download_card_by_share_link(cls, share_link: str, download_attachments: bool = True):
+        """
+        Downloads a card given its Trello share link.
+
+        Args:
+            share_link (str): Trello card share link, e.g. https://trello.com/c/<shortCardId>/<card-name>
+            download_attachments (bool): Whether to download attachments of the card.
+
+        Returns:
+            dict: Card JSON data.
+        """
+        # Extract the short card ID from the share link
+        match = re.match(r"https?://trello\.com/c/([a-zA-Z0-9]+)/?.*", share_link)
+        if not match:
+            raise ValueError(f"Invalid Trello share link: {share_link}")
+
+        short_card_id = match.group(1)
+
+        # Fetch full card info from Trello API
+        url = f"{CARDS_API}/{short_card_id}"
+        response = requests.get(url, headers=cls.headers_accept_json, params=cls.auth_query_params)
+        response.raise_for_status()
+        card_data = response.json()
+
+        # Optionally download attachments
+        if download_attachments and "attachments" in card_data:
+            for attachment in card_data["attachments"]:
+                attachment_url = cls.reformat_attachment_url(
+                    card_id=short_card_id,
+                    attachment_id=attachment["id"],
+                    attachment_filename=attachment["name"]
+                )
+                file_path = os.path.join(FilePath.OUTPUT_DIR_ATTACHMENTS, f"{attachment['id']}-{attachment['name']}")
+                with requests.get(attachment_url, headers=cls.authorization_headers, stream=True) as r:
+                    r.raise_for_status()
+                    with open(file_path, 'wb') as f:
+                        for chunk in r.iter_content(chunk_size=1024*1024):
+                            if chunk:
+                                f.write(chunk)
+                attachment["downloaded_file_path"] = f"file://{file_path}"
+
+        return card_data
+
+    @classmethod
+    def get_checklist_by_id(cls, checklist_id: str) -> dict:
+        """
+        Downloads a checklist from Trello by its ID.
+
+        Args:
+            checklist_id (str): The ID of the checklist.
+
+        Returns:
+            dict: Checklist JSON data, including items.
+        """
+        url = f"https://api.trello.com/1/checklists/{checklist_id}"
+        response = requests.get(
+            url,
+            headers=cls.headers_accept_json,
+            params=cls.auth_query_params
+        )
+        response.raise_for_status()
+        return response.json()
+
 
 
     @classmethod
@@ -408,6 +505,15 @@ class OfflineTrelloApi(TrelloApiAbs):
 
     def delete_card(self, card_id: str):
         raise NotImplementedError()
+
+    def download_card_by_share_link(self, share_link: str, download_attachments: bool = True):
+        raise NotImplementedError()
+
+    def get_checklist_by_id(self, checklist_id: str) -> dict:
+        raise NotImplementedError()
+
+    def get_list_by_id(self, list_id: str) -> dict:
+        pass
 
 
 class NetworkStatusService:
