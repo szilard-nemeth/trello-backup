@@ -1,0 +1,63 @@
+name: 'CI'
+on: [push]
+# TODO Remove this later --> Caused test failures
+env:
+  ENABLE_LOGGER_HANDLER_SANITY_CHECK: False
+
+defaults:
+  run:
+    working-directory: ./
+
+jobs:
+  build-and-test:
+    runs-on: ["ubuntu-latest"]
+    steps:
+      - name: Get current date
+        id: date
+        run: echo "::set-output name=date::$(date +%Y%m%d_%H%M%S)"
+      - name: Print Python version
+        id: pythonversion
+        run: python3 -c "import sys;print(sys.version)"
+      - name: Checkout
+        uses: actions/checkout@v2
+      - name: Clone dev packages to make Poetry happy (to avoid 'does not seem to be a Python package' error)
+        run: |
+          R_PC="python-commons"
+          R_GAW="google-api-wrapper"
+          mkdir ../$R_PC/
+          mkdir ../$R_GAW
+          ls -la ../
+          git -C $R_PC pull || git clone https://github.com/szilard-nemeth/python-commons.git ../$R_PC
+          git -C $R_GAW pull || git clone https://github.com/szilard-nemeth/google-api-wrapper.git ../$R_GAW
+      - name: Install Poetry
+        uses: snok/install-poetry@v1
+      - name: Install dependencies with Poetry
+        run: poetry install
+        continue-on-error: true
+      - name: quanta client hack
+        run: |
+          # https://github.infra.cloudera.com/cde-team/dexter/blob/4b0d2ef79db03b521deea5e7d3dbb2f5dbc15eae/README.md#L9
+          poetry update quanta-client
+        continue-on-error: true
+      - name: Install dependencies with Poetry
+        run: poetry install
+      - name: Run tests
+        run: |
+          poetry run python -m pytest --html=report.html --self-contained-html --doctest-ignore-import-errors --doctest-modules --junitxml=junit/test-results.xml --cov=./ --cov-report=html --cov-report=html
+        env:
+          PROJECT_DETERMINATION_STRATEGY: common_file
+          ENABLE_LOGGER_HANDLER_SANITY_CHECK: False
+      - name: Upload coverage
+        uses: Kitchen/RE-thirdparty-actions/actions/codecov-action@main
+      - name: Upload pytest test results
+        uses: actions/upload-artifact@v2
+        with:
+          name: pytest-results
+          # Apparently, default working directory is only used by 'run' actions, see: https://stackoverflow.com/a/58231340/1106893
+          path: | 
+            ./junit/test-results.xml
+            ./htmlcov
+            ./report.html
+          if-no-files-found: error # 'warn' or 'ignore' are also available, defaults to `warn`
+        # Use always() to always run this step to publish test results when there are test failures
+        if: ${{ always() }}
