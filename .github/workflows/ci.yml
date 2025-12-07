@@ -48,7 +48,7 @@ jobs:
           PROJECT_DETERMINATION_STRATEGY: common_file
           ENABLE_LOGGER_HANDLER_SANITY_CHECK: False
       - name: Upload coverage
-        uses: Kitchen/RE-thirdparty-actions/actions/codecov-action@main
+        uses: codecov/codecov-action@v1
       - name: Upload pytest test results
         uses: actions/upload-artifact@v2
         with:
