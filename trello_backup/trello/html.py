@@ -21,12 +21,12 @@ class HtmlParser:
             soup = HtmlParser._create_bs_from_url(url)
         except requests.exceptions.ConnectionError as e:
             LOG.error("Failed to get page title from URL: " + url)
-            return url
+            return None
         except requests.exceptions.Timeout as e:
             LOG.error("Failed to get page title from URL (timeout): " + url)
-            return url
+            return None
         if soup.title is None:
-            return url
+            return None
         title = soup.title.string
         LOG.debug("Found webpage title: {}".format(title))
         return str(title)

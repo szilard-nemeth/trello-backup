@@ -124,6 +124,9 @@ class TrelloChecklistItem:
     # TODO ASAP Refactor, this does not belong here
     def get_html(self):
         if self.url:
+            if not self.url_title:
+                # If title is not found, set title to url
+                return f"<a href={self.url}>{self.url}</a>"
             return f"<a href={self.url}>{self.url_title}</a>"
         return self.value
 

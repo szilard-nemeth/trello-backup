@@ -189,17 +189,14 @@ class TrelloTitleService:
 
             if url:
                 # 2. Get from cache or fetch (ALL cache interaction is here)
+                # Uncomment to delete from cache
+                # del self._cache._shelf["https://chatgpt.com/c/6872d253-faf8-8007-8ad8-6c144b31ce50"]
                 url_title = self._cache.get(url)
                 if not url_title:
                     # Fetch title of URL
                     url_title = HtmlParser.get_title_from_url(url)
-                    url_title = re.sub(r'[\n\t\r]+', ' ', url_title)
-                    # Replace only two or more consecutive spaces with a single space
-                    url_title = re.sub(r' {2,}', ' ', url_title)
-
                     if url_title:
-                        # Put title into cache
-                        self._cache.put(url, url_title)
+                        url_title = self._process_fetched_url_title(url, url_title)
                 else:
                     # Read from cache (still need to clean old titles if needed)
                     new_url_title = re.sub(r'[\n\t\r]+', ' ', url_title)
@@ -207,8 +204,18 @@ class TrelloTitleService:
                         self._cache.put(url, new_url_title)
                     url_title = new_url_title
 
-                if not url_title:
-                    url_title = url
-
                 # 3. Update the model object
+                if url == url_title:
+                    # If cache says webpage title is equal to URL, simply ignore and set None
+                    url_title = None
                 checklist.set_url_titles(url, url_title, item)
+
+    def _process_fetched_url_title(self, url: str | Any, url_title: str | None) -> str:
+        url_title = re.sub(r'[\n\t\r]+', ' ', url_title)
+        # Replace only two or more consecutive spaces with a single space
+        url_title = re.sub(r' {2,}', ' ', url_title)
+
+        if url_title:
+            # Put title into cache
+            self._cache.put(url, url_title)
+        return url_title
