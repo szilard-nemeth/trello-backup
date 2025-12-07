@@ -173,8 +173,8 @@ class TrelloOperations:
             for checklist_id in card_json["idChecklists"]:
                 checklist_data = self._api.get_checklist_by_id(checklist_id)
                 checklists.append(checklist_data)
-                list_data = self._api.get_list_by_id(card_json["idList"])
-                lists.append(list_data)
+            list_data = self._api.get_list_by_id(card_json["idList"])
+            lists.append(list_data)
 
         board_dict = {"cards": cards, "lists": lists, "checklists": checklists}
         trello_lists = TrelloLists(board_dict)

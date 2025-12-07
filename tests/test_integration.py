@@ -14,6 +14,7 @@ from pythoncommons.url_utils import UrlUtils
 from tests.conftest import PyTestCliRunner
 from trello_backup.cli.cli import setup_dirs
 from trello_backup.cli.commands.backup import backup
+from trello_backup.cli.commands.print import print
 from trello_backup.cli.context import ClickContextWrapper
 from trello_backup.constants import FilePath
 from trello_backup.display.output import OutputType
@@ -23,8 +24,11 @@ LOG = logging.getLogger(__name__)
 
 USE_REAL_API = False
 CLI_ENTRY_POINT_BACKUP = backup
-COMMAND_BACKUP = "backup"
-SUBCOMMAND_BOARD = "board"
+CLI_ENTRY_POINT_PRINT = print
+CLI_COMMAND_BACKUP = "backup"
+CLI_COMMAND_PRINT = "print"
+CLI_BACKUP_SUBCOMMAND_BOARD = "board"
+CLI_PRINT_SUBCOMMAND_CARDS = "cards"
 BOARD_ID_CLOUDERA = "616ec99dc34d9d608dc5502b"
 API_ENDPOINT_TO_FILE = {LIST_BOARDS_API: "responses/list_boards.json",
                         GET_BOARD_DETAILS_API_TMPL: "boards/board-cloudera.json",
@@ -126,7 +130,7 @@ class TestTrelloApiIntegration(unittest.TestCase):
 
     @pytest.fixture(autouse=True)
     def runner(self, click_runner: PyTestCliRunner):
-        print("Exec capfd")
+        # print("Exec capfd")
         self.runner: PyTestCliRunner = click_runner
 
     @staticmethod
@@ -188,11 +192,19 @@ class TestTrelloApiIntegration(unittest.TestCase):
         return contents
 
     @staticmethod
-    def _create_context_obj(offline=False):
+    def _create_context_obj(command: str, offline=False):
+        cli_module = None
+        args = None
+        if command == CLI_COMMAND_BACKUP:
+            cli_module = CLI_ENTRY_POINT_BACKUP
+            args = [CLI_BACKUP_SUBCOMMAND_BOARD]
+        elif command == CLI_COMMAND_PRINT:
+            cli_module = CLI_ENTRY_POINT_PRINT
+            args = [CLI_PRINT_SUBCOMMAND_CARDS]
         # Hack to set context_class on click.Group
-        CLI_ENTRY_POINT_BACKUP.context_class = ClickContextWrapper
+        cli_module.context_class = ClickContextWrapper
 
-        tmp_ctx = CLI_ENTRY_POINT_BACKUP.make_context(COMMAND_BACKUP, args=[SUBCOMMAND_BOARD])
+        tmp_ctx = cli_module.make_context(command, args=args)
         tmp_ctx.ensure_object(dict)
         tmp_ctx.log_level = logging.DEBUG
         tmp_ctx.dry_run = False
@@ -210,11 +222,11 @@ class TestTrelloApiIntegration(unittest.TestCase):
         for url in MOCKED_ATTACHMENT_URLS:
             d = UrlHelper.extract_trello_attachment_info_regex(url)
             self._mock_api_endpoint_for_card_attachment(d["card_id"], d["attachment_id"], d["file_name"])
-        obj = self._create_context_obj()
+        obj = self._create_context_obj(CLI_COMMAND_BACKUP)
 
         # In case pytest is the runner, please refer to https://github.com/pallets/click/issues/824#issuecomment-1583293065
         result = self.runner.invoke(
-            CLI_ENTRY_POINT_BACKUP, f"{SUBCOMMAND_BOARD} Cloudera".split(),
+            CLI_ENTRY_POINT_BACKUP, f"{CLI_BACKUP_SUBCOMMAND_BOARD} Cloudera".split(),
             standalone_mode=False, obj=obj)
         if result.exc_info:
             LOG.exception("Error while invoking command", exc_info=result.exc_info)
@@ -233,10 +245,10 @@ class TestTrelloApiIntegration(unittest.TestCase):
                 self.assertTrue(size_bytes > MIN_FILE_SIZE_BYTES, f"File '{f}' is less than {MIN_FILE_SIZE_KB} KBs")
 
     def test_backup_board_cloudera_offline(self):
-        obj = self._create_context_obj(offline=True)
+        obj = self._create_context_obj(CLI_COMMAND_BACKUP, offline=True)
 
         result = self.runner.invoke(
-            CLI_ENTRY_POINT_BACKUP, f"{SUBCOMMAND_BOARD} Cloudera".split(),
+            CLI_ENTRY_POINT_BACKUP, f"{CLI_BACKUP_SUBCOMMAND_BOARD} Cloudera".split(),
             standalone_mode=False, obj=obj)
         if result.exc_info:
             LOG.exception("Error while invoking command", exc_info=result.exc_info)
@@ -253,3 +265,18 @@ class TestTrelloApiIntegration(unittest.TestCase):
                 self.assertTrue(os.path.exists(f), f"File does not exist: {f}")
                 size_bytes = os.path.getsize(f)
                 self.assertTrue(size_bytes > MIN_FILE_SIZE_BYTES, f"File '{f}' is less than {MIN_FILE_SIZE_KB} KBs")
+
+    def test_print_cards_by_share_links(self):
+        obj = self._create_context_obj(CLI_COMMAND_PRINT, offline=True)
+
+        card1_link = "https://trello.com/c/YNR0xF3N"
+        card2_link = "https://trello.com/c/Gr0IU7mU"
+        card3_link = "https://trello.com/c/cuZ69dv3"
+        card_args = f"{card1_link} {card2_link} {card3_link}"
+        result = self.runner.invoke(
+            CLI_ENTRY_POINT_PRINT, f"{CLI_PRINT_SUBCOMMAND_CARDS} {card_args}".split(),
+            standalone_mode=False, obj=obj)
+        if result.exc_info:
+            LOG.exception("Error while invoking command", exc_info=result.exc_info)
+            self.fail()
+        self.assertEqual(0, result.exit_code, result.output)

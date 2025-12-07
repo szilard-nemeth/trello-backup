@@ -13,6 +13,9 @@ from trello_backup.trello.model import TrelloBoard
 
 TRELLO_API_ROOT = "https://api.trello.com/1/"
 CARDS_API = "https://api.trello.com/1/cards"
+GET_CARDS_API = "https://api.trello.com/1/cards"
+GET_LISTS_API_TMPL = "https://api.trello.com/1/lists/{list_id}"
+GET_CHECKLIST_API_TMPL = "https://api.trello.com/1/checklists/{id}"
 LIST_BOARDS_API = "https://api.trello.com/1/members/me/boards"
 GET_BOARD_DETAILS_API_TMPL = "https://api.trello.com/1/boards/{id}/"
 GET_BOARD_LISTS_API_TMPL = "https://api.trello.com/1/boards/{id}/lists"
@@ -193,7 +196,7 @@ class TrelloApi(TrelloApiAbs):
         Returns:
             dict: JSON data of the list.
         """
-        url = f"https://api.trello.com/1/lists/{list_id}"
+        url = GET_LISTS_API_TMPL.format(list_id=list_id)
         response = requests.get(
             url,
             headers=cls.headers_accept_json,
@@ -370,7 +373,7 @@ class TrelloApi(TrelloApiAbs):
         Returns:
             dict: Checklist JSON data, including items.
         """
-        url = f"https://api.trello.com/1/checklists/{checklist_id}"
+        url = GET_CHECKLIST_API_TMPL.format(id=checklist_id)
         response = requests.get(
             url,
             headers=cls.headers_accept_json,
@@ -432,7 +435,10 @@ class TrelloApi(TrelloApiAbs):
 
 class OfflineTrelloApi(TrelloApiAbs):
     API_ENDPOINT_TO_FILE = {LIST_BOARDS_API: "responses/list_boards.json",
-                            GET_BOARD_DETAILS_API_TMPL: "boards/{board_file_name}"}
+                            GET_BOARD_DETAILS_API_TMPL: "boards/{board_file_name}",
+                            GET_CARDS_API: "responses/cards/{card_short_name}.json",
+                            GET_LISTS_API_TMPL: "responses/lists/{id}.json",
+                            GET_CHECKLIST_API_TMPL: "responses/checklists/{id}.json"}
     TESTS_DIR = FilePath.get_dir_from_root("tests", parent_dir=FilePath.REPO_ROOT_DIRNAME)
     RESOURCES_DIR = FilePath.get_dir_from_root("resources", parent_dir=TESTS_DIR)
 
@@ -507,13 +513,20 @@ class OfflineTrelloApi(TrelloApiAbs):
         raise NotImplementedError()
 
     def download_card_by_share_link(self, share_link: str, download_attachments: bool = True):
-        raise NotImplementedError()
+        f_template = OfflineTrelloApi.API_ENDPOINT_TO_FILE[GET_CARDS_API]
+        # URL Example: 'https://trello.com/c/YNR0xF3N'
+        f = f_template.format(card_short_name=share_link.split("/")[-1])
+        return json.loads(OfflineTrelloApi._load_resource_file(f))
 
     def get_checklist_by_id(self, checklist_id: str) -> dict:
-        raise NotImplementedError()
+        f_template = OfflineTrelloApi.API_ENDPOINT_TO_FILE[GET_CHECKLIST_API_TMPL]
+        f = f_template.format(id=checklist_id)
+        return json.loads(OfflineTrelloApi._load_resource_file(f))
 
     def get_list_by_id(self, list_id: str) -> dict:
-        pass
+        f_template = OfflineTrelloApi.API_ENDPOINT_TO_FILE[GET_LISTS_API_TMPL]
+        f = f_template.format(id=list_id)
+        return json.loads(OfflineTrelloApi._load_resource_file(f))
 
 
 class NetworkStatusService:
