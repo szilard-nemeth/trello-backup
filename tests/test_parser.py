@@ -2,6 +2,7 @@ import unittest
 from unittest.mock import patch, MagicMock
 from typing import List, Dict, Any
 
+from tests.test_utils import TestUtils
 from trello_backup.trello.model import TrelloList, TrelloChecklist, TrelloAttachment, TrelloComment
 from trello_backup.trello.parser import TrelloObjectParser
 
@@ -54,6 +55,7 @@ class TrelloObjectParserTest(unittest.TestCase):
         {
             "id": "card_id_1",
             "name": "Feature X",
+            "shortUrl": TestUtils.generate_short_url(),
             "idList": "list_id_1",
             "desc": "Card description.",
             "closed": False,
@@ -74,6 +76,7 @@ class TrelloObjectParserTest(unittest.TestCase):
         {
             "id": "card_id_2",
             "name": "Bug Y",
+            "shortUrl": TestUtils.generate_short_url(),
             "idList": "list_id_2",
             "desc": "Another description.",
             "closed": True,
@@ -164,6 +167,7 @@ class TrelloObjectParserTest(unittest.TestCase):
             {
                 "id": "card_id_1",
                 "name": "Simple Card",
+                "shortUrl": TestUtils.generate_short_url(),
                 "idList": "list_id_1",
                 "desc": "description",
                 "closed": False,

@@ -1,6 +1,8 @@
 import unittest
 from unittest.mock import MagicMock, patch
 from typing import List, Dict, Optional
+
+from tests.test_utils import TestUtils
 from trello_backup.trello.model import TrelloList, TrelloCard, TrelloLists, TrelloChecklistItem, TrelloBoard
 
 
@@ -13,6 +15,7 @@ class MockTrelloObjectParser:
         # This will be replaced by the patch decorator in the tests
         pass
 
+tu = TestUtils
 
 class TestTrelloCard(unittest.TestCase):
     """Tests for the properties and methods of the TrelloCard class."""
@@ -25,25 +28,25 @@ class TestTrelloCard(unittest.TestCase):
 
     def test_open_card_property(self):
         card = TrelloCard(
-            id='1', name='Test', list=self.mock_list, description='',
+            id='1', name='Test', short_url=tu.generate_short_url(), list=self.mock_list, description='',
             attachments=[], checklists=[], labels=[], closed=False, comments=[], due_date="", activities=[]
         )
         self.assertTrue(card.open)
 
     def test_closed_card_property(self):
         card = TrelloCard(
-            id='1', name='Test', list=self.mock_list, description='',
+            id='1', name='Test', short_url=tu.generate_short_url(), list=self.mock_list, description='',
             attachments=[], checklists=[], labels=[], closed=True, comments=[], due_date="", activities=[]
         )
         self.assertFalse(card.open)
 
     def test_has_description_property(self):
         card_with = TrelloCard(
-            id='1', name='Test', list=self.mock_list, description='A description',
+            id='1', name='Test', short_url=tu.generate_short_url(), list=self.mock_list, description='A description',
             attachments=[], checklists=[], labels=[], closed=False, comments=[], due_date="", activities=[]
         )
         card_without = TrelloCard(
-            id='2', name='Test2', list=self.mock_list, description='',
+            id='2', name='Test2', short_url=tu.generate_short_url(), list=self.mock_list, description='',
             attachments=[], checklists=[], labels=[], closed=False, comments=[], due_date="", activities=[]
         )
         self.assertTrue(card_with.has_description)
@@ -51,11 +54,11 @@ class TestTrelloCard(unittest.TestCase):
 
     def test_has_checklist_property(self):
         card_with = TrelloCard(
-            id='1', name='Test', list=self.mock_list, description='',
+            id='1', name='Test', short_url=tu.generate_short_url(), list=self.mock_list, description='',
             attachments=[], checklists=[self.mock_checklist], labels=[], closed=False, comments=[], due_date="", activities=[]
         )
         card_without = TrelloCard(
-            id='2', name='Test2', list=self.mock_list, description='',
+            id='2', name='Test2', short_url=tu.generate_short_url(), list=self.mock_list, description='',
             attachments=[], checklists=[], labels=[], closed=False, comments=[], due_date="", activities=[]
         )
         self.assertTrue(card_with.has_checklist)
@@ -63,11 +66,11 @@ class TestTrelloCard(unittest.TestCase):
 
     def test_has_attachments_property(self):
         card_with = TrelloCard(
-            id='1', name='Test', list=self.mock_list, description='',
+            id='1', name='Test', short_url=tu.generate_short_url(), list=self.mock_list, description='',
             attachments=[self.mock_attachment], checklists=[], labels=[], closed=False, comments=[], due_date="", activities=[]
         )
         card_without = TrelloCard(
-            id='2', name='Test2', list=self.mock_list, description='',
+            id='2', name='Test2', short_url=tu.generate_short_url(), list=self.mock_list, description='',
             attachments=[], checklists=[], labels=[], closed=False, comments=[], due_date="", activities=[]
         )
         self.assertTrue(card_with.has_attachments)
@@ -76,7 +79,7 @@ class TestTrelloCard(unittest.TestCase):
     def test_get_labels_as_str_single_label(self):
         labels = ["Bug"]
         card = TrelloCard(
-            id='1', name='Test', list=self.mock_list, description='',
+            id='1', name='Test', short_url=tu.generate_short_url(), list=self.mock_list, description='',
             attachments=[], checklists=[], labels=labels, closed=False, comments=[], due_date="", activities=[]
         )
         self.assertEqual(card.get_labels_as_str(), "Bug")
@@ -84,7 +87,7 @@ class TestTrelloCard(unittest.TestCase):
     def test_get_labels_as_str_multiple_labels(self):
         labels = ["Feature", "Critical", "Urgent"]
         card = TrelloCard(
-            id='1', name='Test', list=self.mock_list, description='',
+            id='1', name='Test', short_url=tu.generate_short_url(), list=self.mock_list, description='',
             attachments=[], checklists=[], labels=labels, closed=False, comments=[], due_date="", activities=[]
         )
         self.assertEqual(card.get_labels_as_str(), "Feature, Critical, Urgent")
@@ -92,7 +95,7 @@ class TestTrelloCard(unittest.TestCase):
     def test_get_labels_as_str_no_labels(self):
         labels = []
         card = TrelloCard(
-            id='1', name='Test', list=self.mock_list, description='',
+            id='1', name='Test', short_url=tu.generate_short_url(), list=self.mock_list, description='',
             attachments=[], checklists=[], labels=labels, closed=False, comments=[], due_date="", activities=[]
         )
         self.assertEqual(card.get_labels_as_str(), "")

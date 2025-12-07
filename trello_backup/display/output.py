@@ -161,6 +161,7 @@ class TrelloDataConverter:
             h.CHECKLIST_ITEM_URL: lambda board, list, card, item: item.cl_item_url
         }
         self._sanity_check_col_value_getters()
+        self._none_value_converters = {h.CHECKLIST_ITEM_URL_TITLE: lambda val: ""}
 
     def _sanity_check_col_value_getters(self):
         cols_set = self._header.cols_set()
@@ -229,6 +230,11 @@ class TrelloDataConverter:
                     row = []
                     for col in self._header.cols_list():
                         val = self._col_value_getters[col](board, list, card, item)
+                        if val is None:
+                            if col in self._none_value_converters:
+                                val = self._none_value_converters[col](val)
+                            else:
+                                raise ValueError(f"Value is None for column: {col}")
                         row.append(val)
                     if len(self._header) != len(row):
                         raise ValueError("Mismatch in number of columns in row({}) vs. number of header columns ({})".format(len(row), self._header))

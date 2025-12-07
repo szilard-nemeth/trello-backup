@@ -58,7 +58,7 @@ class TestTrelloOperations(unittest.TestCase):
 } ]""")
 
 
-    @patch('trello_backup.trello.service.TrelloApi')
+    @patch('trello_backup.trello.service.TrelloApiAbs')
     def setUp(self, mock_trello_api):
         self.mock_trello_api = mock_trello_api
         # Initialize Mocks for dependencies
@@ -202,7 +202,7 @@ class TestTrelloOperations(unittest.TestCase):
             self.assertEqual(expected_comment, card.comments[0])
 
 
-    @patch('trello_backup.trello.service.TrelloApi')
+    @patch('trello_backup.trello.service.TrelloApiAbs')
     def test_get_board_id_from_cache(self, MockTrelloApi):
         """Tests getting board ID when it is already in the cache."""
         cached_board_id = "cached_id"
@@ -224,7 +224,7 @@ class TestTrelloOperations(unittest.TestCase):
         # Check internal cache update
         self.assertEqual(self._trello_ops._board_name_to_board_id.get(MOCK_BOARD_NAME), MOCK_BOARD_ID)
 
-    @patch('trello_backup.trello.service.TrelloApi')
+    @patch('trello_backup.trello.service.TrelloApiAbs')
     def test_get_board_json_from_cache(self, MockTrelloApi):
         """Tests getting board JSON when it is already in the cache."""
         self._trello_ops._board_id_to_board_json = {MOCK_BOARD_ID: MOCK_BOARD_JSON}
