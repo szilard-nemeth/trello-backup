@@ -24,7 +24,7 @@ keywords = ["trello backup"]
 readme = "README.md"
 homepage = "https://github.com/szilard-nemeth/trello-backup"
 repository = "https://github.com/szilard-nemeth/trello-backup"
-packages = [{include = "trello-backup"}]
+packages = [{include = "trello_backup"}]
 include = [
 "LICENSE"
 ]
