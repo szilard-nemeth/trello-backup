@@ -614,13 +614,13 @@ class TrelloListAndCardsPrinter:
         for checklist in card["checklists"]:
             CLI_LOG.info(f"{checklist['name']} ({len(checklist['items'])}): ")
             for item in checklist['items']:
-                # sanity check
-                if item['url'] and not item['url_title']:
-                    raise ValueError(f"CLI should have URL title if URL is parsed. CLI details: {item}")
-                if item['url']:
-                    CLI_LOG.info(f"[{'x' if item['checked'] else ''}] {item['url_title']}: {item['url']}")
+                checked_info = f"[{'x' if item['checked'] else ''}]"
+                if item['url'] and item['url_title']:
+                    CLI_LOG.info(f"{checked_info} {item['url_title']}: {item['url']}")
+                elif item['url']:
+                    CLI_LOG.info(f"{checked_info} {item['url']}")
                 else:
-                    CLI_LOG.info(f"[{'x' if item['checked'] else ''}] {item['value']}")
+                    CLI_LOG.info(f"{checked_info} {item['value']}")
         CLI_LOG.info("=" * 60)  # Separator for cards
 
 

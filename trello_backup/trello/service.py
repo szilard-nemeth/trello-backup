@@ -131,7 +131,8 @@ class TrelloOperations:
         trello_data = self._data_converter.convert_to_output_data(trello_lists)
         num_lists = len(trello_data)
         for idx, list_obj in enumerate(trello_data):
-            res = TrelloPrompt.prompt_ask(f"Proceed cleanup with list '{list_obj['name']}'", default=True)
+            # TODO ASAP Add skip to next list functionality
+            res = TrelloPrompt.prompt_ask(f"Proceed cleanup with list '{list_obj['name']}'", default=False)
             if not res:
                 CLI_LOG.info("Cleanup aborted by user")
                 return
@@ -152,6 +153,7 @@ class TrelloOperations:
                 if res == "ABORTED":
                     CLI_LOG.info("Cleanup aborted by user")
                     return
+        # TODO ASAP Ask to remove list if all cards have been removed
 
 
 
