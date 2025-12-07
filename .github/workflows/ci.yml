@@ -34,11 +34,6 @@ jobs:
       - name: Install dependencies with Poetry
         run: poetry install
         continue-on-error: true
-      - name: quanta client hack
-        run: |
-          # https://github.infra.cloudera.com/cde-team/dexter/blob/4b0d2ef79db03b521deea5e7d3dbb2f5dbc15eae/README.md#L9
-          poetry update quanta-client
-        continue-on-error: true
       - name: Install dependencies with Poetry
         run: poetry install
       - name: Run tests
