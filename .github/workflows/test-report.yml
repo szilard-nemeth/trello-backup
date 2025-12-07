@@ -12,5 +12,5 @@ jobs:
         with:
           artifact: pytest-results                               # artifact name
           name: Pytest Tests                                     # Name of the check run which will be created
-          path: 'junit/test-results'                     # Path to test results (inside artifact .zip)
+          path: 'junit/test-results.xml'                     # Path to test results (inside artifact .zip)
           reporter: java-junit                                   # Format of test results
