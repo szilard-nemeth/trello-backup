@@ -176,18 +176,18 @@ class TrelloDataConverter:
 
     def convert_to_output_data(self, trello_lists: TrelloLists) -> List[Dict[str, Any]]:
         output_data = []
-        for list_name, list_obj in trello_lists.by_name.items():
-            list_data = self.convert_list_to_output(list_name, list_obj)
+        for trello_list in trello_lists.get():
+            list_data = self.convert_list_to_output(trello_list.name, trello_list)
             output_data.append(list_data)
         return output_data
 
-    def convert_list_to_output(self, list_name: str, list_obj: TrelloList):
+    def convert_list_to_output(self, list_name: str, trello_list: TrelloList):
         list_data = {
             "name": list_name,
             "cards": []
         }
 
-        for card in list_obj.cards:
+        for card in trello_list.cards:
             card_data = self.convert_card_to_output(card)
             list_data["cards"].append(card_data)
         return list_data
@@ -627,6 +627,7 @@ class TrelloListAndCardsPrinter:
                     CLI_LOG.info(f"{checked_info} {item['url']}")
                 else:
                     CLI_LOG.info(f"{checked_info} {item['value']}")
+            CLI_LOG.info("")
         CLI_LOG.info("=" * 60)  # Separator for cards
 
 

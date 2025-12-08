@@ -128,12 +128,12 @@ class TestTrelloLists(unittest.TestCase):
         self.trello_lists = TrelloLists(self.mock_board_json)
 
     def test_get_by_id(self):
-        self.assertEqual(self.trello_lists.by_id['101'], self.list_a)
-        self.assertEqual(len(self.trello_lists.by_id), 3)
+        self.assertEqual(self.trello_lists._by_id['101'], self.list_a)
+        self.assertEqual(len(self.trello_lists._by_id), 3)
 
     def test_get_by_name(self):
-        self.assertEqual(self.trello_lists.by_name['To Do'], self.list_a)
-        self.assertEqual(len(self.trello_lists.by_name), 3)
+        self.assertEqual(self.trello_lists._by_name['To Do'], self.list_a)
+        self.assertEqual(len(self.trello_lists._by_name), 3)
 
     def test_get_open_lists(self):
         # Should only include 'To Do' and 'In Progress'
@@ -151,9 +151,9 @@ class TestTrelloLists(unittest.TestCase):
 
         self.assertIsInstance(filtered_lists, TrelloLists)
         # Check that the new instance only has the two lists
-        self.assertEqual(len(filtered_lists.by_name), 2)
-        self.assertIn('To Do', filtered_lists.by_name)
-        self.assertIn('Done (Closed)', filtered_lists.by_name)
+        self.assertEqual(len(filtered_lists._by_name), 2)
+        self.assertIn('To Do', filtered_lists._by_name)
+        self.assertIn('Done (Closed)', filtered_lists._by_name)
         # Check that the _filtered flag is set in the new instance (implicitly tested by trello_lists_param usage)
         self.assertTrue(filtered_lists._filtered)
 

@@ -1,5 +1,5 @@
 from dataclasses import dataclass, field
-from typing import List, Dict, Optional
+from typing import List, Dict, Optional, Iterable, Set
 
 from trello_backup.trello.filter import ListFilter
 
@@ -32,6 +32,7 @@ class TrelloList:
     id: str
     name: str
     board_id: str
+    pos: int
     cards: List['TrelloCard'] = field(default_factory=list)
 
 class TrelloLists:
@@ -47,13 +48,23 @@ class TrelloLists:
                 self._filtered = True
             trello_lists = trello_lists_param
 
-        self.by_id: Dict[str, TrelloList] = {l.id: l for l in trello_lists}
-        self.by_name: Dict[str, TrelloList] = {l.name: l for l in trello_lists}
+        self._by_id: Dict[str, TrelloList] = {l.id: l for l in trello_lists}
+        self._by_name: Dict[str, TrelloList] = {l.name: l for l in trello_lists}
         # Filter open trello lists
-        self.open: List[TrelloList] = list(filter(lambda tl: not tl.closed, trello_lists))
+        self.open: List[TrelloList] = self._sort(filter(lambda tl: not tl.closed, trello_lists))
 
     def get(self) -> List[TrelloList]:
-        return list(self.by_name.values())
+        return self._sort(self._by_name.values())
+
+    def get_ids(self):
+        return set(self._by_id.keys())
+
+    def get_by_id(self, list_id):
+        return self._by_id[list_id]
+
+    @staticmethod
+    def _sort(lists: Iterable[TrelloList]) -> List[TrelloList]:
+        return sorted(lists, key=lambda l: l.pos)
 
     # TODO ASAP filtering Move methods to new class: ListFilterer
     def filter_by_list_names(self, list_names: List[str]) -> 'TrelloLists':
@@ -66,8 +77,8 @@ class TrelloLists:
 
         # Iterate through the requested names to check and collect results
         for name in list_names:
-            if name in self.by_name:
-                found.append(self.by_name[name])
+            if name in self._by_name:
+                found.append(self._by_name[name])
             else:
                 not_found.append(name)
 
@@ -77,13 +88,12 @@ class TrelloLists:
             raise ValueError(
                 f"The following lists were not found on the board: {missing_names}"
             )
-
-        return TrelloLists(self._board_json, trello_lists_param=found)
+        return TrelloLists(self._board_json, trello_lists_param=self._sort(found))
 
     # TODO ASAP filtering Move methods to new class: ListFilterer
     def filter_by_list_filter(self, list_filter: ListFilter):
         if list_filter == ListFilter.ALL:
-            return TrelloLists(self._board_json, trello_lists_param=list(self.by_name.values()))
+            return TrelloLists(self._board_json, trello_lists_param=list(self.get()))
         elif list_filter == ListFilter.OPEN:
             return TrelloLists(self._board_json, trello_lists_param=list(self.open))
 
@@ -118,6 +128,7 @@ class TrelloChecklistItem:
     id: str
     value: str
     checked: bool
+    pos: int
     url: str = None
     url_title: str = None
 
@@ -137,6 +148,7 @@ class TrelloChecklist:
     name: str
     board_id: str
     card_id: str
+    pos: int
     items: List[TrelloChecklistItem]
 
     def set_url_titles(self, url: str, url_title: str, item: 'TrelloChecklistItem'):
@@ -147,8 +159,15 @@ class TrelloChecklist:
 class TrelloChecklists:
     def __init__(self, board_json):
         from trello_backup.trello.parser import TrelloObjectParser
-        self.all: List[TrelloChecklist] = TrelloObjectParser.parse_trello_checklists(board_json)
-        self.by_id: Dict[str, TrelloChecklist] = {c.id: c for c in self.all}
+        self._all: List[TrelloChecklist] = TrelloObjectParser.parse_trello_checklists(board_json)
+        self._by_id: Dict[str, TrelloChecklist] = {c.id: c for c in self._all}
+
+    def get_by_ids(self, cl_ids: Set[str]):
+        """
+        Returns sorted checklists, filtered for ids
+        :return:
+        """
+        return list(filter(lambda cli: cli.id in cl_ids, self._all))
 
 
 @dataclass

@@ -17,7 +17,7 @@ class TrelloObjectParser:
 
         parsed_lists = []
         for list in lists:
-            trello_list = TrelloList(list["closed"], list["id"], list["name"], list["idBoard"])
+            trello_list = TrelloList(list["closed"], list["id"], list["name"], list["idBoard"], list["pos"])
             parsed_lists.append(trello_list)
         return parsed_lists
 
@@ -27,6 +27,7 @@ class TrelloObjectParser:
                            trello_checklists: TrelloChecklists):
         cards_json = board_json["cards"]
         cards = []
+        list_ids = trello_lists.get_ids()
         for idx, card in enumerate(cards_json):
             # TODO Add progress bar for cards
             CLI_LOG.info("Processing card: {} / {}".format(idx + 1, len(cards_json)))
@@ -48,17 +49,17 @@ class TrelloObjectParser:
                                                          None)
                     attachments.append(trello_attachment)
 
-            if trello_lists._filtered and card["idList"] not in trello_lists.by_id:
+            if trello_lists._filtered and card["idList"] not in list_ids:
                 # Skip this card.
                 # If TrelloLists are filtered (does not contain all the lists), we allow the card to be not present for the lists.
                 continue
             list_id = card["idList"]
-            if list_id not in trello_lists.by_id:
+            if list_id not in list_ids:
                 raise TrelloException(f"Cannot find list with id: {list_id}. All lists: {trello_lists}")
-            trello_list = trello_lists.by_id[list_id]
+            trello_list = trello_lists.get_by_id(list_id)
             label_names = [l["name"] for l in card["labels"]]
             checklist_ids = card["idChecklists"]
-            checklists = [trello_checklists.by_id[cid] for cid in checklist_ids]
+            checklists = trello_checklists.get_by_ids(checklist_ids)
             trello_card = TrelloCard(card["id"],
                                      card["name"],
                                      card["shortUrl"],
@@ -103,10 +104,12 @@ class TrelloObjectParser:
             checkitems_json = checklist["checkItems"]
             trello_checklist_items = []
             for checkitem in checkitems_json:
-                trello_checklist_item = TrelloChecklistItem(checkitem["id"], checkitem["name"], checkitem["state"] == "complete")
+                trello_checklist_item = TrelloChecklistItem(checkitem["id"], checkitem["name"], checkitem["state"] == "complete", checkitem["pos"])
                 trello_checklist_items.append(trello_checklist_item)
 
             # TODO ASAP refactor: Add checklist object to card object
-            trello_checklist = TrelloChecklist(checklist["id"], checklist["name"], checklist["idBoard"], checklist["idCard"], trello_checklist_items)
+            trello_checklist_items = sorted(trello_checklist_items, key=lambda cli: cli.pos)
+            trello_checklist = TrelloChecklist(checklist["id"], checklist["name"], checklist["idBoard"], checklist["idCard"], checklist["pos"], trello_checklist_items)
             trello_checklists.append(trello_checklist)
+        trello_checklists = sorted(trello_checklists, key=lambda cli: cli.pos)
         return trello_checklists
