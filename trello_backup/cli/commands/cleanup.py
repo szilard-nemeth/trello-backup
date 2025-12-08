@@ -7,7 +7,7 @@ from trello_backup.cli.context import TrelloCommand
 
 LOG = logging.getLogger(__name__)
 
-
+# TODO ASAP Add documentation to each command + subcommand
 @click.group()
 def cleanup():
     pass

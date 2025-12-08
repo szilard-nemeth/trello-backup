@@ -156,6 +156,7 @@ class TrelloOperations:
 
     def get_cards_by_links(self,
                            card_links: List[str]):
+        # TODO ASAP Should download attachments to temporary directory
         """
         Here we don't work with the board json response, we only download the specified cards for optimal speed.
         For each card, the checklist and the list is also fetched.

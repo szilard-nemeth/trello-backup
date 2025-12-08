@@ -10,7 +10,7 @@ from trello_backup.display.output import BackupReport
 
 LOG = logging.getLogger(__name__)
 
-
+# TODO ASAP Add documentation to each command + subcommand
 @click.group()
 def backup():
     pass
