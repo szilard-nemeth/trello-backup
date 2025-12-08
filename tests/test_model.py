@@ -1,6 +1,6 @@
 import unittest
+from typing import List
 from unittest.mock import MagicMock, patch
-from typing import List, Dict, Optional
 
 from tests.test_utils import TestUtils
 from trello_backup.trello.model import TrelloList, TrelloCard, TrelloLists, TrelloChecklistItem, TrelloBoard
@@ -106,9 +106,9 @@ class TestTrelloLists(unittest.TestCase):
     @patch('trello_backup.trello.parser.TrelloObjectParser')
     def setUp(self, mock_parser_cls):
         self.mock_board_json = {"id": "board_1"}
-        self.list_a = TrelloList(closed=False, id='101', name='To Do', board_id='board_1')
-        self.list_b = TrelloList(closed=False, id='102', name='In Progress', board_id='board_1')
-        self.list_c = TrelloList(closed=True, id='103', name='Done (Closed)', board_id='board_1')
+        self.list_a = TrelloList(closed=False, id='101', name='To Do', board_id='board_1', pos=11111)
+        self.list_b = TrelloList(closed=False, id='102', name='In Progress', board_id='board_1', pos=22222)
+        self.list_c = TrelloList(closed=True, id='103', name='Done (Closed)', board_id='board_1', pos=33333)
         self.all_lists = [self.list_a, self.list_b, self.list_c]
 
         # Set the side_effect for the mocked parser method
@@ -170,13 +170,14 @@ class TestTrelloChecklistItem(unittest.TestCase):
     def test_get_html_with_url(self):
         item = TrelloChecklistItem(
             id='c1', value='Do task', checked=False,
-            url='http://example.com/task', url_title='Task Link'
+            url='http://example.com/task', url_title='Task Link',
+            pos=11111
         )
         expected_html = '<a href=http://example.com/task>Task Link</a>'
         self.assertEqual(item.get_html(), expected_html)
 
     def test_get_html_without_url(self):
-        item = TrelloChecklistItem(id='c1', value='Do task', checked=False)
+        item = TrelloChecklistItem(id='c1', value='Do task', checked=False, pos=11111)
         # Should return just the value
         self.assertEqual(item.get_html(), 'Do task')
 

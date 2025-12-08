@@ -1,9 +1,9 @@
 import unittest
-from unittest.mock import patch, MagicMock
-from typing import List, Dict, Any
+from typing import Dict, Any, Set, List
+from unittest.mock import MagicMock
 
 from tests.test_utils import TestUtils
-from trello_backup.trello.model import TrelloList, TrelloChecklist, TrelloAttachment, TrelloComment
+from trello_backup.trello.model import TrelloList, TrelloChecklist, TrelloAttachment
 from trello_backup.trello.parser import TrelloObjectParser
 
 
@@ -13,9 +13,24 @@ class MockTrelloLists:
         self.by_id = {l.id: l for l in lists}
         self._filtered = is_filtered
 
+    # TODO testing Duplicated logic from TrelloLists - Consider changing this?
+    def get_ids(self):
+        return set(self.by_id.keys())
+
+    def get_by_id(self, l_id):
+        return self.by_id[l_id]
+
 class MockTrelloChecklists:
     def __init__(self, checklists):
-        self.by_id = {c.id: c for c in checklists}
+        self._all: List[TrelloChecklist] = checklists
+
+    # TODO testing Duplicated logic from TrelloChecklists - Consider changing this?
+    def get_by_ids(self, cl_ids: Set[str]):
+        """
+        Returns sorted checklists, filtered for ids
+        :return:
+        """
+        return list(filter(lambda cli: cli.id in cl_ids, self._all))
 
 
 class TrelloObjectParserTest(unittest.TestCase):
@@ -24,8 +39,8 @@ class TrelloObjectParserTest(unittest.TestCase):
     MOCK_BOARD_ID = "mock_board_id_1"
 
     MOCK_LISTS_JSON = [
-        {"closed": False, "id": "list_id_1", "name": "To Do", "idBoard": MOCK_BOARD_ID},
-        {"closed": True, "id": "list_id_2", "name": "Done", "idBoard": MOCK_BOARD_ID},
+        {"closed": False, "id": "list_id_1", "name": "To Do", "idBoard": MOCK_BOARD_ID, "pos": "11111"},
+        {"closed": True, "id": "list_id_2", "name": "Done", "idBoard": MOCK_BOARD_ID, "pos": "22222"},
     ]
 
     MOCK_CHECKLISTS_JSON = [
@@ -35,9 +50,10 @@ class TrelloObjectParserTest(unittest.TestCase):
             "idBoard": MOCK_BOARD_ID,
             "idCard": "card_id_1",
             "checkItems": [
-                {"id": "checkitem_id_1_1", "name": "Step 1", "state": "complete"},
-                {"id": "checkitem_id_1_2", "name": "Step 2", "state": "incomplete"},
+                {"id": "checkitem_id_1_1", "name": "Step 1", "state": "complete", "pos": "11111"},
+                {"id": "checkitem_id_1_2", "name": "Step 2", "state": "incomplete", "pos": "22222"},
             ],
+            "pos": "11111"
         },
         {
             "id": "checklist_id_2",
@@ -45,9 +61,10 @@ class TrelloObjectParserTest(unittest.TestCase):
             "idBoard": MOCK_BOARD_ID,
             "idCard": "card_id_1",
             "checkItems": [
-                {"id": "checkitem_id_2_1", "name": "Step 1_1", "state": "complete"},
-                {"id": "checkitem_id_2_2", "name": "Step 1_2", "state": "incomplete"},
+                {"id": "checkitem_id_2_1", "name": "Step 1_1", "state": "complete", "pos": "33333"},
+                {"id": "checkitem_id_2_2", "name": "Step 1_2", "state": "incomplete", "pos": "44444"},
             ],
+            "pos": "22222"
         }
     ]
 

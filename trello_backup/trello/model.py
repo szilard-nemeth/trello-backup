@@ -160,7 +160,7 @@ class TrelloChecklists:
     def __init__(self, board_json):
         from trello_backup.trello.parser import TrelloObjectParser
         self._all: List[TrelloChecklist] = TrelloObjectParser.parse_trello_checklists(board_json)
-        self._by_id: Dict[str, TrelloChecklist] = {c.id: c for c in self._all}
+        # self._by_id: Dict[str, TrelloChecklist] = {c.id: c for c in self._all}
 
     def get_by_ids(self, cl_ids: Set[str]):
         """
