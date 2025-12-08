@@ -45,19 +45,56 @@ source $HOME/development/my-repos/trello-backup/project-setup.sh
 ```
 ## Features
 
-### Back up board
+### Back up all boards
+To back up all boards, execute this command:
+```shell
+trello-backup backup boards
+```
+
+
+### Back up a specific board
 To back up board, execute this command:
 ```shell
 trello-backup backup board Cloudera
 ```
 
 
-### Print cards from boards
+### Print boards
 
-To print cards from specific lists
+#### To print cards from specific lists
 ```shell
-trello-backup backup cards --board "Priorities, Learn, Misc" --list "PRIO 1" --list "PRIO 2"
+trello-backup print board Cloudera --filter-list test1 --filter-list test2
 ```
+
+#### To print all cards from a board
+```shell
+trello-backup print board Cloudera
+```
+
+#### To print all cards from a board (offline mode)
+Offline mode works on files from `<project-root>/tests/resources`
+
+```shell
+trello-backup --offline print board Cloudera
+trello-backup --offline print board "Priorities, Learn, Misc"
+
+trello-backup --offline print board "TODO: Main categories"  > ~/Downloads/trello-plain-text-todo-main-categories.txt
+trello-backup --offline print board "Priorities, Learn, Misc" > ~/Downloads/trello-plain-text-backup-priorities-learn-misc.txt
+```
+
+### Clean up boards
+Prints cards one by one and prompts for confirmation before deleting card.
+```shell
+trello-backup cleanup board "Priorities, Learn, Misc"
+```
+
+
+# TODO ASAP add more example commands
+
+
+
+### Script to save board backup JSON files
+TODO Add reference to backup-and-save-to-project-data
 
 
 
