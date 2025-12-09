@@ -121,8 +121,11 @@ class MarkdownFormatter:
         converted = self.__md.convert(text)
 
         # Remove potential ZWNJ (0x200c) characters: https://unicodemap.org/details/0x200C/index.html
-        converted2 = (converted.encode('ascii', 'ignore')).decode("utf-8")
-        return converted2
+        # Remove only ZWNJ (U+200C), keep other Unicode
+        converted = converted.replace("\u200c", "")
+        # Uncomment this if we want ASCII characters only
+        # converted2 = (converted.encode('ascii', 'ignore')).decode("utf-8")
+        return converted
 
 
 
