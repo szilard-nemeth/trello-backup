@@ -116,39 +116,43 @@ class TrelloOperations:
     def cleanup_board(self,
                       board_name: str,
                       filters: TrelloFilters):
-        def _yes_handler():
+        def _delete_card_yes_handler():
             CLI_LOG.info(f"Deleting card: {card['name']}")
             self._api.delete_card(card["id"])
             return "DELETED"
-        def _no_handler():
+        def _delete_card_no_handler():
             return "SKIPPED"
-        def _abort_handler():
+        def _delete_card_abort_handler():
             return "ABORTED"
 
         CLI_LOG.info(f"Starting cleanup for board: {board_name}")
         board, trello_lists = self.get_lists_and_cards(board_name, filters)
+        # TODO ASAP description with I’m (apostrophe) doesn't work well, it's ommitted
         trello_data = self._data_converter.convert_to_output_data(trello_lists)
         num_lists = len(trello_data)
+        list_names = [l["name"] for l in trello_data]
+        CLI_LOG.info("Processing lists in this order: %s", list_names)
         for idx, list_obj in enumerate(trello_data):
             # TODO ASAP Add skip to next list functionality
-            res = TrelloPrompt.prompt_ask(f"Proceed cleanup with list '{list_obj['name']}'", default=False)
+            list_name = list_obj['name']
+            res = TrelloPrompt.choices_yes_no_abort(f"Proceed cleanup with list '{list_name}'", default=False)
             if not res:
                 CLI_LOG.info("Cleanup aborted by user")
                 return
-            CLI_LOG.info(f"Starting cleanup for list: {list_obj['name']}")
+            CLI_LOG.info(f"Starting cleanup for list: {list_name}")
             l_idx_info = f"[{idx+1}/{num_lists}]"
-            CLI_LOG.info(f"{l_idx_info} Actual list: {list_obj['name']}")
+            CLI_LOG.info(f"{l_idx_info} Actual list: {list_name}")
             num_cards = len(list_obj["cards"])
 
             for idx, card in enumerate(list_obj["cards"]):
                 c_idx_info = f"[{idx+1}/{num_cards}]"
                 TrelloListAndCardsPrinter.print_card_plain_text(card, print_placeholders=True)
-                card_info = f"Board: {board.name}, List: {list_obj['name']}"
+                card_info = f"Board: {board.name}, List: {list_name}"
                 CLI_LOG.info(f"{c_idx_info} Actual card: %s (%s)", card['name'], card_info)
-                res = TrelloPrompt.choices_yes_no_abort("OK to remove card?",
-                                                        on_yes=_yes_handler,
-                                                        on_no=_no_handler,
-                                                        on_abort=_abort_handler)
+                res = TrelloPrompt.choices_yes_no_abort("OK to delete card?",
+                                                        on_yes=_delete_card_yes_handler,
+                                                        on_no=_delete_card_no_handler,
+                                                        on_abort=_delete_card_abort_handler)
                 if res == "ABORTED":
                     CLI_LOG.info("Cleanup aborted by user")
                     return
