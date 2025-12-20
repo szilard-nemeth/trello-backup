@@ -124,21 +124,31 @@ class TrelloOperations:
             return "SKIPPED"
         def _delete_card_abort_handler():
             return "ABORTED"
+        def _cleanup_list_yes_handler():
+            CLI_LOG.info(f"Cleaning up list: {list_name}")
+            return "CLEANUP"
+        def _cleanup_list_skip_handler():
+            return "SKIPPED"
+        def _cleanup_list_abort_handler():
+            return "ABORTED"
 
         CLI_LOG.info(f"Starting cleanup for board: {board_name}")
         board, trello_lists = self.get_lists_and_cards(board_name, filters)
-        # TODO ASAP description with I’m (apostrophe) doesn't work well, it's ommitted
         trello_data = self._data_converter.convert_to_output_data(trello_lists)
         num_lists = len(trello_data)
         list_names = [l["name"] for l in trello_data]
         CLI_LOG.info("Processing lists in this order: %s", list_names)
         for idx, list_obj in enumerate(trello_data):
-            # TODO ASAP Add skip to next list functionality
             list_name = list_obj['name']
-            res = TrelloPrompt.choices_yes_no_abort(f"Proceed cleanup with list '{list_name}'", default=False)
-            if not res:
+            res = TrelloPrompt.choices_yes_skip_abort(f"Proceed cleanup with list '{list_name}'",
+                                                      on_yes=_cleanup_list_yes_handler,
+                                                      on_skip=_cleanup_list_skip_handler,
+                                                      on_abort=_cleanup_list_abort_handler)
+            if res == "ABORTED":
                 CLI_LOG.info("Cleanup aborted by user")
                 return
+            elif res == "SKIPPED":
+                continue
             CLI_LOG.info(f"Starting cleanup for list: {list_name}")
             l_idx_info = f"[{idx+1}/{num_lists}]"
             CLI_LOG.info(f"{l_idx_info} Actual list: {list_name}")

@@ -1,5 +1,5 @@
 from random import random
-from typing import Iterable, Callable, Any
+from typing import Iterable, Callable, Any, Dict
 
 from rich.prompt import Confirm, Prompt
 
@@ -50,6 +50,7 @@ class PromptHandler:
 class DefaultPromptHandler(PromptHandler):
     YES_CHOICE = "y"
     NO_CHOICE = "n"
+    SKIP_CHOICE = "s"
     ABORT_CHOICE = "a"
 
     def __init__(self, format: PromptFormat):
@@ -78,31 +79,46 @@ class DefaultPromptHandler(PromptHandler):
         """
          Uses rich.prompt.Prompt to get a choice and executes the corresponding callback.
          """
+        choice_handlers = {self.YES_CHOICE: on_yes,
+                           self.NO_CHOICE: on_no,
+                           self.ABORT_CHOICE: on_abort}
+        return self._3_choice(q, choice_handlers, on_no)
 
+
+    def yes_skip_abort(self,
+                       q: str,
+                       on_yes: Callable[[], Any],
+                       on_skip: Callable[[], Any],
+                       on_abort: Callable[[], Any]) -> Any:
+        """
+         Uses rich.prompt.Prompt to get a choice and executes the corresponding callback.
+         """
+        choice_handlers = {self.YES_CHOICE: on_yes,
+                           self.SKIP_CHOICE: on_skip,
+                           self.ABORT_CHOICE: on_abort}
+        return self._3_choice(q, choice_handlers, on_skip)
+
+
+    def _3_choice(self, q: str, choice_handlers: Dict[str, Callable[[], Any]], default_handler):
         # 1. Define the choices and their mapping to display labels
-        choices = [self.YES_CHOICE, self.NO_CHOICE, self.ABORT_CHOICE]
+        choices = list(choice_handlers.keys())
+        # choices = [self.YES_CHOICE, self.NO_CHOICE, self.ABORT_CHOICE]
 
         # 2. Use rich.prompt.Prompt to handle input validation and display
         # The prompt will show the choices in brackets, e.g., [y/n/a]
-        result = Prompt.ask(
+        choice = Prompt.ask(
             q,
             choices=choices,
             default=self.NO_CHOICE,
         )
-
-        # 3. Execute the appropriate callback based on the result
-        if result == self.YES_CHOICE:
-            # print("-> Executing YES action.")
-            return on_yes()
-        elif result == self.NO_CHOICE:
-            # print("-> Executing NO action.")
-            return on_no()
-        elif result == self.ABORT_CHOICE:
-            # print("-> Executing ABORT action.")
-            return on_abort()
-
-        # Fallback (should not happen with rich's choices)
-        return on_no()
+        if not isinstance(choice, str) or len(choice) != 1:
+            raise ValueError(f"Invalid choice: {choice}. Available choice handlers are: {choice_handlers}")
+        if choice not in choice_handlers:
+            # raise ValueError(f"Invalid choice: {result}. Available choice handlers are: {choice_handlers}")
+            handler = default_handler
+        else:
+            handler = choice_handlers[choice]
+        handler()
 
     def _question_number(self, q, num):
         return f"{self._format.prefix()}{q}. Enter the following number to proceed: [b]{num}[/b]"
@@ -170,6 +186,13 @@ class TrelloPrompt:
                              on_no: Callable[[], Any],
                              on_abort: Callable[[], Any]):
         return cls._handler.yes_no_abort(q, on_yes, on_no, on_abort)
+
+    @classmethod
+    def choices_yes_skip_abort(cls, q,
+                             on_yes: Callable[[], Any],
+                             on_skip: Callable[[], Any],
+                             on_abort: Callable[[], Any]):
+        return cls._handler.yes_no_abort(q, on_yes, on_skip, on_abort)
 
     @classmethod
     def set_context(cls, new_ctx):
