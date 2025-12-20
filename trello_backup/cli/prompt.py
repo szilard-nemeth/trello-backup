@@ -71,35 +71,46 @@ class DefaultPromptHandler(PromptHandler):
     def choices(self, q, choices=Iterable[str]):
         return Prompt.ask(self._format.question_italic(q), choices=choices)
 
-    def yes_no_abort(self,
-                     q: str,
-                     on_yes: Callable[[], Any],
-                     on_no: Callable[[], Any],
-                     on_abort: Callable[[], Any]) -> Any:
+    def yes_no_abort_handlers(self,
+                              q: str,
+                              on_yes: Callable[[], Any],
+                              on_no: Callable[[], Any],
+                              on_abort: Callable[[], Any]) -> Any:
         """
          Uses rich.prompt.Prompt to get a choice and executes the corresponding callback.
          """
         choice_handlers = {self.YES_CHOICE: on_yes,
                            self.NO_CHOICE: on_no,
                            self.ABORT_CHOICE: on_abort}
-        return self._3_choice(q, choice_handlers, on_no)
+        return self._choice_with_handlers(q, choice_handlers, on_no)
 
 
-    def yes_skip_abort(self,
-                       q: str,
-                       on_yes: Callable[[], Any],
-                       on_skip: Callable[[], Any],
-                       on_abort: Callable[[], Any]) -> Any:
+    def yes_skip_abort_handlers(self,
+                                q: str,
+                                on_yes: Callable[[], Any],
+                                on_skip: Callable[[], Any],
+                                on_abort: Callable[[], Any]) -> Any:
         """
          Uses rich.prompt.Prompt to get a choice and executes the corresponding callback.
          """
         choice_handlers = {self.YES_CHOICE: on_yes,
                            self.SKIP_CHOICE: on_skip,
                            self.ABORT_CHOICE: on_abort}
-        return self._3_choice(q, choice_handlers, on_skip)
+        return self._choice_with_handlers(q, choice_handlers, on_skip)
 
+    def yes_no_abort(self, q: str):
+        choice_handlers = {self.YES_CHOICE: lambda x: self.YES_CHOICE,
+                           self.NO_CHOICE: lambda x: self.NO_CHOICE,
+                           self.ABORT_CHOICE: lambda x: self.ABORT_CHOICE}
+        return self._choice_with_handlers(q, choice_handlers, lambda x: self.NO_CHOICE)
 
-    def _3_choice(self, q: str, choice_handlers: Dict[str, Callable[[], Any]], default_handler):
+    def yes_skip_abort(self, q: str):
+        choice_handlers = {self.YES_CHOICE: lambda x: self.YES_CHOICE,
+                           self.SKIP_CHOICE: lambda x: self.SKIP_CHOICE,
+                           self.ABORT_CHOICE: lambda x: self.ABORT_CHOICE}
+        return self._choice_with_handlers(q, choice_handlers, lambda x: self.SKIP_CHOICE)
+
+    def _choice_with_handlers(self, q: str, choice_handlers: Dict[str, Callable[[], Any]], default_handler):
         # 1. Define the choices and their mapping to display labels
         choices = list(choice_handlers.keys())
         # choices = [self.YES_CHOICE, self.NO_CHOICE, self.ABORT_CHOICE]
@@ -118,7 +129,7 @@ class DefaultPromptHandler(PromptHandler):
             handler = default_handler
         else:
             handler = choice_handlers[choice]
-        handler()
+        return handler()
 
     def _question_number(self, q, num):
         return f"{self._format.prefix()}{q}. Enter the following number to proceed: [b]{num}[/b]"
@@ -185,14 +196,22 @@ class TrelloPrompt:
                              on_yes: Callable[[], Any],
                              on_no: Callable[[], Any],
                              on_abort: Callable[[], Any]):
-        return cls._handler.yes_no_abort(q, on_yes, on_no, on_abort)
+        return cls._handler.yes_no_abort_handlers(q, on_yes, on_no, on_abort)
 
     @classmethod
     def choices_yes_skip_abort(cls, q,
                              on_yes: Callable[[], Any],
                              on_skip: Callable[[], Any],
                              on_abort: Callable[[], Any]):
-        return cls._handler.yes_no_abort(q, on_yes, on_skip, on_abort)
+        return cls._handler.yes_no_abort_handlers(q, on_yes, on_skip, on_abort)
+
+    @classmethod
+    def yes_no_abort(cls, q):
+        return cls._handler.yes_no_abort(q)
+
+    @classmethod
+    def yes_skip_abort(cls, q):
+        return cls._handler.yes_skip_abort(q)
 
     @classmethod
     def set_context(cls, new_ctx):

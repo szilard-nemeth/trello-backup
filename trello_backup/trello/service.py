@@ -116,29 +116,6 @@ class TrelloOperations:
                       board_name: str,
                       filters: TrelloFilters,
                       batch_mode: bool):
-        def _delete_card_yes_handler():
-            CLI_LOG.info(f"Deleting card: {card['name']}")
-            self._api.delete_card(card["id"])
-            return "DELETED"
-        def _delete_all_cards_yes_handler():
-            card_names = [c['name'] for c in list_obj["cards"]]
-            card_ids = [c['id'] for c in list_obj["cards"]]
-            CLI_LOG.info(f"Deleting all cards: {card_names}")
-            for c_id in card_ids:
-                self._api.delete_card(c_id)
-            return "DELETED"
-        def _delete_card_no_handler():
-            return "SKIPPED"
-        def _delete_card_abort_handler():
-            return "ABORTED"
-        def _cleanup_list_yes_handler():
-            CLI_LOG.info(f"Cleaning up list: {list_name}")
-            return "CLEANUP"
-        def _cleanup_list_skip_handler():
-            return "SKIPPED"
-        def _cleanup_list_abort_handler():
-            return "ABORTED"
-
         additional_log = ", Batch mode is enabled" if batch_mode else ""
         CLI_LOG.info(f"Starting cleanup for board: {board_name}{additional_log}")
         board, trello_lists = self.get_lists_and_cards(board_name, filters)
@@ -148,14 +125,13 @@ class TrelloOperations:
         CLI_LOG.info("Processing lists in this order: %s", list_names)
         for idx, list_obj in enumerate(trello_data):
             list_name = list_obj['name']
-            res = TrelloPrompt.choices_yes_skip_abort(f"Proceed cleanup with list '{list_name}'",
-                                                      on_yes=_cleanup_list_yes_handler,
-                                                      on_skip=_cleanup_list_skip_handler,
-                                                      on_abort=_cleanup_list_abort_handler)
-            if res == "ABORTED":
+            res = TrelloPrompt.yes_skip_abort(f"Proceed cleanup with list '{list_name}'")
+            if res == "y":
+                CLI_LOG.info(f"Cleaning up list: {list_name}")
+            elif res == "a":
                 CLI_LOG.info("Cleanup aborted by user")
                 return
-            elif res == "SKIPPED":
+            elif res == "s":
                 continue
             CLI_LOG.info(f"Starting cleanup for list: {list_name}")
             l_idx_info = f"[{idx+1}/{num_lists}]"
@@ -170,18 +146,22 @@ class TrelloOperations:
                     TrelloListAndCardsPrinter.print_card_plain_text(card, print_placeholders=True)
                 res = TrelloPrompt.prompt_ask(f"OK to delete all cards ({len(list_obj["cards"])}) in list?")
                 if res:
-                    _delete_all_cards_yes_handler()
+                    card_names = [c['name'] for c in list_obj["cards"]]
+                    card_ids = [c['id'] for c in list_obj["cards"]]
+                    CLI_LOG.info(f"Deleting all cards: {card_names}")
+                    for c_id in card_ids:
+                        self._api.delete_card(c_id)
             else:
                 for idx, card in enumerate(list_obj["cards"]):
                     c_idx_info = f"[{idx+1}/{num_cards}]"
                     TrelloListAndCardsPrinter.print_card_plain_text(card, print_placeholders=True)
                     card_info = f"Board: {board.name}, List: {list_name}"
                     CLI_LOG.info(f"{c_idx_info} Actual card: %s (%s)", card['name'], card_info)
-                    res = TrelloPrompt.choices_yes_no_abort("OK to delete card?",
-                                                            on_yes=_delete_card_yes_handler,
-                                                            on_no=_delete_card_no_handler,
-                                                            on_abort=_delete_card_abort_handler)
-                    if res == "ABORTED":
+                    res = TrelloPrompt.yes_no_abort("OK to delete card?")
+                    if res == "y":
+                        CLI_LOG.info(f"Deleting card: {card['name']}")
+                        self._api.delete_card(card["id"])
+                    if res == "a":
                         CLI_LOG.info("Cleanup aborted by user")
                         return
         # TODO ASAP Ask to remove list if all cards have been removed
