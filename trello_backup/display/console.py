@@ -94,7 +94,7 @@ class CliLogger(logging.Logger):
         :param text_style:
         :return:
         """
-        self._themed_console.print(text, style=text_style.style_name)
+        self._themed_console.print(text, style=text_style.style_name, markup=False)
         if not suppress_logger:
             self._logger.log(text_style.log_level, text)
 
