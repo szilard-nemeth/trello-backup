@@ -2,7 +2,7 @@
 
 function trello-backup {
     PROJECT_REPO_ROOT="$HOME/development/my-repos/trello-backup/"
-    cd $PROJECT_REPO_ROOT && poetry run python trello_backup/cli/cli.py "$@"
+    cd "$PROJECT_REPO_ROOT" && poetry run python -m trello_backup.cli.cli "$@"
 }
 
 # Export the function so it's inherited by subshells.
