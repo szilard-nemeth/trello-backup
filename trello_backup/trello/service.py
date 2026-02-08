@@ -87,7 +87,6 @@ class TrelloOperations:
 
         # Call to fill webpage title and URL
         self._webpage_title_service.process_board_checklist_titles(board)
-        self._cache.save()
 
         # TODO ASAP Refactor, does it make sense to return trello_lists
         return board, trello_lists
@@ -213,10 +212,12 @@ class TrelloOperations:
         board_dict = {"cards": cards, "lists": lists, "checklists": checklists}
         trello_lists = TrelloLists(board_dict)
         trello_checklists = TrelloChecklists(board_dict)
-        _ = TrelloCards(board_dict,
-                        trello_lists,
-                        trello_checklists)
+        trello_cards = TrelloCards(board_dict,
+                                   trello_lists,
+                                   trello_checklists)
 
+        # Call to fill webpage title and URL
+        self._webpage_title_service.process_cards_checklist_titles(trello_cards.all)
 
         trello_data = self._data_converter.convert_to_output_data(trello_lists)
         for idx, list_obj in enumerate(trello_data):
@@ -244,6 +245,19 @@ class TrelloTitleService:
             for card in trello_list.cards:
                 for checklist in card.checklists:
                     self._process_checklist_titles(checklist)
+
+        # After processing, ensure the cache is saved
+        self._cache.save()
+
+    def process_cards_checklist_titles(self, cards: List['TrelloCard']):
+        """
+        Iterates through all cards then fetches and caches URL titles.
+        """
+        # Ensure the cache is used with a context manager if possible, or managed externally
+        # to ensure it saves/closes correctly.
+        for card in cards:
+            for checklist in card.checklists:
+                self._process_checklist_titles(checklist)
 
         # After processing, ensure the cache is saved
         self._cache.save()
