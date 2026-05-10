@@ -14,6 +14,7 @@ from trello_backup.cli.context import ClickContextWrapper, TrelloGroup
 from trello_backup.display.console import CliLogger
 from trello_backup.constants import FilePath
 from trello_backup.exception import TrelloException
+from trello_backup.cli.common import webpage_js_titles_cli_option
 from trello_backup.cli.prompt import TrelloPrompt
 from trello_backup.utils import LoggingUtils
 
@@ -40,12 +41,7 @@ def setup_dirs(ctx: ClickContextWrapper, use_session_dir: bool, add_console_hand
 @click.option('--offline', is_flag=True, default=False)
 @click.option('--no-cache', is_flag=True, default=False,
               help='Do not use the webpage title URL cache (always fetch titles; do not persist).')
-@click.option(
-    '--webpage-js-titles/--no-webpage-js-titles',
-    default=False,
-    help='Resolve checklist link titles with requests-html (executes page JavaScript). '
-         'Slower than the default HTTP-only fetch. Requires: pip install "trello-backup[webpage-js-titles]".',
-)
+@webpage_js_titles_cli_option(with_negate=True)
 @click.option('-s', '--session-dir', is_flag=True, default=True, help='Whether to use session dir to save output files.')
 @click.pass_context
 def cli(ctx: ClickContextWrapper,
@@ -53,7 +49,6 @@ def cli(ctx: ClickContextWrapper,
         dry_run: bool = False,
         offline: bool = False,
         no_cache: bool = False,
-        webpage_js_titles: bool = False,
         session_dir: bool = True):
     if ctx.invoked_subcommand == "usage":
         return
@@ -64,7 +59,6 @@ def cli(ctx: ClickContextWrapper,
     ctx.dry_run = dry_run
     ctx.offline = offline
     ctx.no_cache = no_cache
-    ctx.webpage_js_titles = webpage_js_titles
 
     LOG.info("Invoked command %s", ctx.invoked_subcommand)
     setup_dirs(ctx, session_dir)

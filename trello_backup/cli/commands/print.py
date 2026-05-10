@@ -3,7 +3,7 @@ from typing import List, Tuple
 
 import click
 
-from trello_backup.cli.common import get_handler_and_setup_ctx
+from trello_backup.cli.common import get_handler_and_setup_ctx, webpage_js_titles_cli_option
 from trello_backup.cli.context import TrelloCommand
 
 LOG = logging.getLogger(__name__)
@@ -16,6 +16,7 @@ def print():
 
 
 @print.command(cls=TrelloCommand)
+@webpage_js_titles_cli_option(with_negate=False)
 @click.option('-l', '--filter-list', "filter_list",  multiple=True, required=False, help='Only print the specified lists')
 @click.pass_context
 @click.argument("board_name")
@@ -25,6 +26,7 @@ def board(ctx, board_name: str, filter_list: Tuple[str]):
     handler.print_cards(board_name, filter_list)
 
 @print.command(cls=TrelloCommand)
+@webpage_js_titles_cli_option(with_negate=False)
 @click.pass_context
 @click.argument("card_links", nargs=-1)
 def cards(ctx, card_links: List[str]):

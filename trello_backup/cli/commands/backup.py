@@ -4,7 +4,7 @@ from typing import List, Tuple, Dict
 import click
 from click import BadOptionUsage
 
-from trello_backup.cli.common import CliCommon, get_handler_and_setup_ctx
+from trello_backup.cli.common import get_handler_and_setup_ctx, webpage_js_titles_cli_option
 from trello_backup.cli.context import TrelloCommand
 from trello_backup.display.output import BackupReport
 
@@ -17,6 +17,7 @@ def backup():
 
 
 @backup.command(cls=TrelloCommand)
+@webpage_js_titles_cli_option(with_negate=False)
 @click.pass_context
 @click.argument("board_name")
 def board(ctx, board_name: str):
@@ -30,6 +31,7 @@ def board(ctx, board_name: str):
 
 
 @backup.command(cls=TrelloCommand)
+@webpage_js_titles_cli_option(with_negate=False)
 @click.pass_context
 def boards(ctx):
     handler = get_handler_and_setup_ctx(ctx)

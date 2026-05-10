@@ -2,6 +2,8 @@ import logging
 from dataclasses import dataclass
 from typing import Iterable
 
+import click
+
 from trello_backup.config_parser.config import ConfigLoader, ConfigReader, TrelloConfig, TrelloCfg
 from trello_backup.config_parser.config_validation import ConfigValidator, ValidationContext, ConfigSource
 from trello_backup.constants import FilePath
@@ -14,6 +16,64 @@ from trello_backup.trello.html import HtmlParser
 from trello_backup.trello.service import TrelloOperations, TrelloTitleService
 
 LOG = logging.getLogger(__name__)
+
+WEBPAGE_JS_TITLES_OPTION_HELP = (
+    "Fetch checklist URL titles with requests-html (page JavaScript). "
+    "On the main CLI you can use --no-webpage-js-titles to force off. "
+    "Subcommands only accept --webpage-js-titles (same effect when set). "
+    "Slower than the default HTTP-only fetch. "
+    'Requires: pip install "trello-backup[webpage-js-titles]".'
+)
+
+
+def cli_root_context(ctx: click.Context) -> click.Context:
+    while ctx.parent is not None:
+        ctx = ctx.parent
+    return ctx
+
+
+def webpage_js_titles_effective(ctx: click.Context) -> bool:
+    """True if enabled on the root CLI (option callback) or via a subcommand's --webpage-js-titles."""
+    cur: click.Context | None = ctx
+    while cur is not None:
+        cur.ensure_object(dict)
+        if cur.obj.get("webpage_js_titles"):
+            return True
+        cur = cur.parent
+    return False
+
+
+def webpage_js_titles_cli_option(*, with_negate: bool):
+    """
+    Single Click option definition reused on the root group and on leaf commands.
+
+    Stores state on the root context's obj so ``init_main_cmd_handler`` / ``webpage_js_titles_effective`` work
+    no matter where the flag appears. Subcommands use a plain flag: callback only turns the feature on when
+    passed, so a root ``--webpage-js-titles`` is not cleared when the leaf omits the flag.
+    """
+
+    def _callback(ctx: click.Context, param: click.Parameter, value):
+        root = cli_root_context(ctx)
+        root.ensure_object(dict)
+        if with_negate:
+            root.obj["webpage_js_titles"] = bool(value)
+        elif value:
+            root.obj["webpage_js_titles"] = True
+        return None
+
+    opt_kw = dict(
+        callback=_callback,
+        expose_value=False,
+        help=WEBPAGE_JS_TITLES_OPTION_HELP,
+    )
+
+    def decorator(f):
+        if with_negate:
+            return click.option("--webpage-js-titles/--no-webpage-js-titles", default=False, **opt_kw)(f)
+        return click.option("--webpage-js-titles", is_flag=True, default=False, **opt_kw)(f)
+
+    return decorator
+
 
 def get_handler_and_setup_ctx(ctx):
     handler = CliCommon.init_main_cmd_handler(ctx)
@@ -35,7 +95,7 @@ class CliCommon:
 
         # Initialize WebpageTitleCache so 'board.get_checklist_url_titles' can use it
         cache = NullWebpageTitleCache() if ctx.no_cache else WebpageTitleCache()
-        webpage_js_titles = ctx.obj.get("webpage_js_titles", False)
+        webpage_js_titles = webpage_js_titles_effective(ctx)
         HtmlParser.configure_webpage_js_renderer(webpage_js_titles)
         webpage_title_service = TrelloTitleService(cache, webpage_js_titles=webpage_js_titles)
         md_formatter = MarkdownFormatter()
