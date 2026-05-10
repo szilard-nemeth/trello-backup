@@ -52,6 +52,10 @@ PROPERTY_CONFIG: List[ContextProperty] = [
         attr_type=bool
     ),
     ContextProperty(
+        name='webpage_js_titles',
+        attr_type=bool
+    ),
+    ContextProperty(
         name='handler',
         attr_type=MainCommandHandler
     ),

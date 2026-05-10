@@ -39,6 +39,11 @@ rich = "^13.7.0"
 markdown = "3.4.4"
 click = "^8.3.1"
 dotenv = "^0.9.9"
+requests-html = { version = "^0.10.0", optional = true }
+
+
+[tool.poetry.extras]
+webpage-js-titles = ["requests-html"]
 
 
 [tool.poetry.group.dev.dependencies]
