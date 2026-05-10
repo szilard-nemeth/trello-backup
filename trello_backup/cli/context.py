@@ -48,6 +48,10 @@ PROPERTY_CONFIG: List[ContextProperty] = [
         attr_type=bool
     ),
     ContextProperty(
+        name='no_cache',
+        attr_type=bool
+    ),
+    ContextProperty(
         name='handler',
         attr_type=MainCommandHandler
     ),

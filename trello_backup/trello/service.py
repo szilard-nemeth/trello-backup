@@ -8,7 +8,7 @@ from trello_backup.cli.prompt import TrelloPrompt
 from trello_backup.display.console import CliLogger
 from trello_backup.display.output import TrelloDataConverter, TrelloListAndCardsPrinter
 from trello_backup.trello.api import TrelloApiAbs, TrelloRepository
-from trello_backup.trello.cache import WebpageTitleCache
+from trello_backup.trello.cache import NullWebpageTitleCache, WebpageTitleCache
 from trello_backup.trello.filter import CardFilterer, TrelloFilters
 from trello_backup.trello.html import HtmlParser
 from trello_backup.trello.model import TrelloChecklist, TrelloBoard, TrelloLists, TrelloChecklists, TrelloCards, \
@@ -22,7 +22,7 @@ CLI_LOG = CliLogger(LOG)
 class TrelloOperations:
     def __init__(self,
                  trello_repository: TrelloRepository,
-                 cache: WebpageTitleCache,
+                 cache: WebpageTitleCache | NullWebpageTitleCache,
                  title_service: 'TrelloTitleService',
                  data_converter: TrelloDataConverter):
         self._api: TrelloApiAbs = trello_repository.get_api()
@@ -230,7 +230,7 @@ class TrelloTitleService:
     Handles the responsibility of fetching and caching web page titles for
     Trello checklist items, decoupling this logic from the data models.
     """
-    def __init__(self, cache: WebpageTitleCache):
+    def __init__(self, cache: WebpageTitleCache | NullWebpageTitleCache):
         # The service holds the cache dependency
         self._cache = cache
 

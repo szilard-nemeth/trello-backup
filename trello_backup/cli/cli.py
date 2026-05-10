@@ -38,12 +38,15 @@ def setup_dirs(ctx: ClickContextWrapper, use_session_dir: bool, add_console_hand
 @click.option('--debug/--no-debug', default=False)
 @click.option('--dry-run', is_flag=True, default=False)
 @click.option('--offline', is_flag=True, default=False)
+@click.option('--no-cache', is_flag=True, default=False,
+              help='Do not use the webpage title URL cache (always fetch titles; do not persist).')
 @click.option('-s', '--session-dir', is_flag=True, default=True, help='Whether to use session dir to save output files.')
 @click.pass_context
 def cli(ctx: ClickContextWrapper,
         debug: bool,
         dry_run: bool = False,
         offline: bool = False,
+        no_cache: bool = False,
         session_dir: bool = True):
     if ctx.invoked_subcommand == "usage":
         return
@@ -53,6 +56,7 @@ def cli(ctx: ClickContextWrapper,
     ctx.log_level = level
     ctx.dry_run = dry_run
     ctx.offline = offline
+    ctx.no_cache = no_cache
 
     LOG.info("Invoked command %s", ctx.invoked_subcommand)
     setup_dirs(ctx, session_dir)

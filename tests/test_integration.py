@@ -209,6 +209,7 @@ class TestTrelloApiIntegration(unittest.TestCase):
         tmp_ctx.log_level = logging.DEBUG
         tmp_ctx.dry_run = False
         tmp_ctx.offline = offline
+        tmp_ctx.no_cache = False
         setup_dirs(tmp_ctx, use_session_dir=True, add_console_handler=True)
         return tmp_ctx.obj
 

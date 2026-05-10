@@ -9,7 +9,7 @@ from trello_backup.display.output import OutputHandlerFactory, MarkdownFormatter
 from trello_backup.exception import TrelloConfigException
 from trello_backup.http_server import HttpServer, HTTP_SERVER_PORT
 from trello_backup.trello.api import TrelloApi, TrelloRepository, OfflineTrelloApi, NetworkStatusService
-from trello_backup.trello.cache import WebpageTitleCache
+from trello_backup.trello.cache import NullWebpageTitleCache, WebpageTitleCache
 from trello_backup.trello.service import TrelloOperations, TrelloTitleService
 
 LOG = logging.getLogger(__name__)
@@ -33,7 +33,7 @@ class CliCommon:
         context = TrelloContext.create_from_config(ctx, conf, dry_run=ctx.dry_run)
 
         # Initialize WebpageTitleCache so 'board.get_checklist_url_titles' can use it
-        cache = WebpageTitleCache()
+        cache = NullWebpageTitleCache() if ctx.no_cache else WebpageTitleCache()
         webpage_title_service = TrelloTitleService(cache)
         md_formatter = MarkdownFormatter()
         data_converter = TrelloDataConverter(md_formatter, HTTP_SERVER_PORT)

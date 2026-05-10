@@ -6,6 +6,28 @@ from typing import Dict, Optional
 from trello_backup.constants import FilePath
 
 
+class NullWebpageTitleCache:
+    """Skips disk-backed URL title caching (always fetch; never persist)."""
+
+    def save(self) -> None:
+        pass
+
+    def close(self) -> None:
+        pass
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        self.close()
+
+    def get(self, url: str) -> Optional[str]:
+        return None
+
+    def put(self, url: str, title: str) -> None:
+        pass
+
+
 class WebpageTitleCache:
     def __init__(self, file_path: str = FilePath.WEBPAGE_TITLE_CACHE_FILE):
         """
