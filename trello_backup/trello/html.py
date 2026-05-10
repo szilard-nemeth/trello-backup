@@ -10,6 +10,10 @@ BS4_HTML_PARSER = "html.parser"
 class HtmlParser:
     js_renderer = None
 
+    @staticmethod
+    def create_bs(html) -> BeautifulSoup:
+        return BeautifulSoup(html, features=BS4_HTML_PARSER)
+
     @classmethod
     def configure_webpage_js_renderer(cls, enabled: bool) -> None:
         """
@@ -27,8 +31,8 @@ class HtmlParser:
                 e,
             )
             return
-        cls.js_renderer = JSRenderer(JavaScriptRenderer.REQUESTS_HTML, fb_selenium=None)
-        LOG.debug("JS webpage renderer (requests-html) enabled for URL titles.")
+        cls.js_renderer = JSRenderer(JavaScriptRenderer.SELENIUM)
+        LOG.debug("JS webpage renderer (Selenium) enabled for URL titles.")
 
     @classmethod
     def get_title_from_url(cls, url):
@@ -69,7 +73,7 @@ class HtmlParser:
             return None
         LOG.debug("Getting webpage title with JS for URL: %s", url)
         try:
-            soup = cls.js_renderer.render_with_javascript(url, force_use_requests=True)
+            soup = cls.js_renderer.render_with_javascript(url, force_use_requests=False)
         except Exception as e:
             LOG.error("Failed to get webpage title with JS from URL: %s (%s)", url, e)
             return None

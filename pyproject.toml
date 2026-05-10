@@ -40,6 +40,13 @@ markdown = "3.4.4"
 click = "^8.3.1"
 dotenv = "^0.9.9"
 requests-html = { version = "^0.10.0", optional = true }
+selenium = "^4.43.0"
+
+
+[tool.poetry.extras]
+webpage-js-titles = ["requests-html"]
+requests-html = { version = "^0.10.0", optional = true }
+selenium = "^4.43.0"
 
 
 [tool.poetry.extras]
