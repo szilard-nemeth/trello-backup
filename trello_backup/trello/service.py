@@ -281,8 +281,10 @@ class TrelloTitleService:
                 # del self._cache._shelf["https://chatgpt.com/c/6872d253-faf8-8007-8ad8-6c144b31ce50"]
                 url_title = self._cache.get(url)
                 if not url_title:
-                    # Fetch title of URL (optional JS fallback for SPAs like YouTube)
-                    url_title = HtmlParser.fetch_page_title(url, js_fallback=self._webpage_js_titles)
+                    if self._webpage_js_titles:
+                        url_title = HtmlParser.get_title_from_url_with_js(url)
+                    else:
+                        url_title = HtmlParser.get_title_from_url(url)
                     if url_title:
                         url_title = self._process_fetched_url_title(url, url_title)
                 else:

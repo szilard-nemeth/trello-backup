@@ -1,5 +1,3 @@
-import re
-
 from bs4 import BeautifulSoup
 import requests
 
@@ -31,31 +29,6 @@ class HtmlParser:
             return
         cls.js_renderer = JSRenderer(JavaScriptRenderer.REQUESTS_HTML, fb_selenium=None)
         LOG.debug("JS webpage renderer (requests-html) enabled for URL titles.")
-
-    @classmethod
-    def fetch_page_title(cls, url: str, *, js_fallback: bool = False):
-        """
-        Fast path via HTTP first; optional JS (requests-html) when the static title is a known shell.
-        """
-        title = cls.get_title_from_url(url)
-        if not js_fallback or cls.js_renderer is None:
-            return title
-        if not cls._title_needs_js_fallback(title):
-            return title
-        js_title = cls.get_title_from_url_with_js(url)
-        return js_title if js_title else title
-
-    @staticmethod
-    def _title_needs_js_fallback(title: str | None) -> bool:
-        if title is None:
-            return True
-        t = str(title).strip()
-        if not t:
-            return True
-        # YouTube and similar SPAs often serve an empty/placeholder <title> before JS runs.
-        if re.fullmatch(r"-?\s*YouTube", t):
-            return True
-        return False
 
     @classmethod
     def get_title_from_url(cls, url):

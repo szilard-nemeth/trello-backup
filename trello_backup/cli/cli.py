@@ -43,8 +43,8 @@ def setup_dirs(ctx: ClickContextWrapper, use_session_dir: bool, add_console_hand
 @click.option(
     '--webpage-js-titles/--no-webpage-js-titles',
     default=False,
-    help='Resolve checklist link titles with requests-html when static HTML title is a placeholder '
-         '(e.g. YouTube). Requires optional dependency: pip install "trello-backup[webpage-js-titles]".',
+    help='Resolve checklist link titles with requests-html (executes page JavaScript). '
+         'Slower than the default HTTP-only fetch. Requires: pip install "trello-backup[webpage-js-titles]".',
 )
 @click.option('-s', '--session-dir', is_flag=True, default=True, help='Whether to use session dir to save output files.')
 @click.pass_context

@@ -3,7 +3,7 @@ import unittest
 from string import Template
 from typing import Dict
 from unittest import mock
-from unittest.mock import Mock, patch, call, MagicMock
+from unittest.mock import Mock, patch, MagicMock
 
 from trello_backup.trello.api import NetworkStatusService, TrelloRepository, OfflineTrelloApi
 from trello_backup.trello.filter import CardFilters, ListFilter, TrelloFilters
@@ -274,14 +274,15 @@ class TestTrelloTitleService(unittest.TestCase):
 
         MockUrlUtils.extract_from_str.side_effect = lambda s: s if s.startswith("http://") else None
         self.mock_cache.get.return_value = None  # Not in cache
-        MockHtmlParser.fetch_page_title.return_value = mock_raw_title
+        MockHtmlParser.get_title_from_url.return_value = mock_raw_title
 
         self.service._process_checklist_titles(self.mock_checklist)
 
         MockUrlUtils.extract_from_str.assert_any_call(self.mock_checklist_item_with_url.value)
         MockUrlUtils.extract_from_str.assert_any_call(self.mock_checklist_item_without_url.value)
         self.mock_cache.get.assert_called_once_with(url)
-        MockHtmlParser.fetch_page_title.assert_called_once_with(url, js_fallback=False)
+        MockHtmlParser.get_title_from_url.assert_called_once_with(url)
+        MockHtmlParser.get_title_from_url_with_js.assert_not_called()
         # Assert cache interaction
         self.mock_cache.put.assert_called_once_with(url, mock_cleaned_title)
         # Assert model update
@@ -289,8 +290,25 @@ class TestTrelloTitleService(unittest.TestCase):
             url, mock_cleaned_title, self.mock_checklist_item_with_url
         )
 
+    @patch('trello_backup.trello.service.HtmlParser')
     @patch('trello_backup.trello.service.UrlUtils')
-    def test_process_checklist_titles_url_found_in_cache(self, MockUrlUtils):
+    def test_process_checklist_titles_url_uses_js_when_enabled(self, MockUrlUtils, MockHtmlParser):
+        url = "http://example.com/item1"
+        mock_raw_title = "Title from JS"
+        service = TrelloTitleService(cache=self.mock_cache, webpage_js_titles=True)
+
+        MockUrlUtils.extract_from_str.side_effect = lambda s: s if s.startswith("http://") else None
+        self.mock_cache.get.return_value = None
+        MockHtmlParser.get_title_from_url_with_js.return_value = mock_raw_title
+
+        service._process_checklist_titles(self.mock_checklist)
+
+        MockHtmlParser.get_title_from_url_with_js.assert_called_once_with(url)
+        MockHtmlParser.get_title_from_url.assert_not_called()
+
+    @patch('trello_backup.trello.service.HtmlParser')
+    @patch('trello_backup.trello.service.UrlUtils')
+    def test_process_checklist_titles_url_found_in_cache(self, MockUrlUtils, MockHtmlParser):
         """Tests fetching title when URL is found and it IS in the cache."""
         mock_url = "http://example.com/item1"
         mock_cached_title = "Cached Title"
@@ -303,8 +321,8 @@ class TestTrelloTitleService(unittest.TestCase):
         MockUrlUtils.extract_from_str.assert_any_call(self.mock_checklist_item_with_url.value)
         MockUrlUtils.extract_from_str.assert_any_call(self.mock_checklist_item_without_url.value)
         self.mock_cache.get.assert_called_once_with(mock_url)
-        # HtmlParser should NOT be called
-        self.assertNotIn(call('fetch_page_title'), [c[0] for c in self.mock_cache.method_calls])
+        MockHtmlParser.get_title_from_url.assert_not_called()
+        MockHtmlParser.get_title_from_url_with_js.assert_not_called()
         # Cache put should be called to 'clean' the title, even if it's the same
         self.mock_cache.put.assert_not_called() # No put if the title is clean already
         # Assert model update
