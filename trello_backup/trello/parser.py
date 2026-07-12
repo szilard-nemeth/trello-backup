@@ -1,4 +1,5 @@
-from typing import List
+from collections import defaultdict
+from typing import List, Any
 
 from trello_backup.display.console import CliLogger
 from trello_backup.exception import TrelloException
@@ -27,10 +28,13 @@ class TrelloObjectParser:
                            trello_checklists: TrelloChecklists):
         cards_json = board_json["cards"]
         cards = []
+        cards_for_other_lists = defaultdict(list)
         list_ids = trello_lists.get_ids()
         for idx, card in enumerate(cards_json):
             # TODO Add progress bar for cards
             CLI_LOG.info("Processing card: {} / {}".format(idx + 1, len(cards_json)))
+            list_id_of_card = card["idList"]
+
             attachments = []
             if "attachments" in card and len(card["attachments"]) > 0:
                 for attachment_json in card["attachments"]:
@@ -49,32 +53,49 @@ class TrelloObjectParser:
                                                          None)
                     attachments.append(trello_attachment)
 
-            if trello_lists._filtered and card["idList"] not in list_ids:
+            if trello_lists._filtered and list_id_of_card not in list_ids:
                 # Skip this card.
                 # If TrelloLists are filtered (does not contain all the lists), we allow the card to be not present for the lists.
+                accepted_list_ids = trello_lists.get_all_ids()
+                trello_card, _ = TrelloObjectParser._make_trello_card_from_json(card, attachments, trello_checklists, trello_lists, accepted_list_ids)
+                cards_for_other_lists[list_id_of_card].append(trello_card)
                 continue
-            list_id = card["idList"]
-            if list_id not in list_ids:
-                raise TrelloException(f"Cannot find list with id: {list_id}. All lists: {trello_lists}")
-            trello_list = trello_lists.get_by_id(list_id)
-            label_names = [l["name"] for l in card["labels"]]
-            checklist_ids = card["idChecklists"]
-            checklists = trello_checklists.get_by_ids(checklist_ids)
-            trello_card = TrelloCard(card["id"],
-                                     card["name"],
-                                     card["shortUrl"],
-                                     trello_list,
-                                     card["desc"],
-                                     attachments,
-                                     checklists,
-                                     label_names,
-                                     card["closed"],
-                                     [],
-                                     card["due"],
-                                     [])
+
+            accepted_list_ids = trello_lists.get_ids()
+            trello_card, trello_list = TrelloObjectParser._make_trello_card_from_json(card, attachments, trello_checklists, trello_lists, accepted_list_ids)
             cards.append(trello_card)
             trello_list.cards.append(trello_card)
-        return cards
+        return cards, cards_for_other_lists
+
+    @staticmethod
+    def _make_trello_card_from_json(card,
+                                    attachments: list[Any],
+                                    trello_checklists,
+                                    trello_lists,
+                                    accepted_list_ids) -> tuple[TrelloCard, Any]:
+
+        label_names = [l["name"] for l in card["labels"]]
+        checklist_ids = card["idChecklists"]
+        checklists = trello_checklists.get_by_ids(checklist_ids)
+
+        list_id = card["idList"]
+        if list_id not in accepted_list_ids:
+            raise TrelloException(f"Cannot find list with id: {list_id}. All lists: {trello_lists}")
+        trello_list = trello_lists.get_by_id(list_id)
+
+        trello_card = TrelloCard(card["id"],
+                                 card["name"],
+                                 card["shortUrl"],
+                                 trello_list,
+                                 card["desc"],
+                                 attachments,
+                                 checklists,
+                                 label_names,
+                                 card["closed"],
+                                 [],
+                                 card["due"],
+                                 [])
+        return trello_card, trello_list
 
     @staticmethod
     def parse_comments_for_card(card, actions_resp_parsed) -> List[TrelloComment]:

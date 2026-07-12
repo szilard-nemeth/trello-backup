@@ -42,6 +42,7 @@ class TrelloLists:
         self._filtered = False
 
         trello_lists: List[TrelloList] = TrelloObjectParser.parse_trello_lists(board_json)
+        self._all_by_id: Dict[str, TrelloList] = {l.id: l for l in trello_lists}
 
         if trello_lists_param:
             if len(trello_lists_param) < len(trello_lists):
@@ -52,6 +53,7 @@ class TrelloLists:
         self._by_name: Dict[str, TrelloList] = {l.name: l for l in trello_lists}
         # Filter open trello lists
         self.open: List[TrelloList] = self._sort(filter(lambda tl: not tl.closed, trello_lists))
+        self.closed: List[TrelloList] = self._sort(filter(lambda tl: tl.closed, trello_lists))
 
     def get(self) -> List[TrelloList]:
         return self._sort(self._by_name.values())
@@ -59,8 +61,11 @@ class TrelloLists:
     def get_ids(self):
         return set(self._by_id.keys())
 
+    def get_all_ids(self):
+        return set(self._all_by_id.keys())
+
     def get_by_id(self, list_id):
-        return self._by_id[list_id]
+        return self._all_by_id[list_id]
 
     @staticmethod
     def _sort(lists: Iterable[TrelloList]) -> List[TrelloList]:
@@ -208,8 +213,11 @@ class TrelloCard:
 class TrelloCards:
     def __init__(self, board_json, trello_lists: TrelloLists, trello_checklists: TrelloChecklists):
         from trello_backup.trello.parser import TrelloObjectParser
-        self.all: List[TrelloCard] = TrelloObjectParser.parse_trello_cards(board_json, trello_lists, trello_checklists)
+        all, other_lists = TrelloObjectParser.parse_trello_cards(board_json, trello_lists, trello_checklists)
+        self.all: List[TrelloCard] = all
+        self.cards_for_other_lists: Dict[str, List[TrelloCard]] = other_lists
         self.open: List[TrelloCard] = list(filter(lambda c: not c.closed, self.all))
+        self.closed: List[TrelloCard] = list(filter(lambda c: c.closed, self.all))
         self.by_short_url = {c.short_url: c for c in self.all}
 
 
