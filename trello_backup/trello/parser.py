@@ -63,8 +63,9 @@ class TrelloObjectParser:
 
             accepted_list_ids = trello_lists.get_ids()
             trello_card, trello_list = TrelloObjectParser._make_trello_card_from_json(card, attachments, trello_checklists, trello_lists, accepted_list_ids)
-            cards.append(trello_card)
-            trello_list.cards.append(trello_card)
+            if trello_card and trello_list:
+                cards.append(trello_card)
+                trello_list.cards.append(trello_card)
         return cards, cards_for_other_lists
 
     @staticmethod
@@ -80,7 +81,9 @@ class TrelloObjectParser:
 
         list_id = card["idList"]
         if list_id not in accepted_list_ids:
-            raise TrelloException(f"Cannot find list with id: {list_id}. All lists: {trello_lists}")
+            LOG.error(f"List {list_id} is not in accepted lists. Accepted list ids: {accepted_list_ids}")
+            return None, None
+            # raise TrelloException(f"Cannot find list with id: {list_id}. All lists: {trello_lists}")
         trello_list = trello_lists.get_by_id(list_id)
 
         trello_card = TrelloCard(card["id"],

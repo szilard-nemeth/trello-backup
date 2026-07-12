@@ -21,188 +21,32 @@ CLI_LOG = CliLogger(LOG)
 
 class TrelloOperations:
     def __init__(self,
-                 trello_repository: TrelloRepository,
-                 cache: WebpageTitleCache,
-                 title_service: 'TrelloTitleService',
-                 data_converter: TrelloDataConverter):
-        self._api: TrelloApiAbs = trello_repository.get_api()
-        self._board_name_to_board_id: Dict[str, str] = {}
-        self._board_id_to_board_json: Dict[str, Any] = {}
-        self._cache = cache
-        self._webpage_title_service = title_service
-        self._data_converter = data_converter
+                 data_fetcher_service: 'TrelloDataFetcherService',
+                 cleanup_service: 'TrelloCleanupService'):
+        self._data_fetcher_service = data_fetcher_service
+        self._cleanup_service = cleanup_service
 
     def get_board_names_and_ids(self):
-        d = self._api.list_boards()
-        for board_name, board_id in d.items():
-            self._board_name_to_board_id[board_name] = board_id
-        return d
+        return self._data_fetcher_service.get_board_names_and_ids()
 
-    # TODO ASAP Refactor, unify interface: get_board + get_lists_and_cards
     def get_board(self, name: str,
                   filters: TrelloFilters,
                   download_comments: bool = False) -> Tuple[TrelloBoard, Optional[TrelloLists]]:
-        board, _ = self._get_trello_board_and_lists(name,
-                                                    filters,
-                                                    download_comments=download_comments)
-        self._api.download_attachments(board)
-        return board, None
+        return self._data_fetcher_service.get_board(name, filters, download_comments)
 
     def get_lists_and_cards(self,
                             board_name: str,
                             filters: TrelloFilters) -> Tuple[TrelloBoard, TrelloLists]:
-        board, trello_lists = self._get_trello_board_and_lists(board_name, filters)
-        # TODO ASAP Refactor, does it make sense to return trello_lists
-        return board, trello_lists
-
-
-    def _get_trello_board_and_lists(self,
-                                    name: str,
-                                    filters: TrelloFilters,
-                                    download_comments: bool = False) -> Tuple[TrelloBoard, TrelloLists]:
-        # TODO ASAP Print processing board, similar to "Processing card...)
-        board_id = self._get_board_id(name)
-        board_json = self._get_board_json(board_id)
-
-        # Parse JSON to objects
-        trello_lists = TrelloLists(board_json)
-        # TODO ASAP Filtering: This should be more transparently filtered
-        if filters.filter_list_names:
-            trello_lists = trello_lists.filter_by_list_names(filters.filter_list_names)
-        if filters.list_filter:
-            trello_lists = trello_lists.filter_by_list_filter(filters.list_filter)
-
-        trello_checklists = TrelloChecklists(board_json)
-        # After this call, TrelloList will contain every card belonging to each list
-
-        trello_cards = TrelloCards(board_json, trello_lists, trello_checklists)
-        if download_comments:
-            self._fetch_comments_for_cards(download_comments, trello_cards)
-
-        board = TrelloBoard(board_id, board_json, name, trello_lists.get())
-        for list in board.lists:
-            filtered_cards = CardFilterer.filter_cards(list, filters.card_filters)
-            # Overwrite list.cards
-            list.cards = filtered_cards
-
-        # Call to fill webpage title and URL
-        self._webpage_title_service.process_board_checklist_titles(board)
-
-        # TODO ASAP Refactor, does it make sense to return trello_lists
-        return board, trello_lists
-
-    def _fetch_comments_for_cards(self, download_comments: bool, trello_cards: TrelloCards):
-        for card in trello_cards.all:
-            if download_comments:
-                actions_resp_parsed = self._api.get_actions_for_card(card.id)
-                comments: List[TrelloComment] = TrelloObjectParser.parse_comments_for_card(card, actions_resp_parsed)
-                card.comments = comments
-
-    def _get_board_id(self, name):
-        board_id = self._board_name_to_board_id.get(name)
-        if board_id is None:
-            board_id = self._api.get_board_id(name)
-            self._board_name_to_board_id[name] = board_id
-        return board_id
-
-    def _get_board_json(self, board_id):
-        board_json = self._board_id_to_board_json.get(board_id)
-        if board_json is None:
-            board_json = self._api.get_board_details(board_id)
-            self._board_id_to_board_json[board_id] = board_json
-        return board_json
+        return self._data_fetcher_service.get_lists_and_cards(board_name, filters)
 
     def cleanup_board(self,
                       board_name: str,
                       filters: TrelloFilters,
                       batch_mode: bool):
-        additional_log = ", Batch mode is enabled" if batch_mode else ""
-        CLI_LOG.info(f"Starting cleanup for board: {board_name}{additional_log}")
-        board, trello_lists = self.get_lists_and_cards(board_name, filters)
-        trello_data = self._data_converter.convert_to_output_data(trello_lists)
-        num_lists = len(trello_data)
-        list_names = [l["name"] for l in trello_data]
-        CLI_LOG.info("Processing lists in this order: %s", list_names)
-        for idx, list_obj in enumerate(trello_data):
-            list_name = list_obj['name']
-            res = TrelloPrompt.yes_skip_abort(f"Proceed cleanup with list '{list_name}'")
-            if res == "y":
-                CLI_LOG.info(f"Cleaning up list: {list_name}")
-            elif res == "a":
-                CLI_LOG.info("Cleanup aborted by user")
-                return
-            elif res == "s":
-                continue
-            CLI_LOG.info(f"Starting cleanup for list: {list_name}")
-            l_idx_info = f"[{idx+1}/{num_lists}]"
-            CLI_LOG.info(f"{l_idx_info} Actual list: {list_name}")
-            num_cards = len(list_obj["cards"])
+        self._cleanup_service.interactive_cleanup(board_name, filters, batch_mode)
 
-            if batch_mode:
-                for idx, card in enumerate(list_obj["cards"]):
-                    c_idx_info = f"[{idx+1}/{num_cards}]"
-                    card_info = f"Board: {board.name}, List: {list_name}"
-                    CLI_LOG.info(f"{c_idx_info} Card: %s (%s)", card['name'], card_info)
-                    TrelloListAndCardsPrinter.print_card_plain_text(card, print_placeholders=True)
-                res = TrelloPrompt.prompt_ask(f"OK to delete all cards ({len(list_obj["cards"])}) in list?")
-                if res:
-                    card_names = [c['name'] for c in list_obj["cards"]]
-                    card_ids = [c['id'] for c in list_obj["cards"]]
-                    CLI_LOG.info(f"Deleting all cards: {card_names}")
-                    for c_id in card_ids:
-                        self._api.delete_card(c_id)
-            else:
-                for idx, card in enumerate(list_obj["cards"]):
-                    c_idx_info = f"[{idx+1}/{num_cards}]"
-                    TrelloListAndCardsPrinter.print_card_plain_text(card, print_placeholders=True)
-                    card_info = f"Board: {board.name}, List: {list_name}"
-                    CLI_LOG.info(f"{c_idx_info} Actual card: %s (%s)", card['name'], card_info)
-                    res = TrelloPrompt.yes_no_abort("OK to delete card?")
-                    if res == "y":
-                        CLI_LOG.info(f"Deleting card: {card['name']}")
-                        self._api.delete_card(card["id"])
-                    if res == "a":
-                        CLI_LOG.info("Cleanup aborted by user")
-                        return
-        # TODO ASAP Ask to remove list if all cards have been removed
-
-    def get_cards_by_links(self,
-                           card_links: List[str]):
-        # TODO ASAP Should download attachments to temporary directory
-        """
-        Here we don't work with the board json response, we only download the specified cards for optimal speed.
-        For each card, the checklist and the list is also fetched.
-        Then we create a board dict object with keys: 'cards', 'lists' and 'checklists'.
-        Parsing logic could belong to TrelloObjectParser, but we also need API calls to fetch data, so we keep the logic here.
-        :param card_links:
-        :return:
-        """
-        lists = []
-        cards = []
-        checklists = []
-        for card_link in card_links:
-            card_json = self._api.download_card_by_share_link(card_link)
-            cards.append(card_json)
-            for checklist_id in card_json["idChecklists"]:
-                checklist_data = self._api.get_checklist_by_id(checklist_id)
-                checklists.append(checklist_data)
-            list_data = self._api.get_list_by_id(card_json["idList"])
-            lists.append(list_data)
-
-        board_dict = {"cards": cards, "lists": lists, "checklists": checklists}
-        trello_lists = TrelloLists(board_dict)
-        trello_checklists = TrelloChecklists(board_dict)
-        trello_cards = TrelloCards(board_dict,
-                                   trello_lists,
-                                   trello_checklists)
-
-        # Call to fill webpage title and URL
-        self._webpage_title_service.process_cards_checklist_titles(trello_cards.all)
-
-        trello_data = self._data_converter.convert_to_output_data(trello_lists)
-        for idx, list_obj in enumerate(trello_data):
-            for idx, card in enumerate(list_obj["cards"]):
-                TrelloListAndCardsPrinter.print_card_plain_text(card, print_placeholders=True)
+    def get_cards_by_links(self, card_links: List[str]):
+        self._data_fetcher_service.get_cards_by_links(card_links)
 
 
 class TrelloTitleService:
@@ -282,3 +126,199 @@ class TrelloTitleService:
             # Put title into cache
             self._cache.put(url, url_title)
         return url_title
+
+
+class TrelloDataFetcherService:
+    def __init__(self,
+                 trello_repository: TrelloRepository,
+                 title_service: TrelloTitleService,
+                 data_converter: TrelloDataConverter):
+        self._api: TrelloApiAbs = trello_repository.get_api()
+        self._webpage_title_service = title_service
+        self._data_converter = data_converter
+        self._board_name_to_board_id: Dict[str, str] = {}
+        self._board_id_to_board_json: Dict[str, Any] = {}
+
+    def _get_board_id(self, name):
+        board_id = self._board_name_to_board_id.get(name)
+        if board_id is None:
+            board_id = self._api.get_board_id(name)
+            self._board_name_to_board_id[name] = board_id
+        return board_id
+
+    def _get_board_json(self, board_id):
+        board_json = self._board_id_to_board_json.get(board_id)
+        if board_json is None:
+            board_json = self._api.get_board_details(board_id)
+            self._board_id_to_board_json[board_id] = board_json
+        return board_json
+
+    def get_board_names_and_ids(self):
+        d = self._api.list_boards()
+        for board_name, board_id in d.items():
+            self._board_name_to_board_id[board_name] = board_id
+        return d
+
+    def get_lists_and_cards(self,
+                            board_name: str,
+                            filters: TrelloFilters) -> Tuple[TrelloBoard, TrelloLists]:
+        # TODO ASAP Refactor, does it make sense to return trello_lists
+        board, trello_lists = self._get_trello_board_and_lists(board_name, filters)
+        return board, trello_lists
+
+    def get_board(self,
+                  name: str,
+                  filters: TrelloFilters,
+                  download_comments: bool = False) -> Tuple[TrelloBoard, Optional[TrelloLists]]:
+        # TODO ASAP Refactor, unify interface: get_board + get_lists_and_cards
+        board, _ = self._get_trello_board_and_lists(name,
+                                                    filters,
+                                                    download_comments=download_comments)
+        self._api.download_attachments(board)
+        return board, None
+
+    def _get_trello_board_and_lists(self,
+                                    name: str,
+                                    filters: TrelloFilters,
+                                    download_comments: bool = False) -> Tuple[TrelloBoard, TrelloLists]:
+        # TODO ASAP Print processing board, similar to "Processing card...)
+        board_id = self._get_board_id(name)
+        board_json = self._get_board_json(board_id)
+
+        # Parse JSON to objects
+        trello_lists = TrelloLists(board_json)
+        # TODO ASAP Filtering: This should be more transparently filtered
+        if filters.filter_list_names:
+            trello_lists = trello_lists.filter_by_list_names(filters.filter_list_names)
+        if filters.list_filter:
+            trello_lists = trello_lists.filter_by_list_filter(filters.list_filter)
+
+        trello_checklists = TrelloChecklists(board_json)
+        # After this call, TrelloList will contain every card belonging to each list
+
+        trello_cards = TrelloCards(board_json, trello_lists, trello_checklists)
+        if download_comments:
+            self._fetch_comments_for_cards(download_comments, trello_cards)
+
+        board = TrelloBoard(board_id, board_json, name, trello_lists.get())
+        for list in board.lists:
+            filtered_cards = CardFilterer.filter_cards(list, filters.card_filters)
+            # Overwrite list.cards
+            list.cards = filtered_cards
+
+        # Call to fill webpage title and URL
+        self._webpage_title_service.process_board_checklist_titles(board)
+
+        # TODO ASAP Refactor, does it make sense to return trello_lists
+        return board, trello_lists
+
+    def get_cards_by_links(self,
+                           card_links: List[str]):
+        # TODO ASAP Should download attachments to temporary directory
+        """
+        Here we don't work with the board json response, we only download the specified cards for optimal speed.
+        For each card, the checklist and the list is also fetched.
+        Then we create a board dict object with keys: 'cards', 'lists' and 'checklists'.
+        Parsing logic could belong to TrelloObjectParser, but we also need API calls to fetch data, so we keep the logic here.
+        :param card_links:
+        :return:
+        """
+        lists = []
+        cards = []
+        checklists = []
+        for card_link in card_links:
+            card_json = self._api.download_card_by_share_link(card_link)
+            cards.append(card_json)
+            for checklist_id in card_json["idChecklists"]:
+                checklist_data = self._api.get_checklist_by_id(checklist_id)
+                checklists.append(checklist_data)
+            list_data = self._api.get_list_by_id(card_json["idList"])
+            lists.append(list_data)
+
+        board_dict = {"cards": cards, "lists": lists, "checklists": checklists}
+        trello_lists = TrelloLists(board_dict)
+        trello_checklists = TrelloChecklists(board_dict)
+        trello_cards = TrelloCards(board_dict,
+                                   trello_lists,
+                                   trello_checklists)
+
+        # Call to fill webpage title and URL
+        self._webpage_title_service.process_cards_checklist_titles(trello_cards.all)
+
+        trello_data = self._data_converter.convert_to_output_data(trello_lists)
+        for idx, list_obj in enumerate(trello_data):
+            for idx, card in enumerate(list_obj["cards"]):
+                TrelloListAndCardsPrinter.print_card_plain_text(card, print_placeholders=True)
+
+    def _fetch_comments_for_cards(self, download_comments: bool, trello_cards: TrelloCards):
+        for card in trello_cards.all:
+            if download_comments:
+                actions_resp_parsed = self._api.get_actions_for_card(card.id)
+                comments: List[TrelloComment] = TrelloObjectParser.parse_comments_for_card(card, actions_resp_parsed)
+                card.comments = comments
+
+
+class TrelloCleanupService:
+    def __init__(self,
+                 trello_repository: TrelloRepository,
+                 data_fetcher_service: TrelloDataFetcherService,
+                 data_converter: TrelloDataConverter):
+        self._api: TrelloApiAbs = trello_repository.get_api()
+        self._data_converter = data_converter
+        self._data_fetcher_service = data_fetcher_service
+
+    def interactive_cleanup(self,
+                            board_name: str,
+                            filters: TrelloFilters,
+                            batch_mode: bool):
+        additional_log = ", Batch mode is enabled" if batch_mode else ""
+        CLI_LOG.info(f"Starting cleanup for board: {board_name}{additional_log}")
+        # TODO here, archived lists can be removed (only if they don't have associated cards)
+        # TODO here, open cards with archived lists can be moved to a temporary list
+        board, trello_lists = self._data_fetcher_service.get_lists_and_cards(board_name, filters)
+        trello_data = self._data_converter.convert_to_output_data(trello_lists)
+        num_lists = len(trello_data)
+        list_names = [l["name"] for l in trello_data]
+        CLI_LOG.info("Processing lists in this order: %s", list_names)
+        for idx, list_obj in enumerate(trello_data):
+            list_name = list_obj['name']
+            res = TrelloPrompt.yes_skip_abort(f"Proceed cleanup with list '{list_name}'")
+            if res == "y":
+                CLI_LOG.info(f"Cleaning up list: {list_name}")
+            elif res == "a":
+                CLI_LOG.info("Cleanup aborted by user")
+                return
+            elif res == "s":
+                continue
+            CLI_LOG.info(f"Starting cleanup for list: {list_name}")
+            l_idx_info = f"[{idx+1}/{num_lists}]"
+            CLI_LOG.info(f"{l_idx_info} Actual list: {list_name}")
+            num_cards = len(list_obj["cards"])
+
+            if batch_mode:
+                for idx, card in enumerate(list_obj["cards"]):
+                    c_idx_info = f"[{idx+1}/{num_cards}]"
+                    card_info = f"Board: {board.name}, List: {list_name}"
+                    CLI_LOG.info(f"{c_idx_info} Card: %s (%s)", card['name'], card_info)
+                    TrelloListAndCardsPrinter.print_card_plain_text(card, print_placeholders=True)
+                res = TrelloPrompt.prompt_ask(f"OK to delete all cards ({len(list_obj["cards"])}) in list?")
+                if res:
+                    card_names = [c['name'] for c in list_obj["cards"]]
+                    card_ids = [c['id'] for c in list_obj["cards"]]
+                    CLI_LOG.info(f"Deleting all cards: {card_names}")
+                    for c_id in card_ids:
+                        self._api.delete_card(c_id)
+            else:
+                for idx, card in enumerate(list_obj["cards"]):
+                    c_idx_info = f"[{idx+1}/{num_cards}]"
+                    TrelloListAndCardsPrinter.print_card_plain_text(card, print_placeholders=True)
+                    card_info = f"Board: {board.name}, List: {list_name}"
+                    CLI_LOG.info(f"{c_idx_info} Actual card: %s (%s)", card['name'], card_info)
+                    res = TrelloPrompt.yes_no_abort("OK to delete card?")
+                    if res == "y":
+                        CLI_LOG.info(f"Deleting card: {card['name']}")
+                        self._api.delete_card(card["id"])
+                    if res == "a":
+                        CLI_LOG.info("Cleanup aborted by user")
+                        return
+            # TODO ASAP Ask to remove list if all cards have been removed

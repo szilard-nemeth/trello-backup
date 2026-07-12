@@ -10,7 +10,8 @@ from trello_backup.exception import TrelloConfigException
 from trello_backup.http_server import HttpServer, HTTP_SERVER_PORT
 from trello_backup.trello.api import TrelloApi, TrelloRepository, OfflineTrelloApi, NetworkStatusService
 from trello_backup.trello.cache import WebpageTitleCache
-from trello_backup.trello.service import TrelloOperations, TrelloTitleService
+from trello_backup.trello.service import TrelloOperations, TrelloTitleService, TrelloCleanupService, \
+    TrelloDataFetcherService
 
 LOG = logging.getLogger(__name__)
 
@@ -32,9 +33,6 @@ class CliCommon:
         conf: TrelloConfig = conf_loader.load(ctx)
         context = TrelloContext.create_from_config(ctx, conf, dry_run=ctx.dry_run)
 
-        # Initialize WebpageTitleCache so 'board.get_checklist_url_titles' can use it
-        cache = WebpageTitleCache()
-        webpage_title_service = TrelloTitleService(cache)
         md_formatter = MarkdownFormatter()
         data_converter = TrelloDataConverter(md_formatter, HTTP_SERVER_PORT)
 
@@ -45,7 +43,14 @@ class CliCommon:
 
         network_status_service = NetworkStatusService(ctx)
         trello_repository = TrelloRepository(TrelloApi(), OfflineTrelloApi(), network_status_service)
-        trello_ops = TrelloOperations(trello_repository, cache, webpage_title_service, data_converter)
+
+        # Initialize WebpageTitleCache so 'board.get_checklist_url_titles' can use it
+        cache = WebpageTitleCache()
+        webpage_title_service = TrelloTitleService(cache)
+
+        data_fetcher_service = TrelloDataFetcherService(trello_repository, webpage_title_service, data_converter)
+        cleanup_service = TrelloCleanupService(trello_repository, data_fetcher_service, data_converter)
+        trello_ops = TrelloOperations(data_fetcher_service, cleanup_service)
         handler = MainCommandHandler(context, trello_ops, data_converter, OutputHandlerFactory)
 
         # TODO ASAP Print if offline == true, print directory where files are being loaded from (print from OfflineTrelloApi)
