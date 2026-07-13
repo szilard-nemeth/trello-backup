@@ -116,15 +116,23 @@ class TestTrelloOperations(unittest.TestCase):
         mock_trello_board = Mock(spec=TrelloBoard, lists=[mock_trello_list])
         MockTrelloBoard.return_value = mock_trello_board
 
-        # Setup CardFilterer
-        mock_filtered_cards = [Mock()]
+        # Setup CardFilterer. These cards are what the real TrelloTitleService will
+        # iterate over, so give them an (empty) checklists collection to traverse.
+        mock_filtered_cards = [Mock(spec=TrelloCard, checklists=[])]
         MockCardFilterer.filter_cards.return_value = mock_filtered_cards
 
-        # Call the method under test
-        board, trello_lists = self._data_fetcher_service._get_trello_board_and_lists(
-            name=MOCK_BOARD_NAME,
-            filters=TrelloFilters(MOCK_LIST_NAMES, ListFilter.ALL, CardFilters.ALL)
-        )
+        # Spy on the real title service so its actual logic runs (e.g. cache.save)
+        # while still allowing us to assert how it was called.
+        with patch.object(
+            self.title_service,
+            'process_board_checklist_titles',
+            wraps=self.title_service.process_board_checklist_titles,
+        ) as spy_process_titles:
+            # Call the method under test
+            board, trello_lists = self._data_fetcher_service._get_trello_board_and_lists(
+                name=MOCK_BOARD_NAME,
+                filters=TrelloFilters(MOCK_LIST_NAMES, ListFilter.ALL, CardFilters.ALL)
+            )
 
         # Assertions
         self._data_fetcher_service._get_board_id.assert_called_once_with(MOCK_BOARD_NAME)
@@ -142,8 +150,9 @@ class TestTrelloOperations(unittest.TestCase):
         MockCardFilterer.filter_cards.assert_called_once()
         self.assertEqual(mock_trello_list.cards, mock_filtered_cards) # Check if list.cards was overwritten
 
-        # Assert title service and cache calls
-        self.title_service.process_board_checklist_titles.assert_called_once_with(mock_trello_board)
+        # Assert title service was invoked with the board, and that its real logic
+        # ran (the real service saves the cache at the end of processing).
+        spy_process_titles.assert_called_once_with(mock_trello_board)
         self.mock_cache.save.assert_called_once()
 
     @patch('trello_backup.trello.service.CardFilterer')
