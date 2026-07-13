@@ -352,8 +352,9 @@ class TrelloCleanupService:
         # Log the candidate lists (name + archive date) to the CLI separately from
         # the confirmation prompt, so there is a persistent record of exactly what
         # is about to be removed.
+        CLI_LOG.info("Found %d empty archived list(s) to clean up", len(empty_lists))
+        CLI_LOG.info("Fetching archive dates from the board's action history, this may take a while...")
         archive_dates = self._get_list_archive_dates(board)
-        CLI_LOG.info("Found %d empty archived list(s) to clean up:", len(empty_lists))
         for l in empty_lists:
             CLI_LOG.info(
                 "  - List '%s' (id=%s), created on: %s, archived on: %s",
