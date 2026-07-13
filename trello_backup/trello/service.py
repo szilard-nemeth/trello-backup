@@ -4,6 +4,8 @@ from datetime import datetime, timezone
 from typing import Dict, Any, List, Tuple, Optional
 
 from pythoncommons.url_utils import UrlUtils
+from rich import box
+from rich.table import Table
 
 from trello_backup.cli.prompt import TrelloPrompt
 from trello_backup.display.console import CliLogger
@@ -12,8 +14,8 @@ from trello_backup.trello.api import TrelloApiAbs, TrelloRepository
 from trello_backup.trello.cache import WebpageTitleCache
 from trello_backup.trello.filter import CardFilterer, TrelloFilters, ListFilter, CardFilters
 from trello_backup.trello.html import HtmlParser
-from trello_backup.trello.model import TrelloChecklist, TrelloBoard, TrelloLists, TrelloChecklists, TrelloCards, \
-    TrelloComment
+from trello_backup.trello.model import TrelloChecklist, TrelloBoard, TrelloList, TrelloLists, TrelloChecklists, \
+    TrelloCards, TrelloComment
 from trello_backup.trello.parser import TrelloObjectParser
 
 LOG = logging.getLogger(__name__)
@@ -352,14 +354,10 @@ class TrelloCleanupService:
         # Log the candidate lists (name + archive date) to the CLI separately from
         # the confirmation prompt, so there is a persistent record of exactly what
         # is about to be removed.
-        CLI_LOG.info("Found %d empty archived list(s) to clean up", len(empty_lists))
+        CLI_LOG.info("Found %d empty archived list(s) to clean up:", len(empty_lists))
         CLI_LOG.info("Fetching archive dates from the board's action history, this may take a while...")
         archive_dates = self._get_list_archive_dates(board)
-        for l in empty_lists:
-            CLI_LOG.info(
-                "  - List '%s' (id=%s), created on: %s, archived on: %s",
-                l.name, l.id, self._created_date_from_id(l.id), archive_dates.get(l.id, "unknown"),
-            )
+        self._print_archived_lists_table(empty_lists, archive_dates)
 
         list_names_and_ids = [(l.name, l.id) for l in empty_lists]
         res = TrelloPrompt.yes_skip_abort(
@@ -406,6 +404,32 @@ class TrelloCleanupService:
                 if list_id and list_id not in archive_dates:
                     archive_dates[list_id] = action.get("date", "unknown")
         return archive_dates
+
+    def _print_archived_lists_table(self, lists: List[TrelloList], archive_dates: Dict[str, str]):
+        rows = [
+            (l.name, l.id, self._created_date_from_id(l.id), archive_dates.get(l.id, "unknown"))
+            for l in lists
+        ]
+
+        # Order by archive date (desc). Lists whose archive date is unknown are
+        # grouped last and ordered among themselves by creation date (desc).
+        def sort_key(row: Tuple[str, str, str, str]):
+            _, _, created, archived = row
+            archived_known = archived != "unknown"
+            return archived_known, archived if archived_known else "", created
+
+        rows.sort(key=sort_key, reverse=True)
+
+        table = Table(title="Empty archived lists to clean up", show_lines=True, box=box.SQUARE)
+        table.add_column("#", justify="right")
+        table.add_column("List name")
+        table.add_column("List ID")
+        table.add_column("Created on")
+        table.add_column("Archived on")
+        for idx, (name, list_id, created, archived) in enumerate(rows, start=1):
+            table.add_row(str(idx), name, list_id, created, archived)
+
+        CLI_LOG.print(table)
 
     def _purge_lists(self, board: TrelloBoard, list_names_and_ids: List[Tuple[str, str]]):
         # Trello's REST API cannot delete a list directly; it can only archive one.
