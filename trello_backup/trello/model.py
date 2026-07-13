@@ -48,6 +48,14 @@ class TrelloLists:
             if len(trello_lists_param) < len(trello_lists):
                 self._filtered = True
             trello_lists = trello_lists_param
+            # Keep object identity consistent: parse_trello_lists() above created a
+            # fresh set of TrelloList instances for _all_by_id, but the filtered-in
+            # lists live in trello_lists_param. get_by_id() (used to attach cards)
+            # reads _all_by_id, while get()/_by_name return the param instances, so
+            # without this the cards would be attached to throwaway objects and every
+            # filtered list would look empty.
+            for l in trello_lists_param:
+                self._all_by_id[l.id] = l
 
         self._by_id: Dict[str, TrelloList] = {l.id: l for l in trello_lists}
         self._by_name: Dict[str, TrelloList] = {l.name: l for l in trello_lists}
