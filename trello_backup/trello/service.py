@@ -332,13 +332,15 @@ class TrelloCleanupService:
     def cleanup_archived_lists(self, board_name, filters):
         CLI_LOG.info(f"Starting cleanup of archived lists for board: {board_name}")
         board, trello_lists = self._data_fetcher_service.get_lists_and_cards(board_name, filters)
-        trello_data = self._data_converter.convert_to_output_data(trello_lists)
+
+        # 'trello_lists' is already filtered down to the archived (closed) lists.
+        archived_lists = trello_lists.get()
 
         # The command only removes *empty* archived lists. Purging a list is
         # permanent and also destroys any cards it contains (see _purge_lists),
         # so archived lists that still have cards are skipped to avoid data loss.
-        empty_lists = [l for l in trello_data if not l["cards"]]
-        non_empty_names = [l["name"] for l in trello_data if l["cards"]]
+        empty_lists = [l for l in archived_lists if not l.cards]
+        non_empty_names = [l.name for l in archived_lists if l.cards]
         if non_empty_names:
             CLI_LOG.warning("Skipping non-empty archived lists: %s", non_empty_names)
 
@@ -346,7 +348,18 @@ class TrelloCleanupService:
             CLI_LOG.info("No empty archived lists to clean up on board: %s", board_name)
             return
 
-        list_names_and_ids = [(l["name"], l["id"]) for l in empty_lists]
+        # Log the candidate lists (name + archive date) to the CLI separately from
+        # the confirmation prompt, so there is a persistent record of exactly what
+        # is about to be removed.
+        archive_dates = self._get_list_archive_dates(board)
+        CLI_LOG.info("Found %d empty archived list(s) to clean up:", len(empty_lists))
+        for l in empty_lists:
+            CLI_LOG.info(
+                "  - List '%s' (id=%s), archived on: %s",
+                l.name, l.id, archive_dates.get(l.id, "unknown"),
+            )
+
+        list_names_and_ids = [(l.name, l.id) for l in empty_lists]
         list_names = [name for name, _ in list_names_and_ids]
         res = TrelloPrompt.yes_skip_abort(
             f"Permanently delete {len(list_names_and_ids)} empty archived list(s) {list_names}?"
@@ -356,6 +369,30 @@ class TrelloCleanupService:
             return
 
         self._purge_lists(board, list_names_and_ids)
+
+    @staticmethod
+    def _get_list_archive_dates(board: TrelloBoard) -> Dict[str, str]:
+        """
+        Best-effort mapping of list id -> the date it was most recently archived,
+        derived from the board's action history. Trello does not expose an archive
+        timestamp on the list object itself, so this relies on 'updateList' actions
+        and may be incomplete if the archiving happened outside the fetched action
+        window.
+        """
+        archive_dates: Dict[str, str] = {}
+        actions = board.json.get("actions", []) if isinstance(board.json, dict) else []
+        # Actions are returned newest-first, so the first archive action seen for a
+        # given list is the most recent one.
+        for action in actions:
+            if action.get("type") != "updateList":
+                continue
+            data = action.get("data", {})
+            # A list was archived when its 'closed' flag changed from False to True.
+            if data.get("old", {}).get("closed") is False:
+                list_id = data.get("list", {}).get("id")
+                if list_id and list_id not in archive_dates:
+                    archive_dates[list_id] = action.get("date", "unknown")
+        return archive_dates
 
     def _purge_lists(self, board: TrelloBoard, list_names_and_ids: List[Tuple[str, str]]):
         # Trello's REST API cannot delete a list directly; it can only archive one.
