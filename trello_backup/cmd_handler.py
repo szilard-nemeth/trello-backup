@@ -56,8 +56,8 @@ class MainCommandHandler:
     def print_cards_by_share_links(self, card_links: List[str]):
         self._trello_ops.get_cards_by_links(card_links)
 
-    def cleanup_board(self, board: str, filter_list_names: List[str], batch_mode: bool):
+    def cleanup_board(self, board: str, filter_list_names: List[str], batch_mode: bool, cleanup_archived_lists: bool):
         filters = TrelloFilters(filter_list_names, ListFilter.OPEN, CardFilters.OPEN)
-        self._trello_ops.cleanup_board(board, filters, batch_mode)
+        self._trello_ops.cleanup_board(board, filters, batch_mode, cleanup_archived_lists)
 
 

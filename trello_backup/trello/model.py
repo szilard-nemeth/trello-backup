@@ -101,6 +101,8 @@ class TrelloLists:
             return TrelloLists(self._board_json, trello_lists_param=list(self.get()))
         elif list_filter == ListFilter.OPEN:
             return TrelloLists(self._board_json, trello_lists_param=list(self.open))
+        elif list_filter == ListFilter.CLOSED:
+            return TrelloLists(self._board_json, trello_lists_param=list(self.closed))
 
 
 @dataclass

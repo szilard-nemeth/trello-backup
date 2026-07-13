@@ -9,7 +9,7 @@ from trello_backup.display.console import CliLogger
 from trello_backup.display.output import TrelloDataConverter, TrelloListAndCardsPrinter
 from trello_backup.trello.api import TrelloApiAbs, TrelloRepository
 from trello_backup.trello.cache import WebpageTitleCache
-from trello_backup.trello.filter import CardFilterer, TrelloFilters
+from trello_backup.trello.filter import CardFilterer, TrelloFilters, ListFilter, CardFilters
 from trello_backup.trello.html import HtmlParser
 from trello_backup.trello.model import TrelloChecklist, TrelloBoard, TrelloLists, TrelloChecklists, TrelloCards, \
     TrelloComment
@@ -42,8 +42,19 @@ class TrelloOperations:
     def cleanup_board(self,
                       board_name: str,
                       filters: TrelloFilters,
-                      batch_mode: bool):
-        self._cleanup_service.interactive_cleanup(board_name, filters, batch_mode)
+                      batch_mode: bool,
+                      cleanup_archived_lists: bool):
+        if cleanup_archived_lists:
+            if filters.filter_list_names:
+                CLI_LOG.warning(
+                    "Ignoring --filter-list %s: it is not supported together with "
+                    "--cleanup-archived-lists",
+                    filters.filter_list_names,
+                )
+            archived_filters = TrelloFilters([], ListFilter.CLOSED, CardFilters.ALL)
+            self._cleanup_service.cleanup_archived_lists(board_name, archived_filters)
+        else:
+            self._cleanup_service.interactive_cleanup(board_name, filters, batch_mode)
 
     def get_cards_by_links(self, card_links: List[str]):
         self._data_fetcher_service.get_cards_by_links(card_links)
@@ -296,29 +307,117 @@ class TrelloCleanupService:
             num_cards = len(list_obj["cards"])
 
             if batch_mode:
-                for idx, card in enumerate(list_obj["cards"]):
-                    c_idx_info = f"[{idx+1}/{num_cards}]"
-                    card_info = f"Board: {board.name}, List: {list_name}"
-                    CLI_LOG.info(f"{c_idx_info} Card: %s (%s)", card['name'], card_info)
-                    TrelloListAndCardsPrinter.print_card_plain_text(card, print_placeholders=True)
-                res = TrelloPrompt.prompt_ask(f"OK to delete all cards ({len(list_obj["cards"])}) in list?")
-                if res:
-                    card_names = [c['name'] for c in list_obj["cards"]]
-                    card_ids = [c['id'] for c in list_obj["cards"]]
-                    CLI_LOG.info(f"Deleting all cards: {card_names}")
-                    for c_id in card_ids:
-                        self._api.delete_card(c_id)
+                self._batch_delete_cards(board, list_name, list_obj, num_cards)
             else:
-                for idx, card in enumerate(list_obj["cards"]):
-                    c_idx_info = f"[{idx+1}/{num_cards}]"
-                    TrelloListAndCardsPrinter.print_card_plain_text(card, print_placeholders=True)
-                    card_info = f"Board: {board.name}, List: {list_name}"
-                    CLI_LOG.info(f"{c_idx_info} Actual card: %s (%s)", card['name'], card_info)
-                    res = TrelloPrompt.yes_no_abort("OK to delete card?")
-                    if res == "y":
-                        CLI_LOG.info(f"Deleting card: {card['name']}")
-                        self._api.delete_card(card["id"])
-                    if res == "a":
-                        CLI_LOG.info("Cleanup aborted by user")
-                        return
+                ret = self._interactive_delete_cards(board, list_name, list_obj, num_cards)
+                if not ret:
+                    # Aborted
+                    return
             # TODO ASAP Ask to remove list if all cards have been removed
+
+    def _batch_delete_cards(self, board: TrelloBoard, list_name, list_obj: dict[str, Any], num_cards: int):
+        for idx, card in enumerate(list_obj["cards"]):
+            c_idx_info = f"[{idx + 1}/{num_cards}]"
+            card_info = f"Board: {board.name}, List: {list_name}"
+            CLI_LOG.info(f"{c_idx_info} Card: %s (%s)", card['name'], card_info)
+            TrelloListAndCardsPrinter.print_card_plain_text(card, print_placeholders=True)
+        resp = TrelloPrompt.prompt_ask(f"OK to delete all cards ({len(list_obj["cards"])}) in list?")
+        if resp:
+            card_names = [c['name'] for c in list_obj["cards"]]
+            card_ids = [c['id'] for c in list_obj["cards"]]
+            CLI_LOG.info(f"Deleting all cards: {card_names}")
+            for c_id in card_ids:
+                self._api.delete_card(c_id)
+
+    def cleanup_archived_lists(self, board_name, filters):
+        CLI_LOG.info(f"Starting cleanup of archived lists for board: {board_name}")
+        board, trello_lists = self._data_fetcher_service.get_lists_and_cards(board_name, filters)
+        trello_data = self._data_converter.convert_to_output_data(trello_lists)
+
+        # The command only removes *empty* archived lists. Purging a list is
+        # permanent and also destroys any cards it contains (see _purge_lists),
+        # so archived lists that still have cards are skipped to avoid data loss.
+        empty_lists = [l for l in trello_data if not l["cards"]]
+        non_empty_names = [l["name"] for l in trello_data if l["cards"]]
+        if non_empty_names:
+            CLI_LOG.warning("Skipping non-empty archived lists: %s", non_empty_names)
+
+        if not empty_lists:
+            CLI_LOG.info("No empty archived lists to clean up on board: %s", board_name)
+            return
+
+        list_names_and_ids = [(l["name"], l["id"]) for l in empty_lists]
+        list_names = [name for name, _ in list_names_and_ids]
+        res = TrelloPrompt.yes_skip_abort(
+            f"Permanently delete {len(list_names_and_ids)} empty archived list(s) {list_names}?"
+        )
+        if res != "y":
+            CLI_LOG.info("Archived list cleanup skipped/aborted by user")
+            return
+
+        self._purge_lists(board, list_names_and_ids)
+
+    def _purge_lists(self, board: TrelloBoard, list_names_and_ids: List[Tuple[str, str]]):
+        # Trello's REST API cannot delete a list directly; it can only archive one.
+        # The supported workaround for permanent removal is to move the lists onto a
+        # throwaway board and then delete that entire board, which permanently
+        # removes the board along with all lists and cards it contains.
+        trash_board_name = f"trello-backup-trash-{board.name}"
+        CLI_LOG.info("Creating temporary trash board: %s", trash_board_name)
+        trash_board = self._api.create_board(trash_board_name)
+        trash_board_id = trash_board["id"]
+        trash_board_url = trash_board.get("shortUrl") or trash_board.get("url")
+        list_names = [name for name, _ in list_names_and_ids]
+
+        try:
+            # Move the lists to the trash board and unarchive them there so the user
+            # can visually review the (previously archived) lists before deletion.
+            for l_name, l_id in list_names_and_ids:
+                CLI_LOG.info("Moving archived list '%s' (id=%s) to trash board", l_name, l_id)
+                self._api.move_list_to_board(l_id, trash_board_id)
+                self._api.set_list_closed(l_id, False)
+
+            res = TrelloPrompt.yes_skip_abort(
+                f"Moved {len(list_names_and_ids)} list(s) to trash board '{trash_board_name}' "
+                f"({trash_board_url}) and unarchived them for review: {list_names}. "
+                f"Permanently delete the trash board and all of these lists?"
+            )
+            if res == "y":
+                CLI_LOG.info("Permanently deleting trash board '%s' (id=%s)", trash_board_name, trash_board_id)
+                self._api.delete_board(trash_board_id)
+                CLI_LOG.info("Successfully purged %d archived list(s)", len(list_names_and_ids))
+                return
+
+            # User declined: restore the lists to their original board and re-archive
+            # them, then remove the now-empty trash board so nothing is left behind.
+            CLI_LOG.info(
+                "Deletion declined; restoring %d list(s) to board '%s' and re-archiving them",
+                len(list_names_and_ids), board.name,
+            )
+            for l_name, l_id in list_names_and_ids:
+                self._api.move_list_to_board(l_id, board.id)
+                self._api.set_list_closed(l_id, True)
+            self._api.delete_board(trash_board_id)
+            CLI_LOG.info("Restored %d list(s) to their original archived state", len(list_names_and_ids))
+        except Exception:
+            CLI_LOG.error(
+                "Error while purging archived lists. Manually inspect/clean up trash board "
+                "'%s' (id=%s): %s",
+                trash_board_name, trash_board_id, trash_board_url,
+            )
+            raise
+
+    def _interactive_delete_cards(self, board: TrelloBoard, list_name, list_obj: dict[str, Any], num_cards: int):
+        for idx, card in enumerate(list_obj["cards"]):
+            c_idx_info = f"[{idx+1}/{num_cards}]"
+            TrelloListAndCardsPrinter.print_card_plain_text(card, print_placeholders=True)
+            card_info = f"Board: {board.name}, List: {list_name}"
+            CLI_LOG.info(f"{c_idx_info} Actual card: %s (%s)", card['name'], card_info)
+            res = TrelloPrompt.yes_no_abort("OK to delete card?")
+            if res == "y":
+                CLI_LOG.info(f"Deleting card: {card['name']}")
+                self._api.delete_card(card["id"])
+            if res == "a":
+                CLI_LOG.info("Cleanup aborted by user")
+                return False
+        return True
