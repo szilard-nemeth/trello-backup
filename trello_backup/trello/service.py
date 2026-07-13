@@ -442,11 +442,12 @@ class TrelloCleanupService:
         trash_board_id = trash_board["id"]
         trash_board_url = trash_board.get("shortUrl") or trash_board.get("url")
 
+        num_lists = len(list_names_and_ids)
         try:
             # Move the lists to the trash board and unarchive them there so the user
             # can visually review the (previously archived) lists before deletion.
-            for l_name, l_id in list_names_and_ids:
-                CLI_LOG.info("Moving archived list '%s' (id=%s) to trash board", l_name, l_id)
+            for idx, (l_name, l_id) in enumerate(list_names_and_ids, start=1):
+                CLI_LOG.info("[%d/%d] Moving archived list '%s' (id=%s) to trash board", idx, num_lists, l_name, l_id)
                 self._api.move_list_to_board(l_id, trash_board_id)
                 self._api.set_list_closed(l_id, False)
 
@@ -467,7 +468,8 @@ class TrelloCleanupService:
                 "Deletion declined; restoring %d list(s) to board '%s' and re-archiving them",
                 len(list_names_and_ids), board.name,
             )
-            for l_name, l_id in list_names_and_ids:
+            for idx, (l_name, l_id) in enumerate(list_names_and_ids, start=1):
+                CLI_LOG.info("[%d/%d] Restoring list '%s' (id=%s) to board '%s'", idx, num_lists, l_name, l_id, board.name)
                 self._api.move_list_to_board(l_id, board.id)
                 self._api.set_list_closed(l_id, True)
             self._api.delete_board(trash_board_id)
