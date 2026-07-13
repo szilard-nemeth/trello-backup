@@ -1,5 +1,6 @@
 import logging
 import re
+from datetime import datetime, timezone
 from typing import Dict, Any, List, Tuple, Optional
 
 from pythoncommons.url_utils import UrlUtils
@@ -355,14 +356,13 @@ class TrelloCleanupService:
         CLI_LOG.info("Found %d empty archived list(s) to clean up:", len(empty_lists))
         for l in empty_lists:
             CLI_LOG.info(
-                "  - List '%s' (id=%s), archived on: %s",
-                l.name, l.id, archive_dates.get(l.id, "unknown"),
+                "  - List '%s' (id=%s), created on: %s, archived on: %s",
+                l.name, l.id, self._created_date_from_id(l.id), archive_dates.get(l.id, "unknown"),
             )
 
         list_names_and_ids = [(l.name, l.id) for l in empty_lists]
-        list_names = [name for name, _ in list_names_and_ids]
         res = TrelloPrompt.yes_skip_abort(
-            f"Permanently delete {len(list_names_and_ids)} empty archived list(s) {list_names}?"
+            f"Permanently delete {len(list_names_and_ids)} empty archived list(s)?"
         )
         if res != "y":
             CLI_LOG.info("Archived list cleanup skipped/aborted by user")
@@ -371,21 +371,33 @@ class TrelloCleanupService:
         self._purge_lists(board, list_names_and_ids)
 
     @staticmethod
-    def _get_list_archive_dates(board: TrelloBoard) -> Dict[str, str]:
+    def _created_date_from_id(object_id: str) -> str:
+        """
+        Returns the creation date (ISO 8601, UTC) encoded in a Trello object id.
+
+        Trello ids are MongoDB ObjectIds whose first 4 bytes (first 8 hex chars)
+        are the Unix creation timestamp, so every list exposes a reliable creation
+        date without any extra API calls.
+        """
+        try:
+            ts = int(object_id[:8], 16)
+            return datetime.fromtimestamp(ts, tz=timezone.utc).isoformat()
+        except (ValueError, TypeError, IndexError):
+            return "unknown"
+
+    def _get_list_archive_dates(self, board: TrelloBoard) -> Dict[str, str]:
         """
         Best-effort mapping of list id -> the date it was most recently archived,
-        derived from the board's action history. Trello does not expose an archive
-        timestamp on the list object itself, so this relies on 'updateList' actions
-        and may be incomplete if the archiving happened outside the fetched action
-        window.
+        derived from the board's 'updateList' action history. Trello does not expose
+        an archive timestamp on the list object itself. The full action history is
+        paged through, so this is complete unless the archive event has aged out of
+        Trello's retained actions entirely.
         """
         archive_dates: Dict[str, str] = {}
-        actions = board.json.get("actions", []) if isinstance(board.json, dict) else []
+        actions = self._api.get_board_actions(board.id, action_filter="updateList")
         # Actions are returned newest-first, so the first archive action seen for a
         # given list is the most recent one.
         for action in actions:
-            if action.get("type") != "updateList":
-                continue
             data = action.get("data", {})
             # A list was archived when its 'closed' flag changed from False to True.
             if data.get("old", {}).get("closed") is False:
@@ -404,7 +416,6 @@ class TrelloCleanupService:
         trash_board = self._api.create_board(trash_board_name)
         trash_board_id = trash_board["id"]
         trash_board_url = trash_board.get("shortUrl") or trash_board.get("url")
-        list_names = [name for name, _ in list_names_and_ids]
 
         try:
             # Move the lists to the trash board and unarchive them there so the user
@@ -416,7 +427,7 @@ class TrelloCleanupService:
 
             res = TrelloPrompt.yes_skip_abort(
                 f"Moved {len(list_names_and_ids)} list(s) to trash board '{trash_board_name}' "
-                f"({trash_board_url}) and unarchived them for review: {list_names}. "
+                f"({trash_board_url}) and unarchived them for review. "
                 f"Permanently delete the trash board and all of these lists?"
             )
             if res == "y":

@@ -20,6 +20,7 @@ LIST_BOARDS_API = "https://api.trello.com/1/members/me/boards"
 GET_BOARD_DETAILS_API_TMPL = "https://api.trello.com/1/boards/{id}/"
 GET_BOARD_LISTS_API_TMPL = "https://api.trello.com/1/boards/{id}/lists"
 GET_CARD_ACTIONS_API_TMPL = "https://api.trello.com/1/cards/{id}/actions"
+GET_BOARD_ACTIONS_API_TMPL = "https://api.trello.com/1/boards/{id}/actions"
 BOARDS_API = "https://api.trello.com/1/boards"
 DELETE_BOARD_API_TMPL = "https://api.trello.com/1/boards/{id}"
 MOVE_LIST_TO_BOARD_API_TMPL = "https://api.trello.com/1/lists/{list_id}/idBoard"
@@ -32,7 +33,7 @@ CLI_LOG = CliLogger(LOG)
 
 
 from abc import ABC, abstractmethod
-from typing import Dict, Any
+from typing import Dict, Any, List
 
 class TrelloApiAbs(ABC):
     @abstractmethod
@@ -56,6 +57,11 @@ class TrelloApiAbs(ABC):
 
     @abstractmethod
     def get_actions_for_card(self, card_id: str):
+        pass
+
+    @abstractmethod
+    def get_board_actions(self, board_id: str, action_filter: str = "all") -> List[Dict[str, Any]]:
+        """Returns all board actions matching action_filter, paging through the full history."""
         pass
 
     @abstractmethod
@@ -412,6 +418,54 @@ class TrelloApi(TrelloApiAbs):
         return parsed_json
 
     @classmethod
+    def get_board_actions(cls, board_id: str, action_filter: str = "all") -> List[Dict[str, Any]]:
+        """
+        Returns all board actions matching action_filter.
+
+        Trello caps a single actions request at 1000 and returns them newest-first,
+        so this pages backwards through the whole history using the 'before' param
+        (set to the id of the oldest action seen so far) until the history is
+        exhausted.
+
+        API Documentation:
+        https://developer.atlassian.com/cloud/trello/rest/api-group-boards/#api-boards-id-actions-get
+
+        Args:
+            board_id (str): The ID of the board.
+            action_filter (str): Trello action type filter, e.g. "updateList".
+
+        Returns:
+            List[Dict[str, Any]]: All matching actions, newest-first.
+        """
+        page_limit = 1000
+        all_actions: List[Dict[str, Any]] = []
+        before = None
+        while True:
+            params = dict(TrelloApi.auth_query_params)
+            params.update({"filter": action_filter, "limit": page_limit})
+            if before:
+                params["before"] = before
+
+            response = requests.request(
+                "GET",
+                GET_BOARD_ACTIONS_API_TMPL.format(id=board_id),
+                headers=TrelloApi.headers_accept_json,
+                params=params
+            )
+            response.raise_for_status()
+
+            batch = response.json()
+            if not batch:
+                break
+
+            all_actions.extend(batch)
+            if len(batch) < page_limit:
+                break
+            before = batch[-1]["id"]
+
+        return all_actions
+
+    @classmethod
     def get_board_id(cls, board_name: str):
         boards: Dict[str, str] = cls.list_boards()
         available_board_names = list(boards.keys())
@@ -614,6 +668,9 @@ class OfflineTrelloApi(TrelloApiAbs):
         return json.loads(board_json)
 
     def get_actions_for_card(self, card_id: str):
+        return []
+
+    def get_board_actions(self, board_id: str, action_filter: str = "all") -> List[Dict[str, Any]]:
         return []
 
 
