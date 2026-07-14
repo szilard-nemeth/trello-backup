@@ -70,6 +70,11 @@ class TrelloApiAbs(ABC):
         pass
 
     @abstractmethod
+    def set_card_closed(self, card_id: str, closed: bool):
+        """Archives (closed=True) or unarchives (closed=False) a card."""
+        pass
+
+    @abstractmethod
     def create_board(self, name: str) -> Dict[str, Any]:
         """Creates a new board and returns its JSON (including 'id' and 'shortUrl')."""
         pass
@@ -296,6 +301,33 @@ class TrelloApi(TrelloApiAbs):
         response.raise_for_status()
 
         CLI_LOG.info(f"Successfully deleted card with ID: {card_id}")
+
+    @classmethod
+    def set_card_closed(cls, card_id: str, closed: bool):
+        """
+        Archives (closed=True) or unarchives (closed=False) a card.
+
+        API Documentation:
+        https://developer.atlassian.com/cloud/trello/rest/api-group-cards/#api-cards-id-put
+
+        Args:
+            card_id (str): The ID of the card.
+            closed (bool): Whether the card should be archived (closed).
+        """
+        params = dict(TrelloApi.auth_query_params)
+        params.update({"closed": "true" if closed else "false"})
+
+        url = CARDS_API + f"/{card_id}"
+        response = requests.request(
+            "PUT",
+            url,
+            headers=TrelloApi.headers_accept_json,
+            params=params
+        )
+        response.raise_for_status()
+
+        state = "archived" if closed else "unarchived"
+        CLI_LOG.info(f"Successfully {state} card {card_id}")
 
     @classmethod
     def create_board(cls, name: str) -> Dict[str, Any]:
@@ -699,6 +731,9 @@ class OfflineTrelloApi(TrelloApiAbs):
         pass
 
     def delete_card(self, card_id: str):
+        raise NotImplementedError()
+
+    def set_card_closed(self, card_id: str, closed: bool):
         raise NotImplementedError()
 
     def create_board(self, name: str) -> Dict[str, Any]:

@@ -46,16 +46,25 @@ class TrelloOperations:
                       board_name: str,
                       filters: TrelloFilters,
                       batch_mode: bool,
-                      cleanup_archived_lists: bool):
-        if cleanup_archived_lists:
+                      cleanup_archived_lists: bool,
+                      rescue_archived_cards: bool):
+        if cleanup_archived_lists and rescue_archived_cards:
+            raise ValueError(
+                "--cleanup-archived-lists and --rescue-archived-cards cannot be used together"
+            )
+
+        if cleanup_archived_lists or rescue_archived_cards:
             if filters.filter_list_names:
                 CLI_LOG.warning(
-                    "Ignoring --filter-list %s: it is not supported together with "
-                    "--cleanup-archived-lists",
+                    "Ignoring --filter-list %s: it is not supported together with the "
+                    "archived-list actions",
                     filters.filter_list_names,
                 )
             archived_filters = TrelloFilters([], ListFilter.CLOSED, CardFilters.ALL)
-            self._cleanup_service.cleanup_archived_lists(board_name, archived_filters)
+            if cleanup_archived_lists:
+                self._cleanup_service.cleanup_archived_lists(board_name, archived_filters)
+            else:
+                self._cleanup_service.rescue_archived_cards(board_name, archived_filters)
         else:
             self._cleanup_service.interactive_cleanup(board_name, filters, batch_mode)
 
@@ -357,7 +366,7 @@ class TrelloCleanupService:
         CLI_LOG.info("Found %d empty archived list(s) to clean up:", len(empty_lists))
         CLI_LOG.info("Fetching archive dates from the board's action history, this may take a while...")
         archive_dates = self._get_list_archive_dates(board)
-        self._print_archived_lists_table(empty_lists, archive_dates)
+        self._print_archived_lists_table(empty_lists, archive_dates, title="Empty archived lists to clean up")
 
         list_names_and_ids = [(l.name, l.id) for l in empty_lists]
         res = TrelloPrompt.yes_skip_abort(
@@ -368,6 +377,37 @@ class TrelloCleanupService:
             return
 
         self._purge_lists(board, list_names_and_ids)
+
+    def rescue_archived_cards(self, board_name, filters):
+        CLI_LOG.info(f"Starting rescue of cards on archived lists for board: {board_name}")
+        board, trello_lists = self._data_fetcher_service.get_lists_and_cards(board_name, filters)
+
+        # 'trello_lists' is already filtered down to the archived (closed) lists.
+        archived_lists = trello_lists.get()
+
+        # Only non-empty archived lists have cards worth rescuing (the empty ones are
+        # handled by the --cleanup-archived-lists action).
+        non_empty_lists = [l for l in archived_lists if l.cards]
+        if not non_empty_lists:
+            CLI_LOG.info("No non-empty archived lists to rescue on board: %s", board_name)
+            return
+
+        CLI_LOG.info("Found %d non-empty archived list(s) to rescue:", len(non_empty_lists))
+        CLI_LOG.info("Fetching archive dates from the board's action history, this may take a while...")
+        archive_dates = self._get_list_archive_dates(board)
+        self._print_archived_lists_table(
+            non_empty_lists, archive_dates, title="Archived lists to rescue", show_card_count=True
+        )
+
+        total_cards = sum(len(l.cards) for l in non_empty_lists)
+        res = TrelloPrompt.yes_skip_abort(
+            f"Move {len(non_empty_lists)} archived list(s) with {total_cards} card(s) to a new review board?"
+        )
+        if res != "y":
+            CLI_LOG.info("Rescue of archived cards skipped/aborted by user")
+            return
+
+        self._move_lists_to_review_board(board, non_empty_lists)
 
     @staticmethod
     def _created_date_from_id(object_id: str) -> str:
@@ -405,29 +445,36 @@ class TrelloCleanupService:
                     archive_dates[list_id] = action.get("date", "unknown")
         return archive_dates
 
-    def _print_archived_lists_table(self, lists: List[TrelloList], archive_dates: Dict[str, str]):
+    def _print_archived_lists_table(self, lists: List[TrelloList], archive_dates: Dict[str, str],
+                                    title: str, show_card_count: bool = False):
         rows = [
-            (l.name, l.id, self._created_date_from_id(l.id), archive_dates.get(l.id, "unknown"))
+            (l.name, l.id, len(l.cards), self._created_date_from_id(l.id), archive_dates.get(l.id, "unknown"))
             for l in lists
         ]
 
         # Order by archive date (desc). Lists whose archive date is unknown are
         # grouped last and ordered among themselves by creation date (desc).
-        def sort_key(row: Tuple[str, str, str, str]):
-            _, _, created, archived = row
+        def sort_key(row: Tuple[str, str, int, str, str]):
+            _, _, _, created, archived = row
             archived_known = archived != "unknown"
             return archived_known, archived if archived_known else "", created
 
         rows.sort(key=sort_key, reverse=True)
 
-        table = Table(title="Empty archived lists to clean up", show_lines=True, box=box.SQUARE)
+        table = Table(title=title, show_lines=True, box=box.SQUARE)
         table.add_column("#", justify="right")
         table.add_column("List name")
         table.add_column("List ID")
+        if show_card_count:
+            table.add_column("Cards", justify="right")
         table.add_column("Created on")
         table.add_column("Archived on")
-        for idx, (name, list_id, created, archived) in enumerate(rows, start=1):
-            table.add_row(str(idx), name, list_id, created, archived)
+        for idx, (name, list_id, card_count, created, archived) in enumerate(rows, start=1):
+            cells = [str(idx), name, list_id]
+            if show_card_count:
+                cells.append(str(card_count))
+            cells.extend([created, archived])
+            table.add_row(*cells)
 
         CLI_LOG.print(table)
 
@@ -479,6 +526,46 @@ class TrelloCleanupService:
                 "Error while purging archived lists. Manually inspect/clean up trash board "
                 "'%s' (id=%s): %s",
                 trash_board_name, trash_board_id, trash_board_url,
+            )
+            raise
+
+    def _move_lists_to_review_board(self, board: TrelloBoard, lists: List[TrelloList]):
+        # Move the archived lists (with all their cards) onto a persistent review
+        # board so the user can triage individual cards manually in Trello. Unlike
+        # _purge_lists, this board is intentionally kept.
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        review_board_name = f"trello-backup-review-{board.name}-{timestamp}"
+        CLI_LOG.info("Creating review board: %s", review_board_name)
+        review_board = self._api.create_board(review_board_name)
+        review_board_id = review_board["id"]
+        review_board_url = review_board.get("shortUrl") or review_board.get("url")
+
+        num_lists = len(lists)
+        total_cards = sum(len(l.cards) for l in lists)
+        try:
+            for idx, l in enumerate(lists, start=1):
+                CLI_LOG.info(
+                    "[%d/%d] Moving archived list '%s' (id=%s, %d card(s)) to review board",
+                    idx, num_lists, l.name, l.id, len(l.cards),
+                )
+                self._api.move_list_to_board(l.id, review_board_id)
+                # Unarchive the list and any archived cards so everything is visible
+                # for manual review on the new board.
+                self._api.set_list_closed(l.id, False)
+                for card in l.cards:
+                    if card.closed:
+                        self._api.set_card_closed(card.id, False)
+
+            CLI_LOG.info(
+                "Moved %d archived list(s) with %d card(s) to review board '%s': %s",
+                num_lists, total_cards, review_board_name, review_board_url,
+            )
+            CLI_LOG.info("Review the cards manually, then delete the review board when you are done.")
+        except Exception:
+            CLI_LOG.error(
+                "Error while rescuing archived cards. Manually inspect the review board "
+                "'%s' (id=%s): %s",
+                review_board_name, review_board_id, review_board_url,
             )
             raise
 
