@@ -71,8 +71,29 @@ class CliLogger(logging.Logger):
             return self._logger.handlers
         return object.__getattribute__(self, item)
 
+    def _iter_file_handlers(self):
+        # The trello-session file handler lives on the root logger; also check the
+        # wrapped logger in case a file handler is ever attached there directly.
+        seen = set()
+        for logger in (self._logger, logging.getLogger()):
+            for handler in logger.handlers:
+                if isinstance(handler, logging.FileHandler) and id(handler) not in seen:
+                    seen.add(id(handler))
+                    yield handler
+
+    def _persist_to_file(self, record):
+        for handler in self._iter_file_handlers():
+            if record.levelno >= handler.level:
+                handler.handle(record)
+
     def handle(self, record):
         super(CliLogger, self).handle(record)
+
+        # CliLogger is intentionally detached from the root logger hierarchy so its
+        # styled console output isn't duplicated by root's stream handler. That also
+        # means records never reach the root file handler on their own, so emit them
+        # to the configured file handler(s) explicitly to keep the session log archived.
+        self._persist_to_file(record)
 
         if record.levelno == logging.INFO:
             formatted = self._formatter.format(record)
