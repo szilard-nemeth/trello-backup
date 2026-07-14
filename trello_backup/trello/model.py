@@ -58,7 +58,12 @@ class TrelloLists:
                 self._all_by_id[l.id] = l
 
         self._by_id: Dict[str, TrelloList] = {l.id: l for l in trello_lists}
-        self._by_name: Dict[str, TrelloList] = {l.name: l for l in trello_lists}
+        # A board can contain several lists sharing the same name (e.g. archived
+        # weekly lists), so name must map to *all* matching lists. Keying a single
+        # list per name would silently drop the rest.
+        self._by_name: Dict[str, List[TrelloList]] = {}
+        for l in trello_lists:
+            self._by_name.setdefault(l.name, []).append(l)
         # Filter open trello lists
         self.open: List[TrelloList] = self._sort(filter(lambda tl: not tl.closed, trello_lists))
         self.closed: List[TrelloList] = self._sort(filter(lambda tl: tl.closed, trello_lists))
@@ -93,10 +98,12 @@ class TrelloLists:
         found: List[TrelloList] = []
         not_found: List[str] = []
 
-        # Iterate through the requested names to check and collect results
+        # Iterate through the requested names to check and collect results.
+        # Every list matching a name is kept, since names are not unique.
         for name in list_names:
-            if name in self._by_name:
-                found.append(self._by_name[name])
+            matches = self._by_name.get(name)
+            if matches:
+                found.extend(matches)
             else:
                 not_found.append(name)
 
