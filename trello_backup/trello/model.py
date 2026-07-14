@@ -51,7 +51,7 @@ class TrelloLists:
             # Keep object identity consistent: parse_trello_lists() above created a
             # fresh set of TrelloList instances for _all_by_id, but the filtered-in
             # lists live in trello_lists_param. get_by_id() (used to attach cards)
-            # reads _all_by_id, while get()/_by_name return the param instances, so
+            # reads _all_by_id, while get()/_by_id return the param instances, so
             # without this the cards would be attached to throwaway objects and every
             # filtered list would look empty.
             for l in trello_lists_param:
@@ -64,7 +64,12 @@ class TrelloLists:
         self.closed: List[TrelloList] = self._sort(filter(lambda tl: tl.closed, trello_lists))
 
     def get(self) -> List[TrelloList]:
-        return self._sort(self._by_name.values())
+        # Enumerate by id (always unique), never by name: a board can legitimately
+        # contain several lists that share a name (e.g. archived weekly lists), and
+        # keying on name would silently collapse them to one entry per name. That
+        # previously made cleanup only ever act on a single archived list per name,
+        # so duplicate-named archived lists could never be fully removed.
+        return self._sort(self._by_id.values())
 
     def get_ids(self):
         return set(self._by_id.keys())
