@@ -9,7 +9,8 @@ from trello_backup.trello.api import NetworkStatusService, TrelloRepository, Off
 from trello_backup.trello.filter import CardFilters, ListFilter, TrelloFilters
 from trello_backup.trello.model import TrelloChecklist, TrelloBoard, TrelloList, TrelloComment, TrelloLists, \
     TrelloCards, TrelloCard
-from trello_backup.trello.service import TrelloOperations, TrelloTitleService, TrelloDataFetcherService
+from trello_backup.trello.service import TrelloOperations, TrelloTitleService, TrelloDataFetcherService, \
+    TrelloCleanupService
 
 MOCK_BOARD_ID = "board123"
 MOCK_BOARD_NAME = "Test Board"
@@ -338,3 +339,98 @@ class TestTrelloTitleService(unittest.TestCase):
         self.mock_cache.get.assert_not_called()
         self.mock_cache.put.assert_not_called()
         self.mock_checklist.set_url_titles.assert_not_called()
+
+
+class TestTrelloCleanupServiceRescue(unittest.TestCase):
+    """Tests for TrelloCleanupService.rescue_archived_cards."""
+
+    REVIEW_BOARD = {"id": "review123", "shortUrl": "http://trello.com/b/review123"}
+
+    def setUp(self):
+        self.mock_api = Mock()
+        self.mock_api.create_board.return_value = dict(self.REVIEW_BOARD)
+        self.mock_api.get_board_actions.return_value = []
+
+        mock_repository = Mock()
+        mock_repository.get_api.return_value = self.mock_api
+
+        self.mock_data_fetcher = Mock()
+        self.mock_data_converter = Mock()
+
+        self.service = TrelloCleanupService(
+            mock_repository, self.mock_data_fetcher, self.mock_data_converter
+        )
+
+        self.board = Mock(spec=TrelloBoard)
+        self.board.id = "board123"
+        self.board.name = "My Board"
+
+    @staticmethod
+    def _make_card(card_id, closed):
+        card = Mock(spec=TrelloCard)
+        card.id = card_id
+        card.closed = closed
+        return card
+
+    @staticmethod
+    def _make_list(list_id, name, cards):
+        trello_list = Mock(spec=TrelloList)
+        trello_list.id = list_id
+        trello_list.name = name
+        trello_list.cards = cards
+        return trello_list
+
+    def _set_archived_lists(self, lists):
+        trello_lists = Mock()
+        trello_lists.get.return_value = lists
+        self.mock_data_fetcher.get_lists_and_cards.return_value = (self.board, trello_lists)
+
+    @patch('trello_backup.trello.service.TrelloPrompt')
+    def test_rescue_moves_non_empty_lists_and_unarchives_closed_cards(self, MockPrompt):
+        MockPrompt.yes_skip_abort.return_value = "y"
+
+        closed_card = self._make_card("cardClosed", closed=True)
+        open_card = self._make_card("cardOpen", closed=False)
+        non_empty = self._make_list("listA", "List A", [closed_card, open_card])
+        empty = self._make_list("listB", "List B", [])
+        self._set_archived_lists([non_empty, empty])
+
+        self.service.rescue_archived_cards("My Board", filters=Mock())
+
+        # A review board is created (persistent, timestamped name) and NOT deleted.
+        self.mock_api.create_board.assert_called_once()
+        created_name = self.mock_api.create_board.call_args.args[0]
+        self.assertTrue(created_name.startswith("trello-backup-review-My Board-"))
+        self.mock_api.delete_board.assert_not_called()
+
+        # Only the non-empty list is moved and unarchived.
+        self.mock_api.move_list_to_board.assert_called_once_with("listA", "review123")
+        self.mock_api.set_list_closed.assert_called_once_with("listA", False)
+
+        # Only the archived (closed) card is unarchived; the open one is left alone.
+        self.mock_api.set_card_closed.assert_called_once_with("cardClosed", False)
+
+    @patch('trello_backup.trello.service.TrelloPrompt')
+    def test_rescue_aborts_when_user_declines(self, MockPrompt):
+        MockPrompt.yes_skip_abort.return_value = "s"
+
+        non_empty = self._make_list("listA", "List A", [self._make_card("c1", closed=True)])
+        self._set_archived_lists([non_empty])
+
+        self.service.rescue_archived_cards("My Board", filters=Mock())
+
+        MockPrompt.yes_skip_abort.assert_called_once()
+        self.mock_api.create_board.assert_not_called()
+        self.mock_api.move_list_to_board.assert_not_called()
+        self.mock_api.set_card_closed.assert_not_called()
+
+    @patch('trello_backup.trello.service.TrelloPrompt')
+    def test_rescue_no_op_when_no_non_empty_lists(self, MockPrompt):
+        only_empty = self._make_list("listB", "List B", [])
+        self._set_archived_lists([only_empty])
+
+        self.service.rescue_archived_cards("My Board", filters=Mock())
+
+        # Returns before prompting or touching the API.
+        MockPrompt.yes_skip_abort.assert_not_called()
+        self.mock_api.create_board.assert_not_called()
