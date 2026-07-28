@@ -340,6 +340,40 @@ class TestTrelloTitleService(unittest.TestCase):
         self.mock_cache.put.assert_not_called()
         self.mock_checklist.set_url_titles.assert_not_called()
 
+    @patch('trello_backup.trello.service.HtmlParser')
+    @patch('trello_backup.trello.service.UrlUtils')
+    def test_process_checklist_titles_item_with_extra_text_left_verbatim(
+        self, MockUrlUtils, MockHtmlParser
+    ):
+        """If the item text is anything other than a bare URL, it must be printed
+        as-is. No fetch, no cache touch, no url_title assignment — the display
+        code falls through to item['value']."""
+        url = "https://cloudera.slack.com/archives/C09UXM1J50Q/p1773333006719389"
+        cases = [
+            f"03/12 Discussion: {url}",         # label before
+            f"[03/12 Discussion]({url})",       # markdown link
+            f"{url} — see thread",              # suffix after
+            f"before {url} after",              # both sides
+        ]
+
+        for raw in cases:
+            with self.subTest(raw=raw):
+                MockUrlUtils.reset_mock()
+                MockHtmlParser.reset_mock()
+                self.mock_cache.reset_mock()
+
+                item = Mock(value=raw)
+                checklist = Mock(spec=TrelloChecklist, items=[item])
+                MockUrlUtils.extract_from_str.return_value = url
+
+                self.service._process_checklist_titles(checklist)
+
+                # We must not fetch a page title or write anything to the model.
+                MockHtmlParser.get_title_from_url.assert_not_called()
+                self.mock_cache.get.assert_not_called()
+                self.mock_cache.put.assert_not_called()
+                checklist.set_url_titles.assert_not_called()
+
 
 class TestTrelloCleanupServiceRescue(unittest.TestCase):
     """Tests for TrelloCleanupService.rescue_archived_cards."""

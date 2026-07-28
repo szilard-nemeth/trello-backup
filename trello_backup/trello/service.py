@@ -117,6 +117,13 @@ class TrelloTitleService:
             except:
                 url = None
 
+            # 1a. If the author wrote anything besides the URL itself — a label,
+            # a suffix, both — keep the item text verbatim. Don't fetch a page
+            # title and don't rewrite the display. The user's own words are the
+            # source of truth; page titles are only a fallback for bare URLs.
+            if url and item.value.strip() != url:
+                continue
+
             if url:
                 # 2. Get from cache or fetch (ALL cache interaction is here)
                 # Uncomment to delete from cache
