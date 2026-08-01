@@ -17,6 +17,9 @@ class MockTrelloLists:
     def get_ids(self):
         return set(self.by_id.keys())
 
+    def get_all_ids(self):
+        return self.get_ids()
+
     def get_by_id(self, l_id):
         return self.by_id[l_id]
 
@@ -197,7 +200,7 @@ class TrelloObjectParserTest(unittest.TestCase):
 
         board_json = {"cards": simple_cards_json}
 
-        cards = TrelloObjectParser.parse_trello_cards(
+        cards, cards_for_other_lists = TrelloObjectParser.parse_trello_cards(
             board_json,
             mock_trello_lists,
             mock_trello_checklists
@@ -228,7 +231,7 @@ class TrelloObjectParserTest(unittest.TestCase):
 
         board_json = {"cards": self.MOCK_CARDS_JSON[:1]} # Only the first card with an attachment
 
-        cards = TrelloObjectParser.parse_trello_cards(
+        cards, cards_for_other_lists = TrelloObjectParser.parse_trello_cards(
             board_json,
             mock_trello_lists,
             mock_trello_checklists
@@ -269,13 +272,14 @@ class TrelloObjectParserTest(unittest.TestCase):
 
         board_json = {"cards": self.MOCK_CARDS_JSON} # Card 1 is for list_id_1, Card 2 is for list_id_2
 
-        cards = TrelloObjectParser.parse_trello_cards(
+        cards, cards_for_other_lists = TrelloObjectParser.parse_trello_cards(
             board_json,
             mock_trello_lists,
             mock_trello_checklists
         )
 
         self.assertEqual(1, len(cards))
+        self.assertEqual(1, len(cards_for_other_lists))
         self.assertEqual("card_id_2", cards[0].id)
 
     def test_query_comments_for_card_success(self):

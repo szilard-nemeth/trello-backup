@@ -17,9 +17,11 @@ def cleanup():
 @cleanup.command(cls=TrelloCommand, help="Interactively cleanup the specified board")
 @click.option('-l', '--filter-list', "filter_list",  multiple=True, required=False, help='Only cleanup the specified lists')
 @click.option('-b', '--batch-mode', is_flag=True, required=False, help='Clean up lists in batch, meaning all cards will be printed and deleted by lists')
+@click.option('-a', '--cleanup-archived-lists', is_flag=True, required=False, help='Permanently removes all empty archived lists on the board (moves them to a throwaway board that is then deleted). Non-empty archived lists are skipped. Not combinable with --filter-list.')
+@click.option('-r', '--rescue-archived-cards', is_flag=True, required=False, help='Moves all non-empty archived lists (with their cards) to a new timestamped review board and unarchives everything, so cards can be triaged manually. Not combinable with --cleanup-archived-lists or --filter-list.')
 @click.pass_context
 @click.argument("board_name")
-def board(ctx, board_name: str, filter_list: Tuple[str], batch_mode: bool):
+def board(ctx, board_name: str, filter_list: Tuple[str], batch_mode: bool, cleanup_archived_lists: bool, rescue_archived_cards: bool):
     filter_list = list(filter_list)
     handler = get_handler_and_setup_ctx(ctx)
-    handler.cleanup_board(board_name, filter_list, batch_mode)
+    handler.cleanup_board(board_name, filter_list, batch_mode, cleanup_archived_lists, rescue_archived_cards)

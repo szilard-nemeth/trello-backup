@@ -132,7 +132,8 @@ class TestTrelloLists(unittest.TestCase):
         self.assertEqual(len(self.trello_lists._by_id), 3)
 
     def test_get_by_name(self):
-        self.assertEqual(self.trello_lists._by_name['To Do'], self.list_a)
+        # _by_name maps a name to all lists sharing it (names are not unique).
+        self.assertEqual(self.trello_lists._by_name['To Do'], [self.list_a])
         self.assertEqual(len(self.trello_lists._by_name), 3)
 
     def test_get_open_lists(self):
@@ -163,6 +164,52 @@ class TestTrelloLists(unittest.TestCase):
         # Expect a ValueError to be raised
         with self.assertRaisesRegex(ValueError, "The following lists were not found on the board: 'Non-Existent List', 'Another Missing'"):
             self.trello_lists.filter_by_list_names(filter_names)
+
+    @patch('trello_backup.trello.parser.TrelloObjectParser')
+    def test_get_returns_all_lists_including_duplicate_names(self, mock_parser_cls):
+        """
+        Regression test: a board can contain several lists that share the same name
+        (e.g. archived weekly lists). get() must return every one of them, keyed by
+        the always-unique list id, and must NOT collapse them by name. Otherwise the
+        archived-list cleanup only ever acts on one list per name and duplicate-named
+        archived lists can never be fully removed.
+        """
+        dup_a = TrelloList(closed=True, id='201', name='Weekly Plan', board_id='board_1', pos=33333)
+        dup_b = TrelloList(closed=True, id='202', name='Weekly Plan', board_id='board_1', pos=11111)
+        dup_c = TrelloList(closed=True, id='203', name='Weekly Plan', board_id='board_1', pos=22222)
+        unique = TrelloList(closed=True, id='204', name='Backlog', board_id='board_1', pos=44444)
+        all_lists = [dup_a, dup_b, dup_c, unique]
+        mock_parser_cls.parse_trello_lists.return_value = all_lists
+
+        trello_lists = TrelloLists(self.mock_board_json)
+
+        # _by_name groups by name (2 distinct names) but retains every list.
+        self.assertEqual(len(trello_lists._by_name), 2)
+        self.assertEqual({l.id for l in trello_lists._by_name['Weekly Plan']}, {'201', '202', '203'})
+
+        result = trello_lists.get()
+
+        # get() must return all four distinct lists, not one per name.
+        self.assertEqual([l.id for l in result], ['202', '203', '201', '204'])
+        # All four unique ids must be present exactly once.
+        self.assertEqual({l.id for l in result}, {'201', '202', '203', '204'})
+
+    @patch('trello_backup.trello.parser.TrelloObjectParser')
+    def test_filter_by_list_names_keeps_all_duplicate_named_lists(self, mock_parser_cls):
+        """
+        Regression test: filtering by a name that several lists share must return
+        all of them, not just one. _by_name is a multimap so no list is dropped.
+        """
+        dup_a = TrelloList(closed=False, id='301', name='Notes', board_id='board_1', pos=11111)
+        dup_b = TrelloList(closed=False, id='302', name='Notes', board_id='board_1', pos=22222)
+        other = TrelloList(closed=False, id='303', name='Other', board_id='board_1', pos=33333)
+        all_lists = [dup_a, dup_b, other]
+        mock_parser_cls.parse_trello_lists.return_value = all_lists
+
+        trello_lists = TrelloLists(self.mock_board_json)
+        filtered = trello_lists.filter_by_list_names(['Notes'])
+
+        self.assertEqual({l.id for l in filtered.get()}, {'301', '302'})
 
 class TestTrelloChecklistItem(unittest.TestCase):
     """Tests for the TrelloChecklistItem get_html method."""

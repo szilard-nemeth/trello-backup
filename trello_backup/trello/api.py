@@ -20,6 +20,11 @@ LIST_BOARDS_API = "https://api.trello.com/1/members/me/boards"
 GET_BOARD_DETAILS_API_TMPL = "https://api.trello.com/1/boards/{id}/"
 GET_BOARD_LISTS_API_TMPL = "https://api.trello.com/1/boards/{id}/lists"
 GET_CARD_ACTIONS_API_TMPL = "https://api.trello.com/1/cards/{id}/actions"
+GET_BOARD_ACTIONS_API_TMPL = "https://api.trello.com/1/boards/{id}/actions"
+BOARDS_API = "https://api.trello.com/1/boards"
+DELETE_BOARD_API_TMPL = "https://api.trello.com/1/boards/{id}"
+MOVE_LIST_TO_BOARD_API_TMPL = "https://api.trello.com/1/lists/{list_id}/idBoard"
+SET_LIST_CLOSED_API_TMPL = "https://api.trello.com/1/lists/{list_id}/closed"
 
 # TODO ASAP need to move to config file
 ORGANIZATION_ID = "60b31169ff7e174519a40577"
@@ -28,7 +33,7 @@ CLI_LOG = CliLogger(LOG)
 
 
 from abc import ABC, abstractmethod
-from typing import Dict, Any
+from typing import Dict, Any, List
 
 class TrelloApiAbs(ABC):
     @abstractmethod
@@ -55,8 +60,38 @@ class TrelloApiAbs(ABC):
         pass
 
     @abstractmethod
+    def get_board_actions(self, board_id: str, action_filter: str = "all") -> List[Dict[str, Any]]:
+        """Returns all board actions matching action_filter, paging through the full history."""
+        pass
+
+    @abstractmethod
     def delete_card(self, card_id: str):
         """Permanently deletes a card from Trello."""
+        pass
+
+    @abstractmethod
+    def set_card_closed(self, card_id: str, closed: bool):
+        """Archives (closed=True) or unarchives (closed=False) a card."""
+        pass
+
+    @abstractmethod
+    def create_board(self, name: str) -> Dict[str, Any]:
+        """Creates a new board and returns its JSON (including 'id' and 'shortUrl')."""
+        pass
+
+    @abstractmethod
+    def move_list_to_board(self, list_id: str, board_id: str):
+        """Moves a list to the board identified by board_id."""
+        pass
+
+    @abstractmethod
+    def set_list_closed(self, list_id: str, closed: bool):
+        """Archives (closed=True) or unarchives (closed=False) a list."""
+        pass
+
+    @abstractmethod
+    def delete_board(self, board_id: str):
+        """Permanently deletes a board (and all of its lists and cards) from Trello."""
         pass
 
     @abstractmethod
@@ -268,6 +303,141 @@ class TrelloApi(TrelloApiAbs):
         CLI_LOG.info(f"Successfully deleted card with ID: {card_id}")
 
     @classmethod
+    def set_card_closed(cls, card_id: str, closed: bool):
+        """
+        Archives (closed=True) or unarchives (closed=False) a card.
+
+        API Documentation:
+        https://developer.atlassian.com/cloud/trello/rest/api-group-cards/#api-cards-id-put
+
+        Args:
+            card_id (str): The ID of the card.
+            closed (bool): Whether the card should be archived (closed).
+        """
+        params = dict(TrelloApi.auth_query_params)
+        params.update({"closed": "true" if closed else "false"})
+
+        url = CARDS_API + f"/{card_id}"
+        response = requests.request(
+            "PUT",
+            url,
+            headers=TrelloApi.headers_accept_json,
+            params=params
+        )
+        response.raise_for_status()
+
+        state = "archived" if closed else "unarchived"
+        CLI_LOG.info(f"Successfully {state} card {card_id}")
+
+    @classmethod
+    def create_board(cls, name: str) -> Dict[str, Any]:
+        """
+        Creates a new (empty) board and returns its JSON.
+
+        API Documentation:
+        https://developer.atlassian.com/cloud/trello/rest/api-group-boards/#api-boards-post
+
+        Args:
+            name (str): The name of the board to create.
+
+        Returns:
+            Dict[str, Any]: The created board JSON, including 'id' and 'shortUrl'.
+        """
+        params = dict(TrelloApi.auth_query_params)
+        params.update({
+            "name": name,
+            # Do not create the default "To Do / Doing / Done" lists.
+            "defaultLists": "false",
+        })
+
+        response = requests.request(
+            "POST",
+            BOARDS_API,
+            headers=TrelloApi.headers_accept_json,
+            params=params
+        )
+        response.raise_for_status()
+
+        board = response.json()
+        CLI_LOG.info(f"Successfully created board '{name}' with ID: {board['id']}")
+        return board
+
+    @classmethod
+    def set_list_closed(cls, list_id: str, closed: bool):
+        """
+        Archives (closed=True) or unarchives (closed=False) a list.
+
+        API Documentation:
+        https://developer.atlassian.com/cloud/trello/rest/api-group-lists/#api-lists-id-closed-put
+
+        Args:
+            list_id (str): The ID of the list.
+            closed (bool): Whether the list should be archived (closed).
+        """
+        params = dict(TrelloApi.auth_query_params)
+        params.update({"value": "true" if closed else "false"})
+
+        url = SET_LIST_CLOSED_API_TMPL.format(list_id=list_id)
+        response = requests.request(
+            "PUT",
+            url,
+            headers=TrelloApi.headers_accept_json,
+            params=params
+        )
+        response.raise_for_status()
+
+        state = "archived" if closed else "unarchived"
+        CLI_LOG.info(f"Successfully {state} list {list_id}")
+
+    @classmethod
+    def move_list_to_board(cls, list_id: str, board_id: str):
+        """
+        Moves a list to another board.
+
+        API Documentation:
+        https://developer.atlassian.com/cloud/trello/rest/api-group-lists/#api-lists-id-idboard-put
+
+        Args:
+            list_id (str): The ID of the list to move.
+            board_id (str): The ID of the destination board.
+        """
+        params = dict(TrelloApi.auth_query_params)
+        params.update({"value": board_id})
+
+        url = MOVE_LIST_TO_BOARD_API_TMPL.format(list_id=list_id)
+        response = requests.request(
+            "PUT",
+            url,
+            headers=TrelloApi.headers_accept_json,
+            params=params
+        )
+        response.raise_for_status()
+
+        CLI_LOG.info(f"Successfully moved list {list_id} to board {board_id}")
+
+    @classmethod
+    def delete_board(cls, board_id: str):
+        """
+        Permanently deletes a board, including all of its lists and cards.
+
+        API Documentation:
+        https://developer.atlassian.com/cloud/trello/rest/api-group-boards/#api-boards-id-delete
+
+        Args:
+            board_id (str): The ID of the board to be deleted.
+        """
+        url = DELETE_BOARD_API_TMPL.format(id=board_id)
+        response = requests.request(
+            "DELETE",
+            url,
+            headers=TrelloApi.headers_accept_json,
+            params=TrelloApi.auth_query_params
+        )
+        response.raise_for_status()
+
+        CLI_LOG.info(f"Successfully deleted board with ID: {board_id}")
+
+    @classmethod
     def get_actions_for_card(cls, card_id: str):
         response = requests.request(
             "GET",
@@ -278,6 +448,54 @@ class TrelloApi(TrelloApiAbs):
 
         parsed_json = json.loads(response.text)
         return parsed_json
+
+    @classmethod
+    def get_board_actions(cls, board_id: str, action_filter: str = "all") -> List[Dict[str, Any]]:
+        """
+        Returns all board actions matching action_filter.
+
+        Trello caps a single actions request at 1000 and returns them newest-first,
+        so this pages backwards through the whole history using the 'before' param
+        (set to the id of the oldest action seen so far) until the history is
+        exhausted.
+
+        API Documentation:
+        https://developer.atlassian.com/cloud/trello/rest/api-group-boards/#api-boards-id-actions-get
+
+        Args:
+            board_id (str): The ID of the board.
+            action_filter (str): Trello action type filter, e.g. "updateList".
+
+        Returns:
+            List[Dict[str, Any]]: All matching actions, newest-first.
+        """
+        page_limit = 1000
+        all_actions: List[Dict[str, Any]] = []
+        before = None
+        while True:
+            params = dict(TrelloApi.auth_query_params)
+            params.update({"filter": action_filter, "limit": page_limit})
+            if before:
+                params["before"] = before
+
+            response = requests.request(
+                "GET",
+                GET_BOARD_ACTIONS_API_TMPL.format(id=board_id),
+                headers=TrelloApi.headers_accept_json,
+                params=params
+            )
+            response.raise_for_status()
+
+            batch = response.json()
+            if not batch:
+                break
+
+            all_actions.extend(batch)
+            if len(batch) < page_limit:
+                break
+            before = batch[-1]["id"]
+
+        return all_actions
 
     @classmethod
     def get_board_id(cls, board_name: str):
@@ -484,6 +702,9 @@ class OfflineTrelloApi(TrelloApiAbs):
     def get_actions_for_card(self, card_id: str):
         return []
 
+    def get_board_actions(self, board_id: str, action_filter: str = "all") -> List[Dict[str, Any]]:
+        return []
+
 
     @staticmethod
     def _load_boards_json() -> Any:
@@ -510,6 +731,21 @@ class OfflineTrelloApi(TrelloApiAbs):
         pass
 
     def delete_card(self, card_id: str):
+        raise NotImplementedError()
+
+    def set_card_closed(self, card_id: str, closed: bool):
+        raise NotImplementedError()
+
+    def create_board(self, name: str) -> Dict[str, Any]:
+        raise NotImplementedError()
+
+    def move_list_to_board(self, list_id: str, board_id: str):
+        raise NotImplementedError()
+
+    def set_list_closed(self, list_id: str, closed: bool):
+        raise NotImplementedError()
+
+    def delete_board(self, board_id: str):
         raise NotImplementedError()
 
     def download_card_by_share_link(self, share_link: str, download_attachments: bool = True):

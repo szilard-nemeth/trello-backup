@@ -42,25 +42,48 @@ class TrelloLists:
         self._filtered = False
 
         trello_lists: List[TrelloList] = TrelloObjectParser.parse_trello_lists(board_json)
+        self._all_by_id: Dict[str, TrelloList] = {l.id: l for l in trello_lists}
 
         if trello_lists_param:
             if len(trello_lists_param) < len(trello_lists):
                 self._filtered = True
             trello_lists = trello_lists_param
+            # Keep object identity consistent: parse_trello_lists() above created a
+            # fresh set of TrelloList instances for _all_by_id, but the filtered-in
+            # lists live in trello_lists_param. get_by_id() (used to attach cards)
+            # reads _all_by_id, while get()/_by_id return the param instances, so
+            # without this the cards would be attached to throwaway objects and every
+            # filtered list would look empty.
+            for l in trello_lists_param:
+                self._all_by_id[l.id] = l
 
         self._by_id: Dict[str, TrelloList] = {l.id: l for l in trello_lists}
-        self._by_name: Dict[str, TrelloList] = {l.name: l for l in trello_lists}
+        # A board can contain several lists sharing the same name (e.g. archived
+        # weekly lists), so name must map to *all* matching lists. Keying a single
+        # list per name would silently drop the rest.
+        self._by_name: Dict[str, List[TrelloList]] = {}
+        for l in trello_lists:
+            self._by_name.setdefault(l.name, []).append(l)
         # Filter open trello lists
         self.open: List[TrelloList] = self._sort(filter(lambda tl: not tl.closed, trello_lists))
+        self.closed: List[TrelloList] = self._sort(filter(lambda tl: tl.closed, trello_lists))
 
     def get(self) -> List[TrelloList]:
-        return self._sort(self._by_name.values())
+        # Enumerate by id (always unique), never by name: a board can legitimately
+        # contain several lists that share a name (e.g. archived weekly lists), and
+        # keying on name would silently collapse them to one entry per name. That
+        # previously made cleanup only ever act on a single archived list per name,
+        # so duplicate-named archived lists could never be fully removed.
+        return self._sort(self._by_id.values())
 
     def get_ids(self):
         return set(self._by_id.keys())
 
+    def get_all_ids(self):
+        return set(self._all_by_id.keys())
+
     def get_by_id(self, list_id):
-        return self._by_id[list_id]
+        return self._all_by_id[list_id]
 
     @staticmethod
     def _sort(lists: Iterable[TrelloList]) -> List[TrelloList]:
@@ -75,10 +98,12 @@ class TrelloLists:
         found: List[TrelloList] = []
         not_found: List[str] = []
 
-        # Iterate through the requested names to check and collect results
+        # Iterate through the requested names to check and collect results.
+        # Every list matching a name is kept, since names are not unique.
         for name in list_names:
-            if name in self._by_name:
-                found.append(self._by_name[name])
+            matches = self._by_name.get(name)
+            if matches:
+                found.extend(matches)
             else:
                 not_found.append(name)
 
@@ -96,6 +121,8 @@ class TrelloLists:
             return TrelloLists(self._board_json, trello_lists_param=list(self.get()))
         elif list_filter == ListFilter.OPEN:
             return TrelloLists(self._board_json, trello_lists_param=list(self.open))
+        elif list_filter == ListFilter.CLOSED:
+            return TrelloLists(self._board_json, trello_lists_param=list(self.closed))
 
 
 @dataclass
@@ -208,8 +235,11 @@ class TrelloCard:
 class TrelloCards:
     def __init__(self, board_json, trello_lists: TrelloLists, trello_checklists: TrelloChecklists):
         from trello_backup.trello.parser import TrelloObjectParser
-        self.all: List[TrelloCard] = TrelloObjectParser.parse_trello_cards(board_json, trello_lists, trello_checklists)
+        all, other_lists = TrelloObjectParser.parse_trello_cards(board_json, trello_lists, trello_checklists)
+        self.all: List[TrelloCard] = all
+        self.cards_for_other_lists: Dict[str, List[TrelloCard]] = other_lists
         self.open: List[TrelloCard] = list(filter(lambda c: not c.closed, self.all))
+        self.closed: List[TrelloCard] = list(filter(lambda c: c.closed, self.all))
         self.by_short_url = {c.short_url: c for c in self.all}
 
 

@@ -33,7 +33,7 @@ class CardFilters(Enum):
 class ListFilter(Enum):
     ALL = "all"
     OPEN = "open"
-
+    CLOSED = "closed"
 
 
 class CardFilterer:

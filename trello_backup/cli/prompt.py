@@ -99,16 +99,16 @@ class DefaultPromptHandler(PromptHandler):
         return self._choice_with_handlers(q, choice_handlers, on_skip)
 
     def yes_no_abort(self, q: str):
-        choice_handlers = {self.YES_CHOICE: lambda x: self.YES_CHOICE,
-                           self.NO_CHOICE: lambda x: self.NO_CHOICE,
-                           self.ABORT_CHOICE: lambda x: self.ABORT_CHOICE}
-        return self._choice_with_handlers(q, choice_handlers, lambda x: self.NO_CHOICE)
+        choice_handlers = {self.YES_CHOICE: lambda: self.YES_CHOICE,
+                           self.NO_CHOICE: lambda: self.NO_CHOICE,
+                           self.ABORT_CHOICE: lambda: self.ABORT_CHOICE}
+        return self._choice_with_handlers(q, choice_handlers, lambda: self.NO_CHOICE)
 
     def yes_skip_abort(self, q: str):
-        choice_handlers = {self.YES_CHOICE: lambda x: self.YES_CHOICE,
-                           self.SKIP_CHOICE: lambda x: self.SKIP_CHOICE,
-                           self.ABORT_CHOICE: lambda x: self.ABORT_CHOICE}
-        return self._choice_with_handlers(q, choice_handlers, lambda x: self.SKIP_CHOICE)
+        choice_handlers = {self.YES_CHOICE: lambda: self.YES_CHOICE,
+                           self.SKIP_CHOICE: lambda: self.SKIP_CHOICE,
+                           self.ABORT_CHOICE: lambda: self.ABORT_CHOICE}
+        return self._choice_with_handlers(q, choice_handlers, lambda: self.SKIP_CHOICE)
 
     def _choice_with_handlers(self, q: str, choice_handlers: Dict[str, Callable[[], Any]], default_handler):
         # 1. Define the choices and their mapping to display labels
