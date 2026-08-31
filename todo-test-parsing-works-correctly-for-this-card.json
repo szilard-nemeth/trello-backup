@@ -1,0 +1,767 @@
+{
+  "id": "6a00a32c8d568c764bbdde4a",
+  "address": null,
+  "agent": null,
+  "aiMetadata": null,
+  "badges": {
+    "attachments": 0,
+    "fogbugz": "",
+    "checkItems": 7,
+    "checkItemsChecked": 0,
+    "checkItemsEarliestDue": null,
+    "comments": 0,
+    "description": true,
+    "due": null,
+    "dueComplete": false,
+    "lastUpdatedByAi": false,
+    "start": null,
+    "externalSource": null,
+    "attachmentsByType": {
+      "trello": {
+        "board": 0,
+        "card": 0
+      }
+    },
+    "location": false,
+    "votes": 0,
+    "maliciousAttachments": 0,
+    "viewingMemberVoted": false,
+    "subscribed": false
+  },
+  "checkItemStates": [],
+  "closed": false,
+  "coordinates": null,
+  "creationMethod": null,
+  "creationMethodError": null,
+  "creationMethodLoadingStartedAt": null,
+  "dueComplete": false,
+  "dateClosed": null,
+  "dateLastActivity": "2026-08-31T01:55:59.344Z",
+  "dateCompleted": null,
+  "dateViewedByCreator": null,
+  "desc": "free text extraction + two links would not work\n\nThese tracks are already saved to my text notes, they are just examples where parsing works incorrectly.",
+  "descData": {
+    "emoji": {
+
+    }
+  },
+  "due": null,
+  "dueReminder": null,
+  "email": "szilard_nemet+2m46il5inx7kcfkytiq+36i2mj50z5nno3n5xze+0raptvli5r@boards.trello.com",
+  "externalSource": null,
+  "faviconUrl": null,
+  "idBoard": "6987e4f9a975a3a4b08b6852",
+  "idChecklists": [
+    "6a00a330a2c2c0effaa9f783"
+  ],
+  "idLabels": [
+    "69ab82681e04df6e1ec26c08"
+  ],
+  "idList": "690656c8b2a681b3d8e76b65",
+  "idMemberCreator": "57213e43028b63d18cd5b9f2",
+  "idMembers": [],
+  "idMembersVoted": [],
+  "idOrganization": "60b31169ff7e174519a40577",
+  "idShort": 103,
+  "idAttachmentCover": null,
+  "labels": [
+    {
+      "id": "69ab82681e04df6e1ec26c08",
+      "idBoard": "6987e4f9a975a3a4b08b6852",
+      "idOrganization": "60b31169ff7e174519a40577",
+      "name": "LEISURE",
+      "nodeId": "ari:cloud:trello::label/workspace/60b31169ff7e174519a40577/69ab82681e04df6e1ec26c08",
+      "color": "pink",
+      "uses": 20
+    }
+  ],
+  "limits": {
+    "attachments": {
+      "perCard": {
+        "status": "ok",
+        "disableAt": 1000,
+        "warnAt": 800
+      }
+    },
+    "checklists": {
+      "perCard": {
+        "status": "ok",
+        "disableAt": 500,
+        "warnAt": 400
+      }
+    },
+    "stickers": {
+      "perCard": {
+        "status": "ok",
+        "disableAt": 70,
+        "warnAt": 56
+      }
+    }
+  },
+  "locationName": null,
+  "manifest": null,
+  "manualCoverAttachment": false,
+  "name": "TEST CARD for trello-backup: Parsing working incorrectly",
+  "nodeId": "ari:cloud:trello::card/workspace/60b31169ff7e174519a40577/6a00a32c8d568c764bbdde4a",
+  "originalDesc": "",
+  "originalName": "",
+  "pinned": false,
+  "pos": 140737488379904,
+  "recurrenceRule": null,
+  "shortLink": "r0H4Ic2O",
+  "shortUrl": "https://trello.com/c/r0H4Ic2O",
+  "singleInstrumentationId": null,
+  "sourceEmail": null,
+  "staticMapUrl": null,
+  "start": null,
+  "subscribed": false,
+  "url": "https://trello.com/c/r0H4Ic2O/103-test-card-for-trello-backup-parsing-working-incorrectly",
+  "urlSource": null,
+  "urlSourceText": null,
+  "cover": {
+    "idAttachment": null,
+    "color": null,
+    "idUploadedBackground": null,
+    "size": "normal",
+    "brightness": "dark",
+    "yPosition": 0.5,
+    "idPlugin": null
+  },
+  "isTemplate": false,
+  "cardRole": null,
+  "mirrorSourceId": null,
+  "mirrorSourceNodeId": null,
+  "actions": [
+    {
+      "id": "6a94df2f91921c3af80320df",
+      "idMemberCreator": "57213e43028b63d18cd5b9f2",
+      "data": {
+        "old": {
+          "name": "test trello-backup: Parsing working incorrectly"
+        },
+        "card": {
+          "name": "TEST CARD for trello-backup: Parsing working incorrectly",
+          "id": "6a00a32c8d568c764bbdde4a",
+          "idShort": 103,
+          "shortLink": "r0H4Ic2O"
+        },
+        "board": {
+          "id": "6987e4f9a975a3a4b08b6852",
+          "name": "Learn Inbox → Action Pipeline",
+          "shortLink": "G7EtkNNT"
+        },
+        "list": {
+          "id": "690656c8b2a681b3d8e76b65",
+          "name": "MUSIC"
+        }
+      },
+      "agenticIdentity": null,
+      "appCreator": null,
+      "type": "updateCard",
+      "date": "2026-08-31T01:55:59.356Z",
+      "limits": null,
+      "memberCreator": {
+        "id": "57213e43028b63d18cd5b9f2",
+        "activityBlocked": false,
+        "avatarHash": "45ffdbda879c4ead0906ab4bf5075f93",
+        "avatarUrl": "https://trello-members.s3.amazonaws.com/57213e43028b63d18cd5b9f2/45ffdbda879c4ead0906ab4bf5075f93",
+        "fullName": "nemethszyszy",
+        "idMemberReferrer": null,
+        "initials": "N",
+        "nonPublic": {
+          "fullName": "Szilárd Németh",
+          "initials": "SN",
+          "avatarHash": null
+        },
+        "nonPublicAvailable": true,
+        "username": "szilard_nemeth"
+      }
+    },
+    {
+      "id": "6a00a74966b67a1fcbbd7db9",
+      "idMemberCreator": "57213e43028b63d18cd5b9f2",
+      "data": {
+        "old": {
+          "pos": 140737489739776
+        },
+        "card": {
+          "pos": 140737488379904,
+          "id": "6a00a32c8d568c764bbdde4a",
+          "name": "test trello-backup: Parsing working incorrectly",
+          "idShort": 103,
+          "shortLink": "r0H4Ic2O"
+        },
+        "board": {
+          "id": "6987e4f9a975a3a4b08b6852",
+          "name": "Learn Inbox → Action Pipeline",
+          "shortLink": "G7EtkNNT"
+        },
+        "list": {
+          "id": "690656c8b2a681b3d8e76b65",
+          "name": "MUSIC"
+        }
+      },
+      "agenticIdentity": null,
+      "appCreator": null,
+      "type": "updateCard",
+      "date": "2026-05-10T15:42:01.168Z",
+      "limits": null,
+      "memberCreator": {
+        "id": "57213e43028b63d18cd5b9f2",
+        "activityBlocked": false,
+        "avatarHash": "45ffdbda879c4ead0906ab4bf5075f93",
+        "avatarUrl": "https://trello-members.s3.amazonaws.com/57213e43028b63d18cd5b9f2/45ffdbda879c4ead0906ab4bf5075f93",
+        "fullName": "nemethszyszy",
+        "idMemberReferrer": null,
+        "initials": "N",
+        "nonPublic": {
+          "fullName": "Szilárd Németh",
+          "initials": "SN",
+          "avatarHash": null
+        },
+        "nonPublicAvailable": true,
+        "username": "szilard_nemeth"
+      }
+    },
+    {
+      "id": "6a00a74966b67a1fcbbd7d9a",
+      "idMemberCreator": "57213e43028b63d18cd5b9f2",
+      "data": {
+        "old": {
+          "idList": "668b404ce5776eb2bffc2280"
+        },
+        "card": {
+          "idList": "690656c8b2a681b3d8e76b65",
+          "id": "6a00a32c8d568c764bbdde4a",
+          "name": "test trello-backup: Parsing working incorrectly",
+          "idShort": 103,
+          "shortLink": "r0H4Ic2O"
+        },
+        "board": {
+          "id": "6987e4f9a975a3a4b08b6852",
+          "name": "Learn Inbox → Action Pipeline",
+          "shortLink": "G7EtkNNT"
+        },
+        "listBefore": {
+          "id": "668b404ce5776eb2bffc2280",
+          "name": "SOCIAL / TRAVEL / LEISURE"
+        },
+        "listAfter": {
+          "id": "690656c8b2a681b3d8e76b65",
+          "name": "MUSIC"
+        }
+      },
+      "agenticIdentity": null,
+      "appCreator": null,
+      "type": "updateCard",
+      "date": "2026-05-10T15:42:01.086Z",
+      "limits": null,
+      "memberCreator": {
+        "id": "57213e43028b63d18cd5b9f2",
+        "activityBlocked": false,
+        "avatarHash": "45ffdbda879c4ead0906ab4bf5075f93",
+        "avatarUrl": "https://trello-members.s3.amazonaws.com/57213e43028b63d18cd5b9f2/45ffdbda879c4ead0906ab4bf5075f93",
+        "fullName": "nemethszyszy",
+        "idMemberReferrer": null,
+        "initials": "N",
+        "nonPublic": {
+          "fullName": "Szilárd Németh",
+          "initials": "SN",
+          "avatarHash": null
+        },
+        "nonPublicAvailable": true,
+        "username": "szilard_nemeth"
+      }
+    },
+    {
+      "id": "6a00a746b72faddc341ed5e9",
+      "idMemberCreator": "57213e43028b63d18cd5b9f2",
+      "data": {
+        "card": {
+          "idLabels": [
+            "69ab82681e04df6e1ec26c08"
+          ],
+          "id": "6a00a32c8d568c764bbdde4a",
+          "name": "test trello-backup: Parsing working incorrectly",
+          "idShort": 103,
+          "shortLink": "r0H4Ic2O"
+        },
+        "old": {
+          "idLabels": [
+            "69ab82681e04df6e1ec26c08"
+          ]
+        },
+        "board": {
+          "id": "6987e4f9a975a3a4b08b6852",
+          "name": "Learn Inbox → Action Pipeline",
+          "shortLink": "G7EtkNNT"
+        },
+        "list": {
+          "id": "668b404ce5776eb2bffc2280",
+          "name": "SOCIAL / TRAVEL / LEISURE"
+        }
+      },
+      "agenticIdentity": null,
+      "appCreator": null,
+      "type": "updateCard",
+      "date": "2026-05-10T15:41:58.593Z",
+      "limits": null,
+      "memberCreator": {
+        "id": "57213e43028b63d18cd5b9f2",
+        "activityBlocked": false,
+        "avatarHash": "45ffdbda879c4ead0906ab4bf5075f93",
+        "avatarUrl": "https://trello-members.s3.amazonaws.com/57213e43028b63d18cd5b9f2/45ffdbda879c4ead0906ab4bf5075f93",
+        "fullName": "nemethszyszy",
+        "idMemberReferrer": null,
+        "initials": "N",
+        "nonPublic": {
+          "fullName": "Szilárd Németh",
+          "initials": "SN",
+          "avatarHash": null
+        },
+        "nonPublicAvailable": true,
+        "username": "szilard_nemeth"
+      }
+    },
+    {
+      "id": "6a00a73f874cce19afbd341b",
+      "idMemberCreator": "57213e43028b63d18cd5b9f2",
+      "data": {
+        "old": {
+          "name": "test trello-backup: Working incorrectly parsing"
+        },
+        "card": {
+          "name": "test trello-backup: Parsing working incorrectly",
+          "id": "6a00a32c8d568c764bbdde4a",
+          "idShort": 103,
+          "shortLink": "r0H4Ic2O"
+        },
+        "board": {
+          "id": "6987e4f9a975a3a4b08b6852",
+          "name": "Learn Inbox → Action Pipeline",
+          "shortLink": "G7EtkNNT"
+        },
+        "list": {
+          "id": "668b404ce5776eb2bffc2280",
+          "name": "SOCIAL / TRAVEL / LEISURE"
+        }
+      },
+      "agenticIdentity": null,
+      "appCreator": null,
+      "type": "updateCard",
+      "date": "2026-05-10T15:41:51.967Z",
+      "limits": null,
+      "memberCreator": {
+        "id": "57213e43028b63d18cd5b9f2",
+        "activityBlocked": false,
+        "avatarHash": "45ffdbda879c4ead0906ab4bf5075f93",
+        "avatarUrl": "https://trello-members.s3.amazonaws.com/57213e43028b63d18cd5b9f2/45ffdbda879c4ead0906ab4bf5075f93",
+        "fullName": "nemethszyszy",
+        "idMemberReferrer": null,
+        "initials": "N",
+        "nonPublic": {
+          "fullName": "Szilárd Németh",
+          "initials": "SN",
+          "avatarHash": null
+        },
+        "nonPublicAvailable": true,
+        "username": "szilard_nemeth"
+      }
+    },
+    {
+      "id": "6a00a7352cb34cdcf82f7f34",
+      "idMemberCreator": "57213e43028b63d18cd5b9f2",
+      "data": {
+        "old": {
+          "name": "test trello-backup"
+        },
+        "card": {
+          "name": "test trello-backup: Working incorrectly parsing",
+          "id": "6a00a32c8d568c764bbdde4a",
+          "idShort": 103,
+          "shortLink": "r0H4Ic2O"
+        },
+        "board": {
+          "id": "6987e4f9a975a3a4b08b6852",
+          "name": "Learn Inbox → Action Pipeline",
+          "shortLink": "G7EtkNNT"
+        },
+        "list": {
+          "id": "668b404ce5776eb2bffc2280",
+          "name": "SOCIAL / TRAVEL / LEISURE"
+        }
+      },
+      "agenticIdentity": null,
+      "appCreator": null,
+      "type": "updateCard",
+      "date": "2026-05-10T15:41:41.018Z",
+      "limits": null,
+      "memberCreator": {
+        "id": "57213e43028b63d18cd5b9f2",
+        "activityBlocked": false,
+        "avatarHash": "45ffdbda879c4ead0906ab4bf5075f93",
+        "avatarUrl": "https://trello-members.s3.amazonaws.com/57213e43028b63d18cd5b9f2/45ffdbda879c4ead0906ab4bf5075f93",
+        "fullName": "nemethszyszy",
+        "idMemberReferrer": null,
+        "initials": "N",
+        "nonPublic": {
+          "fullName": "Szilárd Németh",
+          "initials": "SN",
+          "avatarHash": null
+        },
+        "nonPublicAvailable": true,
+        "username": "szilard_nemeth"
+      }
+    },
+    {
+      "id": "6a00a6cc0e1b411d2c7ebc82",
+      "idMemberCreator": "57213e43028b63d18cd5b9f2",
+      "data": {
+        "old": {
+          "desc": "free text extraction + two links would not work"
+        },
+        "card": {
+          "desc": "free text extraction + two links would not work\n\nThese tracks are already saved to my text notes, they are just examples where parsing works incorrectly.",
+          "id": "6a00a32c8d568c764bbdde4a",
+          "name": "test trello-backup",
+          "idShort": 103,
+          "shortLink": "r0H4Ic2O"
+        },
+        "board": {
+          "id": "6987e4f9a975a3a4b08b6852",
+          "name": "Learn Inbox → Action Pipeline",
+          "shortLink": "G7EtkNNT"
+        },
+        "list": {
+          "id": "668b404ce5776eb2bffc2280",
+          "name": "SOCIAL / TRAVEL / LEISURE"
+        }
+      },
+      "agenticIdentity": null,
+      "appCreator": null,
+      "type": "updateCard",
+      "date": "2026-05-10T15:39:56.784Z",
+      "limits": null,
+      "memberCreator": {
+        "id": "57213e43028b63d18cd5b9f2",
+        "activityBlocked": false,
+        "avatarHash": "45ffdbda879c4ead0906ab4bf5075f93",
+        "avatarUrl": "https://trello-members.s3.amazonaws.com/57213e43028b63d18cd5b9f2/45ffdbda879c4ead0906ab4bf5075f93",
+        "fullName": "nemethszyszy",
+        "idMemberReferrer": null,
+        "initials": "N",
+        "nonPublic": {
+          "fullName": "Szilárd Németh",
+          "initials": "SN",
+          "avatarHash": null
+        },
+        "nonPublicAvailable": true,
+        "username": "szilard_nemeth"
+      }
+    },
+    {
+      "id": "6a00a3423861cc627b85de9c",
+      "idMemberCreator": "57213e43028b63d18cd5b9f2",
+      "data": {
+        "old": {
+          "desc": ""
+        },
+        "card": {
+          "desc": "free text extraction + two links would not work",
+          "id": "6a00a32c8d568c764bbdde4a",
+          "name": "test trello-backup",
+          "idShort": 103,
+          "shortLink": "r0H4Ic2O"
+        },
+        "board": {
+          "id": "6987e4f9a975a3a4b08b6852",
+          "name": "Learn Inbox → Action Pipeline",
+          "shortLink": "G7EtkNNT"
+        },
+        "list": {
+          "id": "668b404ce5776eb2bffc2280",
+          "name": "SOCIAL / TRAVEL / LEISURE"
+        }
+      },
+      "agenticIdentity": null,
+      "appCreator": null,
+      "type": "updateCard",
+      "date": "2026-05-10T15:24:50.466Z",
+      "limits": null,
+      "memberCreator": {
+        "id": "57213e43028b63d18cd5b9f2",
+        "activityBlocked": false,
+        "avatarHash": "45ffdbda879c4ead0906ab4bf5075f93",
+        "avatarUrl": "https://trello-members.s3.amazonaws.com/57213e43028b63d18cd5b9f2/45ffdbda879c4ead0906ab4bf5075f93",
+        "fullName": "nemethszyszy",
+        "idMemberReferrer": null,
+        "initials": "N",
+        "nonPublic": {
+          "fullName": "Szilárd Németh",
+          "initials": "SN",
+          "avatarHash": null
+        },
+        "nonPublicAvailable": true,
+        "username": "szilard_nemeth"
+      }
+    },
+    {
+      "id": "6a00a337f93b2dc5bb74df3e",
+      "idMemberCreator": "57213e43028b63d18cd5b9f2",
+      "data": {
+        "old": {
+          "name": "test"
+        },
+        "card": {
+          "name": "test trello-backup",
+          "id": "6a00a32c8d568c764bbdde4a",
+          "idShort": 103,
+          "shortLink": "r0H4Ic2O"
+        },
+        "board": {
+          "id": "6987e4f9a975a3a4b08b6852",
+          "name": "Learn Inbox → Action Pipeline",
+          "shortLink": "G7EtkNNT"
+        },
+        "list": {
+          "id": "668b404ce5776eb2bffc2280",
+          "name": "SOCIAL / TRAVEL / LEISURE"
+        }
+      },
+      "agenticIdentity": null,
+      "appCreator": null,
+      "type": "updateCard",
+      "date": "2026-05-10T15:24:39.735Z",
+      "limits": null,
+      "memberCreator": {
+        "id": "57213e43028b63d18cd5b9f2",
+        "activityBlocked": false,
+        "avatarHash": "45ffdbda879c4ead0906ab4bf5075f93",
+        "avatarUrl": "https://trello-members.s3.amazonaws.com/57213e43028b63d18cd5b9f2/45ffdbda879c4ead0906ab4bf5075f93",
+        "fullName": "nemethszyszy",
+        "idMemberReferrer": null,
+        "initials": "N",
+        "nonPublic": {
+          "fullName": "Szilárd Németh",
+          "initials": "SN",
+          "avatarHash": null
+        },
+        "nonPublicAvailable": true,
+        "username": "szilard_nemeth"
+      }
+    },
+    {
+      "id": "6a00a331a2c2c0effaa9f78a",
+      "idMemberCreator": "57213e43028b63d18cd5b9f2",
+      "data": {
+        "card": {
+          "id": "6a00a32c8d568c764bbdde4a",
+          "name": "test",
+          "idShort": 103,
+          "shortLink": "r0H4Ic2O"
+        },
+        "checklist": {
+          "id": "6a00a330a2c2c0effaa9f783",
+          "name": "Checklist"
+        },
+        "board": {
+          "id": "6987e4f9a975a3a4b08b6852",
+          "name": "Learn Inbox → Action Pipeline",
+          "shortLink": "G7EtkNNT"
+        }
+      },
+      "agenticIdentity": null,
+      "appCreator": null,
+      "type": "addChecklistToCard",
+      "date": "2026-05-10T15:24:33.013Z",
+      "limits": null,
+      "memberCreator": {
+        "id": "57213e43028b63d18cd5b9f2",
+        "activityBlocked": false,
+        "avatarHash": "45ffdbda879c4ead0906ab4bf5075f93",
+        "avatarUrl": "https://trello-members.s3.amazonaws.com/57213e43028b63d18cd5b9f2/45ffdbda879c4ead0906ab4bf5075f93",
+        "fullName": "nemethszyszy",
+        "idMemberReferrer": null,
+        "initials": "N",
+        "nonPublic": {
+          "fullName": "Szilárd Németh",
+          "initials": "SN",
+          "avatarHash": null
+        },
+        "nonPublicAvailable": true,
+        "username": "szilard_nemeth"
+      }
+    },
+    {
+      "id": "6a00a32c8d568c764bbdde65",
+      "idMemberCreator": "57213e43028b63d18cd5b9f2",
+      "data": {
+        "card": {
+          "id": "6a00a32c8d568c764bbdde4a",
+          "name": "test",
+          "idShort": 103,
+          "shortLink": "r0H4Ic2O"
+        },
+        "list": {
+          "id": "668b404ce5776eb2bffc2280",
+          "name": "SOCIAL / TRAVEL / LEISURE"
+        },
+        "board": {
+          "id": "6987e4f9a975a3a4b08b6852",
+          "name": "Learn Inbox → Action Pipeline",
+          "shortLink": "G7EtkNNT"
+        }
+      },
+      "agenticIdentity": null,
+      "appCreator": null,
+      "type": "createCard",
+      "date": "2026-05-10T15:24:28.442Z",
+      "limits": null,
+      "memberCreator": {
+        "id": "57213e43028b63d18cd5b9f2",
+        "activityBlocked": false,
+        "avatarHash": "45ffdbda879c4ead0906ab4bf5075f93",
+        "avatarUrl": "https://trello-members.s3.amazonaws.com/57213e43028b63d18cd5b9f2/45ffdbda879c4ead0906ab4bf5075f93",
+        "fullName": "nemethszyszy",
+        "idMemberReferrer": null,
+        "initials": "N",
+        "nonPublic": {
+          "fullName": "Szilárd Németh",
+          "initials": "SN",
+          "avatarHash": null
+        },
+        "nonPublicAvailable": true,
+        "username": "szilard_nemeth"
+      }
+    }
+  ],
+  "checklists": [
+    {
+      "id": "6a00a330a2c2c0effaa9f783",
+      "name": "Checklist",
+      "idBoard": "6987e4f9a975a3a4b08b6852",
+      "idCard": "6a00a32c8d568c764bbdde4a",
+      "pos": 140737488355328,
+      "limits": {
+        "checkItems": {
+          "perChecklist": {
+            "status": "ok",
+            "disableAt": 200,
+            "warnAt": 160
+          }
+        }
+      },
+      "checkItems": [
+        {
+          "id": "6a00a331cbe8d0d0bbeb4604",
+          "name": "Reka Torok mix - https://www.facebook.com/share/1YeJTrtG6o/?mibextid=wwXIfr / https://soundcloud.com/rekat17/jade-late_night_session-1-2/s-jOvsEUd8hpH",
+          "nameData": {
+            "emoji": {
+
+            }
+          },
+          "pos": 140737488355328,
+          "state": "incomplete",
+          "due": null,
+          "dueReminder": null,
+          "idMember": null,
+          "idChecklist": "6a00a330a2c2c0effaa9f783"
+        },
+        {
+          "id": "6a00a65cb7ec055c469f734a",
+          "name": "Kenji Takashima - Aurora (Thomas Ferell Remix) [from: https://soundcloud.com/stevemarchmusic/fewish-b2b-steve-march-kassa]",
+          "nameData": {
+            "emoji": {
+
+            }
+          },
+          "pos": 140737488371712,
+          "state": "incomplete",
+          "due": null,
+          "dueReminder": null,
+          "idMember": null,
+          "idChecklist": "6a00a330a2c2c0effaa9f783"
+        },
+        {
+          "id": "6a00a678bd30967dd702a82f",
+          "name": "https://www.youtube.com/watch?v=pidSwPI-iC0 Gero Pellizzon - Sonar (Cipriani & Hans Gerd remix) [3rd Avenue] [Progressive House]",
+          "nameData": {
+            "emoji": {
+
+            }
+          },
+          "pos": 140737488388096,
+          "state": "incomplete",
+          "due": null,
+          "dueReminder": null,
+          "idMember": null,
+          "idChecklist": "6a00a330a2c2c0effaa9f783"
+        },
+        {
+          "id": "6a00a6b713bca1bc28cad9f2",
+          "name": "Pierre Sebastiano - Alma (Agustin Pietrocola Remix) [LuPS Records] https://www.youtube.com/watch?v=IYzi1WIymCM",
+          "nameData": {
+            "emoji": {
+
+            }
+          },
+          "pos": 140737488404480,
+          "state": "incomplete",
+          "due": null,
+          "dueReminder": null,
+          "idMember": null,
+          "idChecklist": "6a00a330a2c2c0effaa9f783"
+        },
+        {
+          "id": "6a00a72993939ec19d1ab820",
+          "name": "Sander van H - The Prayer (Rikken Remix) [LuPS Records] // https://www.youtube.com/watch?v=k4nvTcWMQUo --\u003E epic track",
+          "nameData": {
+            "emoji": {
+
+            }
+          },
+          "pos": 140737488420864,
+          "state": "incomplete",
+          "due": null,
+          "dueReminder": null,
+          "idMember": null,
+          "idChecklist": "6a00a330a2c2c0effaa9f783"
+        },
+        {
+          "id": "6a00a7f798fa7ad11dbe9f26",
+          "name": "https://www.youtube.com/watch?v=sutWyKyKwvs !!",
+          "nameData": {
+            "emoji": {
+
+            }
+          },
+          "pos": 140737488437248,
+          "state": "incomplete",
+          "due": null,
+          "dueReminder": null,
+          "idMember": null,
+          "idChecklist": "6a00a330a2c2c0effaa9f783"
+        },
+        {
+          "id": "6a00a8a3074c5987a2f8e1f6",
+          "name": "05/09 Mitre: https://www.youtube.com/watch?v=XT__AEqWbVg",
+          "nameData": {
+            "emoji": {
+
+            }
+          },
+          "pos": 140737488453632,
+          "state": "incomplete",
+          "due": null,
+          "dueReminder": null,
+          "idMember": null,
+          "idChecklist": "6a00a330a2c2c0effaa9f783"
+        }
+      ],
+      "creationMethod": null
+    }
+  ],
+  "customFieldItems": [],
+  "members": [],
+  "pluginData": []
+}
